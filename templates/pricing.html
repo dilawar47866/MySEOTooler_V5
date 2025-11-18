@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Pricing - myseokingtool {% endblock %}
+{% block content %}
+<div class="container">
+    <div class="text-center mb-5">
+        <h1>💎 Pricing Plans</h1>
+        <p class="text-muted">Choose the perfect plan for your SEO needs</p>
+    </div>
+
+    <div class="row">
+        <!-- Free Plan -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3>Free</h3>
+                    <div class="display-4 my-4">$0</div>
+                    <p class="text-muted">per month</p>
+                    <hr>
+                    <ul class="list-unstyled text-left">
+                        <li class="mb-2">✅ 5 content pieces/month</li>
+                        <li class="mb-2">✅ 50 AI requests/month</li>
+                        <li class="mb-2">✅ Basic SEO tools</li>
+                        <li class="mb-2">✅ Keyword research</li>
+                        <li class="mb-2">✅ Export: TXT, HTML</li>
+                        <li class="mb-2 text-muted">❌ Advanced features</li>
+                    </ul>
+                    {% if current_user.is_authenticated and current_user.tier == 'free' %}
+                    <button class="btn btn-secondary btn-block" disabled>Current Plan</button>
+                    {% else %}
+                    <a href="{{ url_for('signup') }}" class="btn btn-outline-primary btn-block">Get Started</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pro Plan -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-primary shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <strong>⭐ MOST POPULAR</strong>
+                </div>
+                <div class="card-body text-center">
+                    <h3>Pro</h3>
+                    <div class="display-4 my-4">$29</div>
+                    <p class="text-muted">per month</p>
+                    <hr>
+                    <ul class="list-unstyled text-left">
+                        <li class="mb-2">✅ 50 content pieces/month</li>
+                        <li class="mb-2">✅ 500 AI requests/month</li>
+                        <li class="mb-2">✅ All SEO tools</li>
+                        <li class="mb-2">✅ Advanced analytics</li>
+                        <li class="mb-2">✅ Export: All formats</li>
+                        <li class="mb-2">✅ Priority support</li>
+                    </ul>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.tier == 'pro' %}
+                        <button class="btn btn-success btn-block" disabled>Current Plan</button>
+                        {% else %}
+                        <button onclick="upgradePlan('pro')" class="btn btn-primary btn-block">Upgrade to Pro</button>
+                        {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('signup') }}" class="btn btn-primary btn-block">Get Started</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Enterprise Plan -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h3>Enterprise</h3>
+                    <div class="display-4 my-4">$99</div>
+                    <p class="text-muted">per month</p>
+                    <hr>
+                    <ul class="list-unstyled text-left">
+                        <li class="mb-2">✅ Unlimited content</li>
+                        <li class="mb-2">✅ Unlimited AI requests</li>
+                        <li class="mb-2">✅ All Pro features</li>
+                        <li class="mb-2">✅ API access</li>
+                        <li class="mb-2">✅ White-label option</li>
+                        <li class="mb-2">✅ Dedicated support</li>
+                    </ul>
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.tier == 'enterprise' %}
+                        <button class="btn btn-success btn-block" disabled>Current Plan</button>
+                        {% else %}
+                        <button onclick="upgradePlan('enterprise')" class="btn btn-outline-primary btn-block">Upgrade to Enterprise</button>
+                        {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('signup') }}" class="btn btn-outline-primary btn-block">Get Started</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-5">
+        <p class="text-muted">Need a custom plan? <a href="mailto:support@myseokingtool.com">Contact us</a></p>
+    </div>
+</div>
+
+<script>
+async function upgradePlan(tier) {
+    if (!confirm(`Upgrade to ${tier.toUpperCase()} plan?`)) return;
+    
+    try {
+        const res = await fetch('/upgrade', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({tier: tier})
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            alert('✅ Upgraded successfully!');
+            window.location.reload();
+        } else {
+            alert('⚠️ ' + (data.error || 'Payment integration coming soon!'));
+        }
+    } catch (err) {
+        alert('❌ Error: ' + err.message);
+    }
+}
+</script>
+{% endblock %}

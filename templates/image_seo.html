@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Image SEO Optimizer - MySEOTooler V5{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <h1><i class="fas fa-images"></i> Image SEO Optimizer</h1>
+            <p class="text-muted mb-4">Generate SEO-friendly alt text, filenames, and captions for multiple images</p>
+
+            <!-- Input Card -->
+            <div class="card p-4 mb-4">
+                <div class="form-group">
+                    <label><strong>Target Keyword</strong></label>
+                    <input type="text" id="keywordInput" class="form-control" 
+                           placeholder="e.g., digital marketing">
+                    <small class="text-muted">Will be included naturally in image attributes</small>
+                </div>
+
+                <div id="imagesContainer">
+                    <div class="form-group image-input">
+                        <label><strong>Image 1 Description</strong></label>
+                        <input type="text" class="form-control image-desc" 
+                               placeholder="e.g., Person working on laptop at coffee shop">
+                    </div>
+                </div>
+
+                <button onclick="addImageField()" class="btn btn-secondary mb-3">
+                    <i class="fas fa-plus"></i> Add Another Image
+                </button>
+                
+                <button onclick="optimizeImages()" class="btn btn-primary btn-lg btn-block">
+                    <i class="fas fa-magic"></i> Generate Image SEO
+                </button>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="alert alert-info text-center" style="display:none;">
+                <i class="fas fa-spinner fa-spin"></i> Generating SEO attributes...
+            </div>
+
+            <!-- Results -->
+            <div id="results" style="display:none;">
+                <div class="card p-4">
+                    <h3 class="mb-4">🖼️ Optimized Image Attributes</h3>
+                    <div id="resultsList"></div>
+                </div>
+            </div>
+
+            <!-- Best Practices -->
+            <div class="card p-4 mt-4">
+                <h5><i class="fas fa-lightbulb"></i> Image SEO Best Practices</h5>
+                <ul class="mb-0">
+                    <li><strong>Alt Text:</strong> Descriptive, 125 characters max, includes keyword naturally</li>
+                    <li><strong>File Name:</strong> Lowercase, hyphens instead of spaces, descriptive</li>
+                    <li><strong>Format:</strong> Use WebP for better compression, fallback to JPG</li>
+                    <li><strong>Size:</strong> Compress images to reduce load time</li>
+                    <li><strong>Captions:</strong> Add context and include keywords when relevant</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let imageCount = 1;
+
+function addImageField() {
+    imageCount++;
+    const container = document.getElementById('imagesContainer');
+    const div = document.createElement('div');
+    div.className = 'form-group image-input';
+    div.innerHTML = `
+        <label><strong>Image ${imageCount} Description</strong></label>
+        <input type="text" class="form-control image-desc" 
+               placeholder="Describe the image content...">
+    `;
+    container.appendChild(div);
+}
+
+async function optimizeImages() {
+    const keyword = document.getElementById('keywordInput').value.trim();
+    const descriptions = Array.from(document.querySelectorAll('.image-desc'))
+        .map(input => input.value.trim())
+        .filter(desc => desc.length > 0);
+    
+    if (descriptions.length === 0) {
+        alert('⚠️ Please describe at least one image');
+        return;
+    }
+    
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/optimize-image-seo', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({images: descriptions, keyword: keyword})
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Optimization failed');
+        
+        const resultsList = document.getElementById('resultsList');
+        resultsList.innerHTML = '';
+        
+        data.results.forEach((result, index) => {
+            const card = document.createElement('div');
+            card.className = 'card p-3 mb-3 border-success';
+            card.innerHTML = `
+                <h5>Image ${index + 1}: ${result.description}</h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6 mb-3">
+                        <strong>Alt Text:</strong>
+                        <div class="input-group mt-1">
+                            <input type="text" class="form-control" value="${result.alt_text}" readonly>
+                            <div class="input-group-append">
+                                <button onclick="copyText('${result.alt_text.replace(/'/g, "\\'")}', this)" 
+                                        class="btn btn-outline-primary">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <strong>File Name:</strong>
+                        <div class="input-group mt-1">
+                            <input type="text" class="form-control" value="${result.file_name}" readonly>
+                            <div class="input-group-append">
+                                <button onclick="copyText('${result.file_name.replace(/'/g, "\\'")}', this)" 
+                                        class="btn btn-outline-primary">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <strong>Title Text:</strong>
+                        <div class="input-group mt-1">
+                            <input type="text" class="form-control" value="${result.title_text}" readonly>
+                            <div class="input-group-append">
+                                <button onclick="copyText('${result.title_text.replace(/'/g, "\\'")}', this)" 
+                                        class="btn btn-outline-primary">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <strong>Caption:</strong>
+                        <div class="input-group mt-1">
+                            <input type="text" class="form-control" value="${result.caption}" readonly>
+                            <div class="input-group-append">
+                                <button onclick="copyText('${result.caption.replace(/'/g, "\\'")}', this)" 
+                                        class="btn btn-outline-primary">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-2">
+                    <strong>HTML Code:</strong>
+                    <div class="input-group mt-1">
+                        <textarea class="form-control" rows="2" readonly>${result.html}</textarea>
+                        <div class="input-group-append">
+                            <button onclick="copyText('${result.html.replace(/'/g, "\\'")}', this)" 
+                                    class="btn btn-outline-primary">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            resultsList.appendChild(card);
+        });
+        
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+        
+    } catch (err) {
+        alert('❌ ' + err.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function copyText(text, button) {
+    navigator.clipboard.writeText(text).then(() => {
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+        }, 1500);
+    });
+}
+</script>
+{% endblock %}

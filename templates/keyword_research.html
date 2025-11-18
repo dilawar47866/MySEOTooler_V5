@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>🔍 Keyword Research</h1>
+    <p>Generate SEO keyword ideas using AI</p>
+    
+    <div class="card">
+        <div class="form-group">
+            <label>Seed Keyword</label>
+            <input type="text" id="seedKeyword" class="form-control" placeholder="Enter main keyword...">
+        </div>
+        
+        <button onclick="generateKeywords()" class="btn btn-primary">
+            Generate Keywords
+        </button>
+    </div>
+    
+    <div id="results" style="display:none; margin-top: 20px;">
+        <h3>Generated Keywords</h3>
+        <ul id="keywordList" class="list-group"></ul>
+    </div>
+    
+    <div id="loading" style="display:none;">
+        <p>⏳ Generating keywords...</p>
+    </div>
+</div>
+
+<script>
+async function generateKeywords() {
+    const seed = document.getElementById('seedKeyword').value.trim();
+    if (!seed) {
+        alert('Please enter a keyword');
+        return;
+    }
+    
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/generate-keywords', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: seed})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const list = document.getElementById('keywordList');
+            list.innerHTML = '';
+            data.keywords.forEach(kw => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = kw;
+                list.appendChild(li);
+            });
+            document.getElementById('results').style.display = 'block';
+        } else {
+            alert(data.error || 'Error generating keywords');
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

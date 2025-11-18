@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Email Subject Line Tester - MySEOTooler V5{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <h1><i class="fas fa-envelope"></i> Email Subject Line Tester</h1>
+            <p class="text-muted mb-4">Optimize your email subject lines for higher open rates</p>
+
+            <!-- Input Card -->
+            <div class="card p-4 mb-4">
+                <div class="form-group">
+                    <label><strong>Email Subject Line</strong></label>
+                    <input type="text" id="subjectInput" class="form-control form-control-lg" 
+                           placeholder="e.g., You won't believe these 5 SEO secrets"
+                           maxlength="100">
+                    <div class="d-flex justify-content-between mt-2">
+                        <small class="text-muted">Optimal: 40-60 characters</small>
+                        <small id="charCounter" class="text-muted">0 characters</small>
+                    </div>
+                </div>
+                
+                <button onclick="testSubject()" class="btn btn-primary btn-lg btn-block">
+                    <i class="fas fa-chart-line"></i> Test Subject Line
+                </button>
+            </div>
+
+            <!-- Results -->
+            <div id="results" style="display:none;">
+                <!-- Score Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card p-4 text-center">
+                            <h1 id="overallScore" class="display-3 mb-0"></h1>
+                            <p class="text-muted mb-0">Overall Score</p>
+                            <span id="grade" class="badge mt-2" style="font-size: 1.2rem;"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card p-4 text-center">
+                            <h1 id="openRate" class="display-3 mb-0"></h1>
+                            <p class="text-muted mb-0">Predicted Open Rate</p>
+                            <small class="text-muted">Estimated</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card p-4 text-center">
+                            <h2 id="charCount" class="mb-0"></h2>
+                            <p class="text-muted mb-0">Characters</p>
+                            <small id="lengthFeedback" class="text-muted"></small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis -->
+                <div class="card p-4 mb-4">
+                    <h4 class="mb-3">📊 Subject Line Analysis</h4>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <strong>Word Count:</strong>
+                            <p id="wordCount" class="mb-0"></p>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Personalization:</strong>
+                            <p id="personalization" class="mb-0"></p>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Urgency:</strong>
+                            <p id="urgency" class="mb-0"></p>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Contains Numbers:</strong>
+                            <p id="hasNumbers" class="mb-0"></p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Has Emoji:</strong>
+                            <p id="hasEmoji" class="mb-0"></p>
+                        </div>
+                        <div class="col-md-9">
+                            <strong>Spam Words Found:</strong>
+                            <p id="spamWords" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Suggestions -->
+                <div class="card p-4">
+                    <h4><i class="fas fa-lightbulb"></i> Improvement Suggestions</h4>
+                    <ul id="suggestionsList" class="mb-0"></ul>
+                </div>
+            </div>
+
+            <!-- Best Practices -->
+            <div class="card p-4 mt-4">
+                <h5><i class="fas fa-graduation-cap"></i> Email Subject Line Best Practices</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>✅ Do:</strong>
+                        <ul class="mt-2">
+                            <li>Keep it 40-60 characters</li>
+                            <li>Use personalization (name, company)</li>
+                            <li>Include numbers for specificity</li>
+                            <li>Create urgency when appropriate</li>
+                            <li>Test different variations</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>❌ Avoid:</strong>
+                        <ul class="mt-2">
+                            <li>Spam trigger words (FREE, WINNER, $$$)</li>
+                            <li>All caps text</li>
+                            <li>Excessive punctuation (!!!)</li>
+                            <li>Misleading subject lines</li>
+                            <li>Being too vague or generic</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Character counter
+document.getElementById('subjectInput').addEventListener('input', function() {
+    const count = this.value.length;
+    document.getElementById('charCounter').textContent = count + ' characters';
+    
+    if (count >= 40 && count <= 60) {
+        document.getElementById('charCounter').className = 'text-success';
+    } else if (count > 60) {
+        document.getElementById('charCounter').className = 'text-warning';
+    } else {
+        document.getElementById('charCounter').className = 'text-muted';
+    }
+});
+
+async function testSubject() {
+    const subject = document.getElementById('subjectInput').value.trim();
+    
+    if (!subject) {
+        alert('⚠️ Please enter a subject line');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/test-subject-line', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({subject: subject})
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Test failed');
+        
+        // Display scores
+        document.getElementById('overallScore').textContent = data.score;
+        document.getElementById('openRate').textContent = data.predicted_open_rate + '%';
+        document.getElementById('charCount').textContent = data.char_count;
+        
+        // Grade
+        const gradeBadge = document.getElementById('grade');
+        gradeBadge.textContent = data.grade;
+        gradeBadge.className = 'badge badge-' + data.grade_color + ' mt-2';
+        
+        // Length feedback
+        if (data.char_count >= 40 && data.char_count <= 60) {
+            document.getElementById('lengthFeedback').textContent = 'Perfect length';
+        } else if (data.char_count > 60) {
+            document.getElementById('lengthFeedback').textContent = 'Too long';
+        } else {
+            document.getElementById('lengthFeedback').textContent = 'Too short';
+        }
+        
+        // Analysis
+        document.getElementById('wordCount').textContent = data.word_count;
+        document.getElementById('personalization').innerHTML = data.has_personalization ? 
+            '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-secondary">No</span>';
+        document.getElementById('urgency').innerHTML = data.has_urgency ? 
+            '<span class="badge badge-warning">Yes</span>' : '<span class="badge badge-secondary">No</span>';
+        document.getElementById('hasNumbers').innerHTML = data.has_numbers ? 
+            '<span class="badge badge-info">Yes</span>' : '<span class="badge badge-secondary">No</span>';
+        document.getElementById('hasEmoji').innerHTML = data.has_emoji ? 
+            '<span class="badge badge-primary">Yes</span>' : '<span class="badge badge-secondary">No</span>';
+        
+        // Spam words
+        if (data.spam_words.length > 0) {
+            document.getElementById('spamWords').innerHTML = data.spam_words.map(word => 
+                `<span class="badge badge-danger mr-1">${word}</span>`
+            ).join('');
+        } else {
+            document.getElementById('spamWords').innerHTML = '<span class="badge badge-success">None ✓</span>';
+        }
+        
+        // Suggestions
+        const suggestionsList = document.getElementById('suggestionsList');
+        suggestionsList.innerHTML = '';
+        data.suggestions.forEach(suggestion => {
+            const li = document.createElement('li');
+            li.textContent = suggestion;
+            li.style.marginBottom = '10px';
+            suggestionsList.appendChild(li);
+        });
+        
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+        
+    } catch (err) {
+        alert('❌ ' + err.message);
+    }
+}
+
+// Allow Enter key
+document.getElementById('subjectInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        testSubject();
+    }
+});
+</script>
+{% endblock %}

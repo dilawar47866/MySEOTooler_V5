@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}LSI Keyword Generator - MySEOTooler V5{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <h1><i class="fas fa-project-diagram"></i> LSI Keyword Generator</h1>
+            <p class="text-muted mb-4">Generate semantically related keywords to boost your SEO</p>
+
+            <!-- Input Card -->
+            <div class="card p-4 mb-4">
+                <div class="form-group">
+                    <label><strong>Main Keyword</strong></label>
+                    <input type="text" id="keywordInput" class="form-control form-control-lg" 
+                           placeholder="e.g., digital marketing">
+                </div>
+                
+                <button onclick="generateLSI()" class="btn btn-primary btn-lg btn-block">
+                    <i class="fas fa-magic"></i> Generate LSI Keywords
+                </button>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="alert alert-info text-center" style="display:none;">
+                <i class="fas fa-spinner fa-spin"></i> Generating semantic keywords...
+            </div>
+
+            <!-- Results -->
+            <div id="results" style="display:none;">
+                <div class="card p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0">📋 LSI Keywords for: "<span id="mainKeyword"></span>"</h4>
+                        <button onclick="copyAll()" class="btn btn-success">
+                            <i class="fas fa-copy"></i> Copy All
+                        </button>
+                    </div>
+                    
+                    <div id="keywordList" class="row"></div>
+                </div>
+
+                <div class="card p-4">
+                    <h4 class="mb-3">📊 Categorized Keywords</h4>
+                    <pre id="categorized" style="background: #f8f9fa; padding: 20px; border-radius: 8px; white-space: pre-wrap;"></pre>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="card p-4 mt-4">
+                <h5><i class="fas fa-info-circle"></i> What are LSI Keywords?</h5>
+                <p><strong>LSI (Latent Semantic Indexing)</strong> keywords are terms and phrases semantically related to your main keyword.</p>
+                <ul class="mb-0">
+                    <li><strong>Context:</strong> Help search engines understand your content's context</li>
+                    <li><strong>Rankings:</strong> Improve rankings for related searches</li>
+                    <li><strong>Natural:</strong> Make content sound more natural and comprehensive</li>
+                    <li><strong>Avoid:</strong> Prevents keyword stuffing while maintaining relevance</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateLSI() {
+    const keyword = document.getElementById('keywordInput').value.trim();
+    
+    if (!keyword) {
+        alert('⚠️ Please enter a keyword');
+        return;
+    }
+    
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/generate-lsi-keywords', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: keyword})
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Generation failed');
+        
+        // Display main keyword
+        document.getElementById('mainKeyword').textContent = data.main_keyword;
+        
+        // Display keywords as badges
+        const keywordList = document.getElementById('keywordList');
+        keywordList.innerHTML = '';
+        
+        data.keywords.forEach(kw => {
+            const col = document.createElement('div');
+            col.className = 'col-md-6 mb-2';
+            col.innerHTML = `
+                <div class="card p-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>${kw}</span>
+                        <button onclick="copyKeyword('${kw.replace(/'/g, "\\'")}', this)" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            keywordList.appendChild(col);
+        });
+        
+        // Display categorized
+        document.getElementById('categorized').textContent = data.categorized;
+        
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+        
+    } catch (err) {
+        alert('❌ ' + err.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function copyKeyword(keyword, button) {
+    navigator.clipboard.writeText(keyword).then(() => {
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+        }, 1000);
+    });
+}
+
+function copyAll() {
+    const keywords = Array.from(document.querySelectorAll('#keywordList span'))
+        .map(span => span.textContent)
+        .join('\n');
+    
+    navigator.clipboard.writeText(keywords).then(() => {
+        alert('✅ All keywords copied to clipboard!');
+    });
+}
+</script>
+{% endblock %}

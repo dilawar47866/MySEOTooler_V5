@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}FAQ Schema Generator - MySEOTooler V5{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <h1><i class="fas fa-question-circle"></i> FAQ Schema Generator</h1>
+            <p class="text-muted mb-4">Generate FAQ schema markup with AI-powered Q&A extraction</p>
+
+            <!-- Input Card -->
+            <div class="card p-4 mb-4">
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-toggle="tab" href="#topicTab">From Topic</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#contentTab">From Content</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div id="topicTab" class="tab-pane fade show active">
+                        <div class="form-group">
+                            <label><strong>Topic or Keyword</strong></label>
+                            <input type="text" id="topicInput" class="form-control form-control-lg" 
+                                   placeholder="e.g., WordPress SEO">
+                            <small class="text-muted">AI will generate common questions about this topic</small>
+                        </div>
+                        <button onclick="generateFromTopic()" class="btn btn-primary btn-lg btn-block">
+                            <i class="fas fa-magic"></i> Generate FAQ from Topic
+                        </button>
+                    </div>
+
+                    <div id="contentTab" class="tab-pane fade">
+                        <div class="form-group">
+                            <label><strong>Your Content</strong></label>
+                            <textarea id="contentInput" class="form-control" rows="8" 
+                                      placeholder="Paste your article content here..."></textarea>
+                            <small class="text-muted">AI will extract questions from your content</small>
+                        </div>
+                        <button onclick="generateFromContent()" class="btn btn-primary btn-lg btn-block">
+                            <i class="fas fa-magic"></i> Extract FAQ from Content
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="alert alert-info text-center" style="display:none;">
+                <i class="fas fa-spinner fa-spin"></i> Generating FAQ schema...
+            </div>
+
+            <!-- Results -->
+            <div id="results" style="display:none;">
+                <!-- Q&A Pairs -->
+                <div class="card p-4 mb-4">
+                    <h4 class="mb-3">❓ Generated Questions & Answers</h4>
+                    <div id="qaList"></div>
+                </div>
+
+                <!-- Schema Code -->
+                <div class="card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0">📋 FAQ Schema (JSON-LD)</h4>
+                        <button onclick="copySchema()" class="btn btn-success">
+                            <i class="fas fa-copy"></i> Copy Schema
+                        </button>
+                    </div>
+                    <pre id="schemaCode" style="background: #2d3748; color: #e2e8f0; padding: 20px; border-radius: 8px; max-height: 400px; overflow: auto;"></pre>
+                    <div class="alert alert-info mt-3 mb-0">
+                        <small><i class="fas fa-info-circle"></i> Paste this code in the &lt;head&gt; section of your webpage to enable FAQ rich snippets in Google search results.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="card p-4 mt-4">
+                <h5><i class="fas fa-star"></i> FAQ Schema Benefits</h5>
+                <ul class="mb-0">
+                    <li><strong>Rich Snippets:</strong> Your FAQs may appear directly in Google search results</li>
+                    <li><strong>Higher CTR:</strong> FAQ snippets take up more space and attract more clicks</li>
+                    <li><strong>Voice Search:</strong> Optimized for voice assistant queries</li>
+                    <li><strong>User Intent:</strong> Answers common questions directly in SERPs</li>
+                    <li><strong>Authority:</strong> Shows expertise and improves trust</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateFromTopic() {
+    const topic = document.getElementById('topicInput').value.trim();
+    
+    if (!topic) {
+        alert('⚠️ Please enter a topic');
+        return;
+    }
+    
+    generateFAQ(topic, '');
+}
+
+async function generateFromContent() {
+    const content = document.getElementById('contentInput').value.trim();
+    
+    if (!content) {
+        alert('⚠️ Please enter your content');
+        return;
+    }
+    
+    if (content.split(' ').length < 100) {
+        alert('⚠️ Content should be at least 100 words for better results');
+        return;
+    }
+    
+    generateFAQ('', content);
+}
+
+async function generateFAQ(topic, content) {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/generate-faq-schema', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({topic: topic, content: content})
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Generation failed');
+        
+        // Display Q&A pairs
+        const qaList = document.getElementById('qaList');
+        qaList.innerHTML = '';
+        
+        data.qa_pairs.forEach((qa, index) => {
+            const card = document.createElement('div');
+            card.className = 'card p-3 mb-3 border-primary';
+            card.innerHTML = `
+                <h6 class="text-primary mb-2">Q${index + 1}: ${qa.question}</h6>
+                <p class="mb-0">${qa.answer}</p>
+            `;
+            qaList.appendChild(card);
+        });
+        
+        // Display schema
+        const schemaFormatted = `<script type="application/ld+json">\n${data.schema}\n<\/script>`;
+        document.getElementById('schemaCode').textContent = schemaFormatted;
+        
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+        
+    } catch (err) {
+        alert('❌ ' + err.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function copySchema() {
+    const text = document.getElementById('schemaCode').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('✅ FAQ schema copied to clipboard!');
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Editor Panel -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="editor-header">
+                    <input type="text" id="contentTitle" class="form-control" 
+                           placeholder="Enter title..." 
+                           value="{{ content.title if content else '' }}"
+                           style="font-size: 24px; font-weight: bold; border: none; margin-bottom: 10px;">
+                    
+                    <input type="text" id="contentKeyword" class="form-control" 
+                           placeholder="Target keyword..." 
+                           value="{{ content.keyword if content else '' }}"
+                           oninput="updateSEOScore()"
+                           style="border: none; border-bottom: 1px solid #ddd; margin-bottom: 15px;">
+                </div>
+                
+                <textarea id="contentEditor" class="content-textarea" 
+                          placeholder="Start writing your SEO-optimized content..."
+                          oninput="updateSEOScore()">{{ content.content if content else '' }}</textarea>
+                
+                <div class="editor-footer">
+                    <button onclick="saveContent()" class="btn btn-success">💾 Save</button>
+                    <button onclick="generateAIContent()" class="btn btn-primary">🤖 AI Generate</button>
+                    <span id="saveStatus" style="margin-left: 15px; color: #666;"></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SEO Score Panel -->
+        <div class="col-md-4">
+            <div class="card seo-panel">
+                <h3>📊 SEO Score</h3>
+                
+                <!-- Score Display -->
+                <div class="score-display">
+                    <div class="score-circle" id="scoreCircle">
+                        <span id="scoreValue">0</span>
+                        <span class="score-label">/100</span>
+                    </div>
+                    <div id="scoreGrade" class="score-grade">F</div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Words</span>
+                        <span id="wordCount" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Headings</span>
+                        <span id="headingCount" class="stat-number">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Keyword %</span>
+                        <span id="keywordDensity" class="stat-number">0%</span>
+                    </div>
+                </div>
+                
+                <!-- Issues -->
+                <div id="seoIssues" class="seo-issues">
+                    <h4>⚠️ Issues</h4>
+                    <ul id="issuesList"></ul>
+                </div>
+                
+                <!-- Suggestions -->
+                <div id="seoSuggestions" class="seo-suggestions">
+                    <h4>💡 Suggestions</h4>
+                    <ul id="suggestionsList"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="contentId" value="{{ content.id if content else '' }}">
+
+<script>
+let autoSaveTimer;
+
+// Auto-update SEO score
+function updateSEOScore() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(analyzeSEO, 1000);
+}
+
+async function analyzeSEO() {
+    const content = document.getElementById('contentEditor').value;
+    const keyword = document.getElementById('contentKeyword').value;
+    
+    try {
+        const response = await fetch('/api/analyze-content-seo', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content, keyword})
+        });
+        
+        const data = await response.json();
+        updateSEODisplay(data);
+        
+    } catch (error) {
+        console.error('SEO analysis error:', error);
+    }
+}
+
+function updateSEODisplay(data) {
+    // Update score
+    const score = data.score || 0;
+    document.getElementById('scoreValue').textContent = score;
+    document.getElementById('scoreGrade').textContent = data.grade || 'F';
+    
+    // Color code the circle
+    const circle = document.getElementById('scoreCircle');
+    circle.className = 'score-circle score-' + getScoreClass(score);
+    
+    // Update stats
+    document.getElementById('wordCount').textContent = data.word_count || 0;
+    document.getElementById('headingCount').textContent = data.heading_count || 0;
+    document.getElementById('keywordDensity').textContent = (data.keyword_density || 0) + '%';
+    
+    // Update issues
+    const issuesList = document.getElementById('issuesList');
+    issuesList.innerHTML = '';
+    (data.issues || []).forEach(issue => {
+        const li = document.createElement('li');
+        li.textContent = issue;
+        li.className = 'issue-item';
+        issuesList.appendChild(li);
+    });
+    
+    // Update suggestions
+    const suggestionsList = document.getElementById('suggestionsList');
+    suggestionsList.innerHTML = '';
+    (data.suggestions || []).forEach(suggestion => {
+        const li = document.createElement('li');
+        li.textContent = suggestion;
+        li.className = 'suggestion-item';
+        suggestionsList.appendChild(li);
+    });
+}
+
+function getScoreClass(score) {
+    if (score >= 80) return 'excellent';
+    if (score >= 60) return 'good';
+    if (score >= 40) return 'fair';
+    return 'poor';
+}
+
+async function saveContent() {
+    const title = document.getElementById('contentTitle').value;
+    const keyword = document.getElementById('contentKeyword').value;
+    const content = document.getElementById('contentEditor').value;
+    const id = document.getElementById('contentId').value;
+    
+    if (!title || !content) {
+        alert('Title and content required');
+        return;
+    }
+    
+    const status = document.getElementById('saveStatus');
+    status.textContent = '💾 Saving...';
+    
+    try {
+        const response = await fetch('/api/save-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                id: id || null,
+                title,
+                keyword,
+                content
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            status.textContent = '✅ Saved!';
+            if (!id) {
+                document.getElementById('contentId').value = data.id;
+                window.history.pushState({}, '', '/editor?id=' + data.id);
+            }
+            setTimeout(() => status.textContent = '', 3000);
+        } else {
+            status.textContent = '❌ ' + (data.error || 'Error');
+        }
+        
+    } catch (error) {
+        status.textContent = '❌ Error saving';
+        console.error(error);
+    }
+}
+
+async function generateAIContent() {
+    const keyword = document.getElementById('contentKeyword').value;
+    
+    if (!keyword) {
+        alert('Please enter a target keyword first');
+        return;
+    }
+    
+    if (!confirm('Generate AI content for: ' + keyword + '?')) {
+        return;
+    }
+    
+    const status = document.getElementById('saveStatus');
+    status.textContent = '🤖 Generating...';
+    
+    try {
+        const response = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                keyword: keyword,
+                word_count: 1000
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('contentEditor').value = data.content;
+            if (!document.getElementById('contentTitle').value) {
+                document.getElementById('contentTitle').value = keyword.charAt(0).toUpperCase() + keyword.slice(1);
+            }
+            updateSEOScore();
+            status.textContent = '✅ Generated!';
+            setTimeout(() => status.textContent = '', 3000);
+        } else {
+            alert('Error: ' + (data.error || 'Generation failed'));
+            status.textContent = '';
+        }
+        
+    } catch (error) {
+        alert('Error generating content');
+        status.textContent = '';
+        console.error(error);
+    }
+}
+
+// Initial SEO analysis
+if (document.getElementById('contentEditor').value) {
+    updateSEOScore();
+}
+
+// Auto-save every 30 seconds
+setInterval(() => {
+    if (document.getElementById('contentEditor').value) {
+        saveContent();
+    }
+}, 30000);
+</script>
+
+<style>
+.container-fluid {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.content-textarea {
+    width: 100%;
+    min-height: 500px;
+    border: none;
+    padding: 20px;
+    font-size: 16px;
+    line-height: 1.6;
+    font-family: 'Georgia', serif;
+    resize: vertical;
+}
+
+.content-textarea:focus {
+    outline: none;
+}
+
+.editor-header {
+    padding: 20px 20px 0 20px;
+}
+
+.editor-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #e0e0e0;
+    background: #f8f9fa;
+}
+
+.seo-panel {
+    position: sticky;
+    top: 20px;
+}
+
+.score-display {
+    text-align: center;
+    margin: 30px 0;
+}
+
+.score-circle {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    border: 10px solid #ddd;
+    margin-bottom: 15px;
+    transition: all 0.3s;
+}
+
+.score-circle #scoreValue {
+    font-size: 48px;
+    font-weight: bold;
+}
+
+.score-label {
+    font-size: 18px;
+    color: #666;
+}
+
+.score-excellent {
+    border-color: #28a745;
+    color: #28a745;
+}
+
+.score-good {
+    border-color: #ffc107;
+    color: #ffc107;
+}
+
+.score-fair {
+    border-color: #fd7e14;
+    color: #fd7e14;
+}
+
+.score-poor {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.score-grade {
+    font-size: 32px;
+    font-weight: bold;
+    color: #333;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.stat-label {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.stat-number {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+
+.seo-issues, .seo-suggestions {
+    margin-top: 20px;
+}
+
+.seo-issues h4, .seo-suggestions h4 {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.seo-issues ul, .seo-suggestions ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.issue-item {
+    padding: 8px;
+    margin: 5px 0;
+    background: #fff3cd;
+    border-left: 3px solid #ffc107;
+    font-size: 13px;
+}
+
+.suggestion-item {
+    padding: 8px;
+    margin: 5px 0;
+    background: #d1ecf1;
+    border-left: 3px solid #17a2b8;
+    font-size: 13px;
+}
+</style>
+{% endblock %}

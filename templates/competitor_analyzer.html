@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}Competitor Analyzer - MySEOTooler V5{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <h1><i class="fas fa-binoculars"></i> Competitor Content Analyzer</h1>
+            <p class="text-muted mb-4">Analyze competitor pages to understand what ranks well</p>
+
+            <!-- Input Card -->
+            <div class="card p-4 mb-4">
+                <div class="form-group">
+                    <label><strong>Competitor URL</strong></label>
+                    <input type="url" id="urlInput" class="form-control form-control-lg" 
+                           placeholder="https://example.com/article">
+                    <small class="text-muted">Enter the full URL of the competitor's page</small>
+                </div>
+                
+                <button onclick="analyzeCompetitor()" class="btn btn-primary btn-lg btn-block">
+                    <i class="fas fa-search"></i> Analyze Competitor Page
+                </button>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="alert alert-info text-center" style="display:none;">
+                <i class="fas fa-spinner fa-spin"></i> Analyzing competitor content...
+            </div>
+
+            <!-- Results -->
+            <div id="results" style="display:none;">
+                <!-- Overview -->
+                <div class="card p-4 mb-4">
+                    <h4 class="mb-3">📊 Content Overview</h4>
+                    <div class="row">
+                        <div class="col-md-3 mb-3 text-center">
+                            <h2 id="wordCount" class="text-primary mb-0"></h2>
+                            <p class="text-muted mb-0">Word Count</p>
+                        </div>
+                        <div class="col-md-3 mb-3 text-center">
+                            <h2 id="headingCount" class="text-success mb-0"></h2>
+                            <p class="text-muted mb-0">Total Headings</p>
+                        </div>
+                        <div class="col-md-3 mb-3 text-center">
+                            <h2 id="imageCount" class="text-info mb-0"></h2>
+                            <p class="text-muted mb-0">Images</p>
+                        </div>
+                        <div class="col-md-3 mb-3 text-center">
+                            <h2 id="linkCount" class="text-warning mb-0"></h2>
+                            <p class="text-muted mb-0">Links</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meta Information -->
+                <div class="card p-4 mb-4">
+                    <h4 class="mb-3">🏷️ Meta Information</h4>
+                    <div class="mb-3">
+                        <strong>Title Tag:</strong>
+                        <p id="titleTag" class="mb-1"></p>
+                        <small id="titleLength" class="text-muted"></small>
+                    </div>
+                    <div class="mb-0">
+                        <strong>Meta Description:</strong>
+                        <p id="metaDesc" class="mb-1"></p>
+                        <small id="descLength" class="text-muted"></small>
+                    </div>
+                </div>
+
+                <!-- Heading Structure -->
+                <div class="card p-4 mb-4">
+                    <h4 class="mb-3">📑 Heading Structure</h4>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <strong>H1 Tags: <span id="h1Count"></span></strong>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>H2 Tags: <span id="h2Count"></span></strong>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>H3 Tags: <span id="h3Count"></span></strong>
+                        </div>
+                    </div>
+
+                    <div id="h1List" class="mb-3"></div>
+                    <div id="h2List"></div>
+                </div>
+
+                <!-- Images & Links -->
+                <div class="card p-4 mb-4">
+                    <h4 class="mb-3">🖼️ Images & Links Analysis</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Total Images:</strong> <span id="totalImages"></span></p>
+                            <p><strong>Images with Alt Text:</strong> <span id="imagesWithAlt"></span></p>
+                            <p><strong>Alt Text Coverage:</strong> <span id="altPercentage" class="badge badge-info"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Internal Links:</strong> <span id="internalLinks"></span></p>
+                            <p><strong>External Links:</strong> <span id="externalLinks"></span></p>
+                            <p><strong>Schema Markup:</strong> <span id="schemaStatus"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Insights -->
+                <div class="card p-4">
+                    <h4 class="mb-3">💡 Key Insights</h4>
+                    <ul id="insightsList" class="mb-0"></ul>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="card p-4 mt-4">
+                <h5><i class="fas fa-info-circle"></i> How to Use This Data</h5>
+                <ul class="mb-0">
+                    <li><strong>Word Count:</strong> Match or exceed to compete effectively</li>
+                    <li><strong>Heading Structure:</strong> Model your outline after successful patterns</li>
+                    <li><strong>Images:</strong> Use similar or more visual elements</li>
+                    <li><strong>Links:</strong> Internal linking shows topical authority</li>
+                    <li><strong>Schema:</strong> Implement if competitors use it</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function analyzeCompetitor() {
+    const url = document.getElementById('urlInput').value.trim();
+    
+    if (!url) {
+        alert('⚠️ Please enter a URL');
+        return;
+    }
+    
+    // Basic URL validation
+    try {
+        new URL(url);
+    } catch (e) {
+        alert('⚠️ Please enter a valid URL (including https://)');
+        return;
+    }
+    
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/analyze-competitor', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url: url})
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Analysis failed');
+        
+        const analysis = data.analysis;
+        
+        // Overview
+        document.getElementById('wordCount').textContent = analysis.word_count.toLocaleString();
+        document.getElementById('headingCount').textContent = analysis.h1_count + analysis.h2_count + analysis.h3_count;
+        document.getElementById('imageCount').textContent = analysis.image_count;
+        document.getElementById('linkCount').textContent = analysis.internal_links + analysis.external_links;
+        
+        // Meta
+        document.getElementById('titleTag').textContent = analysis.title;
+        document.getElementById('titleLength').textContent = `${analysis.title_length} characters`;
+        document.getElementById('metaDesc').textContent = analysis.meta_description;
+        document.getElementById('descLength').textContent = `${analysis.meta_desc_length} characters`;
+        
+        // Headings
+        document.getElementById('h1Count').textContent = analysis.h1_count;
+        document.getElementById('h2Count').textContent = analysis.h2_count;
+        document.getElementById('h3Count').textContent = analysis.h3_count;
+        
+        // H1 List
+        const h1List = document.getElementById('h1List');
+        if (analysis.h1_tags.length > 0) {
+            h1List.innerHTML = '<strong>H1 Tags:</strong><ul class="mt-2">' + 
+                analysis.h1_tags.map(h => `<li>${h}</li>`).join('') + '</ul>';
+        } else {
+            h1List.innerHTML = '<p class="text-muted">No H1 tags found</p>';
+        }
+        
+        // H2 List (show first 10)
+        const h2List = document.getElementById('h2List');
+        if (analysis.h2_tags.length > 0) {
+            h2List.innerHTML = '<strong>H2 Tags (first 10):</strong><ul class="mt-2">' + 
+                analysis.h2_tags.map(h => `<li>${h}</li>`).join('') + '</ul>';
+        } else {
+            h2List.innerHTML = '<p class="text-muted">No H2 tags found</p>';
+        }
+        
+        // Images & Links
+        document.getElementById('totalImages').textContent = analysis.image_count;
+        document.getElementById('imagesWithAlt').textContent = analysis.images_with_alt;
+        document.getElementById('altPercentage').textContent = analysis.alt_percentage + '%';
+        document.getElementById('internalLinks').textContent = analysis.internal_links;
+        document.getElementById('externalLinks').textContent = analysis.external_links;
+        document.getElementById('schemaStatus').innerHTML = analysis.has_schema ? 
+            '<span class="badge badge-success">Yes (' + analysis.schema_count + ')</span>' : 
+            '<span class="badge badge-secondary">No</span>';
+        
+        // Generate insights
+        const insights = [];
+        
+        if (analysis.word_count >= 2000) {
+            insights.push('Long-form content (2000+ words) - Consider matching this depth');
+        } else if (analysis.word_count < 500) {
+            insights.push('Short content - Opportunity to rank with more comprehensive article');
+        }
+        
+        if (analysis.h2_count < 3) {
+            insights.push('Limited heading structure - Opportunity to create better-structured content');
+        }
+        
+        if (analysis.alt_percentage < 50) {
+            insights.push('Poor image optimization - Easy win by adding proper alt text');
+        }
+        
+        if (analysis.has_schema) {
+            insights.push('Uses schema markup - Implement similar structured data');
+        }
+        
+        if (analysis.internal_links > 10) {
+            insights.push('Strong internal linking - Build similar topical authority');
+        }
+        
+        if (analysis.title_length > 60) {
+            insights.push('Title too long for SEO - Your title can be more optimized');
+        }
+        
+        const insightsList = document.getElementById('insightsList');
+        insightsList.innerHTML = insights.map(insight => `<li>${insight}</li>`).join('');
+        
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+        
+    } catch (err) {
+        alert('❌ ' + err.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

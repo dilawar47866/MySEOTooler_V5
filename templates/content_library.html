@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Content Library - MySEOTooler V5{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h1>📚 Content Library</h1>
+        <a href="{{ url_for('editor') }}" class="btn">➕ New Content</a>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+        <form method="GET" style="display: flex; gap: 10px;">
+            <input type="text" name="search" placeholder="Search by title or keyword..." 
+                   value="{{ search_query }}" style="flex: 1;">
+            <button type="submit" class="btn">🔍 Search</button>
+        </form>
+    </div>
+    
+    {% if contents %}
+        <div style="display: grid; gap: 20px;">
+            {% for item in contents %}
+            <div style="background: #f7fafc; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <h3 style="margin-bottom: 10px;">
+                            <a href="{{ url_for('editor', id=item.id) }}" style="color: #667eea; text-decoration: none;">
+                                {{ item.title }}
+                            </a>
+                        </h3>
+                        <p style="color: #718096; margin: 5px 0;">
+                            <strong>Keyword:</strong> {{ item.keyword or 'N/A' }} | 
+                            <strong>Words:</strong> {{ item.word_count }} | 
+                            <strong>Score:</strong> {{ item.seo_score }}%
+                        </p>
+                        <p style="color: #a0aec0; font-size: 14px; margin-top: 5px;">
+                            Updated: {{ item.updated_at.strftime('%B %d, %Y at %I:%M %p') }}
+                        </p>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <div style="position: relative; display: inline-block;">
+                            <button onclick="toggleExport({{ item.id }})" class="btn btn-secondary">📥 Export</button>
+                            <div id="export-{{ item.id }}" style="display: none; position: absolute; right: 0; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; margin-top: 5px; z-index: 10;">
+                                <a href="/api/export/{{ item.id }}/txt" style="display: block; padding: 10px 20px; color: #2d3748; text-decoration: none; border-bottom: 1px solid #e2e8f0;">📄 TXT</a>
+                                <a href="/api/export/{{ item.id }}/html" style="display: block; padding: 10px 20px; color: #2d3748; text-decoration: none; border-bottom: 1px solid #e2e8f0;">🌐 HTML</a>
+                                <a href="/api/export/{{ item.id }}/md" style="display: block; padding: 10px 20px; color: #2d3748; text-decoration: none; border-bottom: 1px solid #e2e8f0;">📝 Markdown</a>
+                                <a href="/api/export/{{ item.id }}/docx" style="display: block; padding: 10px 20px; color: #2d3748; text-decoration: none;">📄 Word</a>
+                            </div>
+                        </div>
+                        <button onclick="deleteContent({{ item.id }})" class="btn" style="background: #e53e3e;">🗑️</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 60px; color: #a0aec0;">
+            <p style="font-size: 48px; margin-bottom: 20px;">📝</p>
+            <h3>No content found</h3>
+            <p>Start creating your first piece of content!</p>
+            <a href="{{ url_for('content_generator') }}" class="btn" style="margin-top: 20px;">Generate Content</a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleExport(id) {
+    const menu = document.getElementById('export-' + id);
+    const allMenus = document.querySelectorAll('[id^="export-"]');
+    
+    allMenus.forEach(m => {
+        if (m.id !== 'export-' + id) m.style.display = 'none';
+    });
+    
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+// Close export menus when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('button')) {
+        document.querySelectorAll('[id^="export-"]').forEach(m => m.style.display = 'none');
+    }
+});
+
+async function deleteContent(id) {
+    if (!confirm('Are you sure you want to delete this content?')) return;
+    
+    try {
+        const res = await fetch(`/api/delete-content/${id}`, {method: 'DELETE'});
+        const data = await res.json();
+        
+        if (data.success) {
+            alert('✅ Content deleted');
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    } catch (err) {
+        alert('Delete failed: ' + err.message);
+    }
+}
+</script>
+{% endblock %}

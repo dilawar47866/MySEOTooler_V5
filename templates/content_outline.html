@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Content Outline Generator - MySEOTooler V5{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <h1><i class="fas fa-list"></i> Content Outline Generator</h1>
+            <p class="text-muted mb-4">Create structured article outlines with AI assistance</p>
+
+            <!-- Input Card -->
+            <div class="card p-4 mb-4">
+                <div class="form-group">
+                    <label><strong>Article Topic</strong></label>
+                    <input type="text" id="topicInput" class="form-control form-control-lg" 
+                           placeholder="e.g., Complete Guide to Email Marketing">
+                </div>
+
+                <div class="form-group">
+                    <label><strong>Outline Type</strong></label>
+                    <select id="outlineType" class="form-control">
+                        <option value="how-to">How-To Guide</option>
+                        <option value="listicle">Listicle (Numbered List)</option>
+                        <option value="guide">Comprehensive Guide</option>
+                        <option value="comparison">Comparison Article</option>
+                    </select>
+                </div>
+                
+                <button onclick="generateOutline()" class="btn btn-primary btn-lg btn-block">
+                    <i class="fas fa-magic"></i> Generate Outline
+                </button>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="alert alert-info text-center" style="display:none;">
+                <i class="fas fa-spinner fa-spin"></i> Creating article outline...
+            </div>
+
+            <!-- Results -->
+            <div id="results" style="display:none;">
+                <div class="card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3>📝 Article Outline</h3>
+                        <div>
+                            <button onclick="copyOutline()" class="btn btn-success mr-2">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button onclick="downloadOutline()" class="btn btn-secondary">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="outlineContent" style="background: #f8f9fa; padding: 25px; border-radius: 8px;">
+                        <pre id="outlineText" style="white-space: pre-wrap; font-family: inherit; margin: 0; line-height: 1.8;"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Template Examples -->
+            <div class="card p-4 mt-4">
+                <h5><i class="fas fa-templates"></i> Outline Types Explained</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <strong>📚 How-To Guide</strong>
+                        <p class="text-muted mb-0">Step-by-step instructions with clear action items. Best for tutorials and processes.</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>📊 Listicle</strong>
+                        <p class="text-muted mb-0">Numbered list format. Highly shareable and easy to scan. Great for tips and examples.</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>📖 Comprehensive Guide</strong>
+                        <p class="text-muted mb-0">In-depth coverage of a topic. Positions you as an authority. Best for pillar content.</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <strong>⚖️ Comparison</strong>
+                        <p class="text-muted mb-0">Side-by-side analysis. Helps readers make decisions. Great for product reviews.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateOutline() {
+    const topic = document.getElementById('topicInput').value.trim();
+    const type = document.getElementById('outlineType').value;
+    
+    if (!topic) {
+        alert('⚠️ Please enter an article topic');
+        return;
+    }
+    
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/generate-outline', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({topic: topic, type: type})
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Generation failed');
+        
+        document.getElementById('outlineText').textContent = data.outline;
+        
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+        
+    } catch (err) {
+        alert('❌ ' + err.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function copyOutline() {
+    const text = document.getElementById('outlineText').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('✅ Outline copied to clipboard!');
+    });
+}
+
+function downloadOutline() {
+    const text = document.getElementById('outlineText').textContent;
+    const topic = document.getElementById('topicInput').value.trim();
+    const filename = topic.replace(/[^a-z0-9]/gi, '-').toLowerCase() + '-outline.txt';
+    
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

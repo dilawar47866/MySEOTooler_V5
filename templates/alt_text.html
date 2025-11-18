@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>🖼️ Alt Text Generator</h1>
+    <p>Generate SEO-friendly alt text for images using AI</p>
+    
+    <div class="card">
+        <div class="form-group">
+            <label>Image Filename (optional)</label>
+            <input type="text" id="imageName" class="form-control" 
+                   placeholder="product-photo.jpg">
+        </div>
+        
+        <div class="form-group">
+            <label>Image Context/Description *</label>
+            <textarea id="imageContext" class="form-control" rows="3" 
+                      placeholder="Describe what the image shows... e.g., 'A person using a laptop at a coffee shop'"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>Target Keyword (optional)</label>
+            <input type="text" id="imageKeyword" class="form-control" 
+                   placeholder="remote work">
+            <small class="text-muted">💡 Keyword will be included naturally if relevant</small>
+        </div>
+        
+        <button onclick="generateAltText()" class="btn btn-primary">
+            🤖 Generate Alt Text
+        </button>
+        <button onclick="generateBulk()" class="btn btn-secondary">
+            📦 Batch Mode
+        </button>
+    </div>
+    
+    <div id="loading" style="display:none; margin-top: 20px;">
+        <div class="alert alert-info">⏳ AI is generating alt text...</div>
+    </div>
+    
+    <div id="results" style="display:none; margin-top: 20px;">
+        <div class="card">
+            <h3>✅ Generated Alt Text</h3>
+            
+            <div class="alt-preview" style="margin: 20px 0; padding: 15px; background: #e7f3ff; border-left: 4px solid #007bff;">
+                <strong>Alt Text:</strong>
+                <p id="altTextOutput" style="font-size: 16px; margin: 10px 0;"></p>
+                <small class="text-muted">
+                    Length: <span id="altLength">0</span>/125 characters
+                </small>
+            </div>
+            
+            <h4>📋 HTML Code</h4>
+            <div class="code-block">
+                <pre id="htmlOutput" style="background: #f5f5f5; padding: 15px; border-radius: 5px;"></pre>
+            </div>
+            
+            <button onclick="copyAlt()" class="btn btn-success">📋 Copy Alt Text</button>
+            <button onclick="copyHTML()" class="btn btn-info">📋 Copy HTML</button>
+            
+            <div class="tips" style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 5px;">
+                <h5>💡 Alt Text Best Practices</h5>
+                <ul style="margin: 10px 0;">
+                    <li>Keep it under 125 characters</li>
+                    <li>Be descriptive and specific</li>
+                    <li>Include keywords naturally (don't force)</li>
+                    <li>Don't start with "Image of..." or "Picture of..."</li>
+                    <li>Describe the content, not the medium</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bulk Mode -->
+    <div id="bulkMode" style="display:none; margin-top: 20px;">
+        <div class="card">
+            <h3>📦 Batch Alt Text Generation</h3>
+            <p>Generate alt text for multiple images at once</p>
+            
+            <div class="form-group">
+                <label>Enter image descriptions (one per line)</label>
+                <textarea id="bulkInput" class="form-control" rows="8" 
+                          placeholder="Woman working on laptop
+Product packaging on white background
+Team meeting in conference room"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Target Keyword (applies to all)</label>
+                <input type="text" id="bulkKeyword" class="form-control">
+            </div>
+            
+            <button onclick="processBulk()" class="btn btn-primary">
+                ⚡ Generate All
+            </button>
+            <button onclick="closeBulk()" class="btn btn-secondary">Cancel</button>
+            
+            <div id="bulkResults" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateAltText() {
+    const context = document.getElementById('imageContext').value.trim();
+    const keyword = document.getElementById('imageKeyword').value.trim();
+    const imageName = document.getElementById('imageName').value.trim();
+    
+    if (!context) {
+        alert('⚠️ Please describe the image');
+        return;
+    }
+    
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/generate-alt-text', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                context: context,
+                keyword: keyword,
+                image_name: imageName
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Generation failed');
+        }
+        
+        if (result.success) {
+            displayAltText(result.alt_text, result.html);
+        }
+        
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function displayAltText(altText, html) {
+    document.getElementById('altTextOutput').textContent = altText;
+    document.getElementById('altLength').textContent = altText.length;
+    document.getElementById('htmlOutput').textContent = html;
+    document.getElementById('results').style.display = 'block';
+}
+
+function copyAlt() {
+    const text = document.getElementById('altTextOutput').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('✅ Alt text copied!');
+    }).catch(() => {
+        alert('❌ Failed to copy');
+    });
+}
+
+function copyHTML() {
+    const text = document.getElementById('htmlOutput').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('✅ HTML copied!');
+    }).catch(() => {
+        alert('❌ Failed to copy');
+    });
+}
+
+function generateBulk() {
+    document.getElementById('bulkMode').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+}
+
+function closeBulk() {
+    document.getElementById('bulkMode').style.display = 'none';
+}
+
+async function processBulk() {
+    const input = document.getElementById('bulkInput').value.trim();
+    const keyword = document.getElementById('bulkKeyword').value.trim();
+    
+    if (!input) {
+        alert('⚠️ Please enter image descriptions');
+        return;
+    }
+    
+    const lines = input.split('\n').filter(l => l.trim());
+    const resultsDiv = document.getElementById('bulkResults');
+    resultsDiv.innerHTML = '<div class="alert alert-info">⏳ Processing ' + lines.length + ' images...</div>';
+    
+    let html = '<div class="list-group">';
+    
+    for (let i = 0; i < lines.length; i++) {
+        try {
+            const response = await fetch('/api/generate-alt-text', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    context: lines[i],
+                    keyword: keyword
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                html += `
+                    <div class="list-group-item">
+                        <strong>Image ${i + 1}:</strong> ${lines[i]}<br>
+                        <code>${result.alt_text}</code>
+                    </div>
+                `;
+            }
+            
+            // Small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+        } catch (error) {
+            html += `
+                <div class="list-group-item list-group-item-danger">
+                    <strong>Image ${i + 1}:</strong> Error - ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    html += '</div>';
+    html += '<button onclick="copyBulkResults()" class="btn btn-success" style="margin-top: 15px;">📋 Copy All Results</button>';
+    
+    resultsDiv.innerHTML = html;
+}
+
+function copyBulkResults() {
+    const items = document.querySelectorAll('#bulkResults code');
+    const text = Array.from(items).map(item => item.textContent).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        alert('✅ All alt texts copied!');
+    });
+}
+</script>
+
+<style>
+.alt-preview {
+    border-radius: 5px;
+}
+
+.code-block pre {
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: auto;
+}
+
+.tips {
+    border-left: 4px solid #ffc107;
+}
+
+.tips ul {
+    padding-left: 20px;
+}
+
+.tips li {
+    margin: 5px 0;
+}
+
+.list-group-item {
+    margin-bottom: 5px;
+    border-radius: 5px;
+}
+
+.list-group-item code {
+    background: #e9ecef;
+    padding: 3px 6px;
+    border-radius: 3px;
+    display: block;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}

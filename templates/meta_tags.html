@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>🏷️ Meta Tags Generator</h1>
+    <p>AI-powered SEO meta tags for better rankings</p>
+    
+    <div class="card">
+        <div class="form-group">
+            <label>Page Title *</label>
+            <input type="text" id="pageTitle" class="form-control" 
+                   placeholder="Best SEO Tools 2024" maxlength="60">
+            <small class="text-muted"><span id="titleCount">0</span>/60 characters</small>
+        </div>
+        
+        <div class="form-group">
+            <label>Target Keyword</label>
+            <input type="text" id="targetKeyword" class="form-control" 
+                   placeholder="seo tools">
+        </div>
+        
+        <div class="form-group">
+            <label>Content Snippet (optional)</label>
+            <textarea id="contentSnippet" class="form-control" rows="4" 
+                      placeholder="Brief description of your page content..."></textarea>
+        </div>
+        
+        <button onclick="generateMetaTags()" class="btn btn-primary">
+            🤖 Generate Meta Tags with AI
+        </button>
+    </div>
+    
+    <div id="loading" style="display:none; margin-top: 20px;">
+        <div class="alert alert-info">⏳ AI is generating optimized meta tags...</div>
+    </div>
+    
+    <div id="results" style="display:none; margin-top: 20px;">
+        <div class="card">
+            <h3>✅ Generated Meta Tags</h3>
+            
+            <div class="meta-preview" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-left: 4px solid #007bff;">
+                <div style="color: #1a0dab; font-size: 18px; font-weight: 500;" id="previewTitle"></div>
+                <div style="color: #006621; font-size: 14px; margin: 5px 0;">https://yoursite.com</div>
+                <div style="color: #545454; font-size: 14px;" id="previewDesc"></div>
+            </div>
+            
+            <h4>📋 HTML Code</h4>
+            <div class="code-block">
+                <pre id="metaOutput" style="background: #282c34; color: #abb2bf; padding: 15px; border-radius: 5px; overflow-x: auto;"></pre>
+            </div>
+            
+            <button onclick="copyMeta()" class="btn btn-success">📋 Copy All Tags</button>
+            
+            <div style="margin-top: 20px;">
+                <h4>📊 Meta Tag Details</h4>
+                <table class="table table-bordered">
+                    <tr>
+                        <td><strong>Title</strong></td>
+                        <td id="metaTitle"></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Description</strong></td>
+                        <td id="metaDescription"></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Keywords</strong></td>
+                        <td id="metaKeywords"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Character counter
+document.getElementById('pageTitle').addEventListener('input', function() {
+    document.getElementById('titleCount').textContent = this.value.length;
+});
+
+async function generateMetaTags() {
+    const title = document.getElementById('pageTitle').value.trim();
+    const keyword = document.getElementById('targetKeyword').value.trim();
+    const content = document.getElementById('contentSnippet').value.trim();
+    
+    if (!title) {
+        alert('⚠️ Page title is required');
+        return;
+    }
+    
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/generate-meta-tags', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                title: title,
+                keyword: keyword,
+                content: content
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Generation failed');
+        }
+        
+        if (result.success) {
+            displayMetaTags(result.meta_tags, result.html);
+        }
+        
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function displayMetaTags(tags, html) {
+    // Preview
+    document.getElementById('previewTitle').textContent = tags.title;
+    document.getElementById('previewDesc').textContent = tags.description;
+    
+    // HTML code with syntax highlighting
+    document.getElementById('metaOutput').textContent = html;
+    
+    // Details table
+    document.getElementById('metaTitle').textContent = tags.title;
+    document.getElementById('metaDescription').textContent = tags.description;
+    document.getElementById('metaKeywords').textContent = tags.keywords;
+    
+    document.getElementById('results').style.display = 'block';
+}
+
+function copyMeta() {
+    const text = document.getElementById('metaOutput').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('✅ Meta tags copied to clipboard!');
+    }).catch(() => {
+        alert('❌ Failed to copy');
+    });
+}
+</script>
+
+<style>
+.meta-preview {
+    border-radius: 5px;
+}
+
+.code-block pre {
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    font-family: 'Courier New', monospace;
+}
+
+.table {
+    margin-top: 10px;
+}
+
+.table td {
+    padding: 10px;
+}
+
+.table td:first-child {
+    width: 150px;
+    background: #f8f9fa;
+}
+</style>
+{% endblock %}

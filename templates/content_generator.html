@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Content Generator - MySEOTooler V5{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>✨ AI Content Generator</h1>
+    <p style="color: #718096; margin-bottom: 30px;">Generate SEO-optimized content with AI</p>
+    
+    <div style="max-width: 700px;">
+        <label>Target Keyword</label>
+        <input type="text" id="keyword" placeholder="e.g., email marketing strategies">
+        
+        <label>Word Count</label>
+        <select id="wordCount" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px;">
+            <option value="500">500 words</option>
+            <option value="1000" selected>1000 words</option>
+            <option value="1500">1500 words</option>
+            <option value="2000">2000 words</option>
+        </select>
+        
+        <label>Content Type</label>
+        <select id="contentType" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px;">
+            <option value="blog_post">Blog Post</option>
+            <option value="product_description">Product Description</option>
+            <option value="landing_page">Landing Page</option>
+        </select>
+        
+        <button onclick="generateContent()" class="btn" style="width: 100%;">🚀 Generate Content</button>
+    </div>
+    
+    <div id="loading" style="display: none; text-align: center; padding: 40px;">
+        <p style="color: #667eea; font-size: 18px;">🤖 AI is writing your content...</p>
+        <p style="color: #a0aec0; margin-top: 10px;">This may take 20-40 seconds</p>
+    </div>
+    
+    <div id="results" style="margin-top: 30px;"></div>
+</div>
+
+<script>
+async function generateContent() {
+    const keyword = document.getElementById('keyword').value.trim();
+    const wordCount = document.getElementById('wordCount').value;
+    const contentType = document.getElementById('contentType').value;
+    
+    if (!keyword) {
+        alert('Please enter a target keyword');
+        return;
+    }
+    
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').innerHTML = '';
+    
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword, word_count: wordCount, content_type: contentType})
+        });
+        
+        const data = await res.json();
+        document.getElementById('loading').style.display = 'none';
+        
+        if (data.success) {
+            const html = `
+                <div style="background: #f7fafc; padding: 20px; border-radius: 12px; border: 2px solid #667eea;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div>
+                            <h3>✅ Content Generated!</h3>
+                            <p style="color: #718096;">Words: ${data.word_count} | SEO Score: ${data.seo_score}%</p>
+                        </div>
+                        <div>
+                            <button onclick="saveContent()" class="btn">💾 Save</button>
+                            <button onclick="copyContent()" class="btn btn-secondary" style="margin-left: 10px;">📋 Copy</button>
+                        </div>
+                    </div>
+                    
+                    <div id="generatedContent" style="background: white; padding: 20px; border-radius: 8px; max-height: 600px; overflow-y: auto;">
+                        ${data.html_content}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('results').innerHTML = html;
+            
+            // Store for save function
+            window.generatedData = data;
+        } else {
+            alert(data.error || 'Generation failed');
+        }
+    } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        alert('Error: ' + err.message);
+    }
+}
+
+async function saveContent() {
+    if (!window.generatedData) return;
+    
+    const title = prompt('Enter a title for this content:', window.generatedData.keyword);
+    if (!title) return;
+    
+    try {
+        const res = await fetch('/api/save-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                title: title,
+                keyword: window.generatedData.keyword,
+                content: window.generatedData.content,
+                html_content: window.generatedData.html_content,
+                word_count: window.generatedData.word_count,
+                seo_score: window.generatedData.seo_score
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            alert('✅ Content saved!');
+            window.location.href = '/content-library';
+        } else {
+            alert(data.error);
+        }
+    } catch (err) {
+        alert('Save failed: ' + err.message);
+    }
+}
+
+function copyContent() {
+    if (!window.generatedData) return;
+    navigator.clipboard.writeText(window.generatedData.content);
+    alert('📋 Content copied to clipboard!');
+}
+</script>
+{% endblock %}
