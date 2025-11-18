@@ -1,0 +1,20 @@
+cat > requirements.txt << 'EOF'
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-Bcrypt==1.0.1
+Flask-Limiter==3.5.0
+python-dotenv==1.0.0
+openai==1.12.0
+httpx==0.26.0
+requests==2.31.0
+beautifulsoup4==4.12.2
+lxml==5.3.0
+markdown==3.5.1
+python-docx==1.1.0
+textstat==0.7.3
+validators==0.22.0
+nltk==3.8.1
+gunicorn==21.2.0
+psycopg2-binary==2.9.9
+EOF
