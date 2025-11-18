@@ -25,6 +25,7 @@ from collections import Counter
 import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
+from functools import wraps
 
 # Load environment
 load_dotenv()
@@ -65,9 +66,28 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-# Initialize OpenAI
+# Initialize OpenAI - WITH PROPER ERROR CHECKING
 openai_api_key = os.getenv('OPENAI_API_KEY')
-client = OpenAI(api_key=openai_api_key) if openai_api_key else None
+
+if openai_api_key:
+    print(f"🔑 API Key Found: {openai_api_key[:15]}...")
+    client = OpenAI(api_key=openai_api_key)
+else:
+    print("⚠️  WARNING: OPENAI_API_KEY not set in environment variables!")
+    client = None
+
+# ============================================================================
+# CUSTOM DECORATOR FOR API ROUTES (Returns JSON instead of redirect)
+# ============================================================================
+
+def api_login_required(f):
+    """Custom login_required that returns JSON for API routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({'error': 'Authentication required. Please log in.'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 # ============================================================================
 # DATABASE MODELS
@@ -153,13 +173,14 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # ============================================================================
-# HELPER FUNCTIONS
+# HELPER FUNCTIONS - FIXED TO RETURN JSON-SAFE ERRORS
 # ============================================================================
 
 def call_openai(prompt, max_tokens=1000):
-    """Call OpenAI API with error handling"""
+    """Call OpenAI API with error handling - RETURNS DICT FOR JSON SAFETY"""
     if not client:
-        return "Error: OpenAI API key not configured"
+        return {"error": "OpenAI API key not configured. Please set OPENAI_API_KEY in Railway environment variables."}
+    
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -170,9 +191,9 @@ def call_openai(prompt, max_tokens=1000):
             max_tokens=max_tokens,
             temperature=0.7
         )
-        return response.choices[0].message.content
+        return {"success": True, "content": response.choices[0].message.content}
     except Exception as e:
-        return f"Error: {str(e)}"
+        return {"error": f"OpenAI API Error: {str(e)}"}
 
 def calculate_seo_score(content, keyword):
     """Calculate basic SEO score"""
@@ -224,11 +245,15 @@ def get_seo_grade(score):
 
 @app.errorhandler(404)
 def not_found(error):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Endpoint not found'}), 404
     return render_template('404.html'), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Internal server error'}), 500
     return render_template('500.html'), 500
 
 # ============================================================================
@@ -242,35 +267,39 @@ def signup():
         return redirect(url_for('index'))
 
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
-        username = data.get('username', '').strip()
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
+        try:
+            data = request.get_json() if request.is_json else request.form
+            username = data.get('username', '').strip()
+            email = data.get('email', '').strip().lower()
+            password = data.get('password', '')
 
-        if not username or not email or not password:
-            return jsonify({'error': 'All fields required'}), 400
+            if not username or not email or not password:
+                return jsonify({'error': 'All fields required'}), 400
 
-        if len(password) < 6:
-            return jsonify({'error': 'Password must be 6+ characters'}), 400
+            if len(password) < 6:
+                return jsonify({'error': 'Password must be 6+ characters'}), 400
 
-        if User.query.filter_by(email=email).first():
-            return jsonify({'error': 'Email already registered'}), 400
+            if User.query.filter_by(email=email).first():
+                return jsonify({'error': 'Email already registered'}), 400
 
-        if User.query.filter_by(username=username).first():
-            return jsonify({'error': 'Username already taken'}), 400
+            if User.query.filter_by(username=username).first():
+                return jsonify({'error': 'Username already taken'}), 400
 
-        user = User(username=username, email=email)
-        user.set_password(password)
+            user = User(username=username, email=email)
+            user.set_password(password)
 
-        if User.query.count() == 0:
-            user.is_admin = True
-            user.tier = 'enterprise'
+            if User.query.count() == 0:
+                user.is_admin = True
+                user.tier = 'enterprise'
 
-        db.session.add(user)
-        db.session.commit()
-        login_user(user)
+            db.session.add(user)
+            db.session.commit()
+            login_user(user)
 
-        return jsonify({'success': True, 'redirect': url_for('index')})
+            return jsonify({'success': True, 'redirect': url_for('index')})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
 
     return render_template('signup.html')
 
@@ -281,20 +310,23 @@ def login():
         return redirect(url_for('index'))
 
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
+        try:
+            data = request.get_json() if request.is_json else request.form
+            email = data.get('email', '').strip().lower()
+            password = data.get('password', '')
 
-        user = User.query.filter_by(email=email).first()
+            user = User.query.filter_by(email=email).first()
 
-        if user and user.check_password(password):
-            if not user.is_active:
-                return jsonify({'error': 'Account deactivated'}), 403
+            if user and user.check_password(password):
+                if not user.is_active:
+                    return jsonify({'error': 'Account deactivated'}), 403
 
-            login_user(user, remember=data.get('remember', False))
-            return jsonify({'success': True, 'redirect': url_for('index')})
+                login_user(user, remember=data.get('remember', False))
+                return jsonify({'success': True, 'redirect': url_for('index')})
 
-        return jsonify({'error': 'Invalid credentials'}), 401
+            return jsonify({'error': 'Invalid credentials'}), 401
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
     return render_template('login.html')
 
@@ -411,17 +443,87 @@ def meta_tags():
 def alt_text_generator():
     return render_template('alt_text.html')
 
-# ============================================================================
-# NEW FEATURE ROUTES - READABILITY CHECKER
-# ============================================================================
-
 @app.route('/readability-checker')
 @login_required
 def readability_checker():
     return render_template('readability_checker.html')
 
-@app.route('/api/check-readability', methods=['POST'])
+@app.route('/headline-analyzer')
 @login_required
+def headline_analyzer():
+    return render_template('headline_analyzer.html')
+
+@app.route('/lsi-keywords')
+@login_required
+def lsi_keywords():
+    return render_template('lsi_keywords.html')
+
+@app.route('/content-brief')
+@login_required
+def content_brief():
+    return render_template('content_brief.html')
+
+@app.route('/internal-linking')
+@login_required
+def internal_linking():
+    return render_template('internal_linking.html')
+
+@app.route('/content-outline')
+@login_required
+def content_outline():
+    return render_template('content_outline.html')
+
+@app.route('/plagiarism-checker')
+@login_required
+def plagiarism_checker():
+    return render_template('plagiarism_checker.html')
+
+@app.route('/image-seo')
+@login_required
+def image_seo():
+    return render_template('image_seo.html')
+
+@app.route('/faq-schema')
+@login_required
+def faq_schema():
+    return render_template('faq_schema.html')
+
+@app.route('/social-posts')
+@login_required
+def social_posts():
+    return render_template('social_posts.html')
+
+@app.route('/competitor-analyzer')
+@login_required
+def competitor_analyzer():
+    return render_template('competitor_analyzer.html')
+
+@app.route('/robots-generator')
+@login_required
+def robots_generator():
+    return render_template('robots_generator.html')
+
+@app.route('/sitemap-generator')
+@login_required
+def sitemap_generator():
+    return render_template('sitemap_generator.html')
+
+@app.route('/youtube-script')
+@login_required
+def youtube_script():
+    return render_template('youtube_script.html')
+
+@app.route('/email-subject')
+@login_required
+def email_subject():
+    return render_template('email_subject.html')
+
+# ============================================================================
+# API ROUTES - ALL FIXED TO RETURN JSON
+# ============================================================================
+
+@app.route('/api/check-readability', methods=['POST'])
+@api_login_required
 def api_check_readability():
     """Analyze content readability"""
     try:
@@ -431,7 +533,6 @@ def api_check_readability():
         if not content:
             return jsonify({'error': 'Content required'}), 400
 
-        # Calculate readability metrics
         flesch_score = textstat.flesch_reading_ease(content)
         flesch_grade = textstat.flesch_kincaid_grade(content)
 
@@ -515,17 +616,8 @@ def api_check_readability():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# HEADLINE ANALYZER
-# ============================================================================
-
-@app.route('/headline-analyzer')
-@login_required
-def headline_analyzer():
-    return render_template('headline_analyzer.html')
-
 @app.route('/api/analyze-headline', methods=['POST'])
-@login_required
+@api_login_required
 def api_analyze_headline():
     """Analyze headline effectiveness"""
     try:
@@ -676,22 +768,13 @@ def api_analyze_headline():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# LSI KEYWORD GENERATOR
-# ============================================================================
-
-@app.route('/lsi-keywords')
-@login_required
-def lsi_keywords():
-    return render_template('lsi_keywords.html')
-
 @app.route('/api/generate-lsi-keywords', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("20 per hour")
 def api_generate_lsi_keywords():
     """Generate LSI (semantically related) keywords using AI"""
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached for this month. Upgrade your plan!'}), 403
 
     try:
         data = request.get_json()
@@ -712,11 +795,13 @@ Provide:
 
 Format as a simple numbered list, one keyword per line. Only provide the keywords, no explanations."""
 
-        response = call_openai(prompt, 500)
+        result = call_openai(prompt, 500)
 
-        if response.startswith("Error:"):
-            return jsonify({'error': response}), 500
+        # Check if OpenAI returned an error
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
 
+        response = result['content']
         current_user.increment_ai_usage()
 
         keywords = []
@@ -743,8 +828,13 @@ CATEGORY_NAME:
 - keyword 2
 etc."""
 
-        categorized_response = call_openai(prompt2, 600)
-        current_user.increment_ai_usage()
+        result2 = call_openai(prompt2, 600)
+        
+        if "error" not in result2:
+            categorized_response = result2['content']
+            current_user.increment_ai_usage()
+        else:
+            categorized_response = "Categorization unavailable"
 
         return jsonify({
             'success': True,
@@ -757,22 +847,13 @@ etc."""
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# CONTENT BRIEF GENERATOR
-# ============================================================================
-
-@app.route('/content-brief')
-@login_required
-def content_brief():
-    return render_template('content_brief.html')
-
 @app.route('/api/generate-content-brief', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("10 per hour")
 def api_generate_content_brief():
     """Generate comprehensive content brief for a keyword"""
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached for this month'}), 403
 
     try:
         data = request.get_json()
@@ -816,33 +897,24 @@ Include:
 
 Format clearly with headers and bullet points."""
 
-        response = call_openai(prompt, 1500)
+        result = call_openai(prompt, 1500)
 
-        if response.startswith("Error:"):
-            return jsonify({'error': response}), 500
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
 
         current_user.increment_ai_usage()
 
         return jsonify({
             'success': True,
             'keyword': keyword,
-            'brief': response
+            'brief': result['content']
         })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# INTERNAL LINKING SUGGESTIONS
-# ============================================================================
-
-@app.route('/internal-linking')
-@login_required
-def internal_linking():
-    return render_template('internal_linking.html')
-
 @app.route('/api/suggest-internal-links', methods=['POST'])
-@login_required
+@api_login_required
 def api_suggest_internal_links():
     """Suggest internal links from content library"""
     try:
@@ -853,7 +925,6 @@ def api_suggest_internal_links():
         if not current_content:
             return jsonify({'error': 'Content required'}), 400
 
-        # Get user's content library
         all_content = Content.query.filter_by(user_id=current_user.id).all()
 
         if len(all_content) < 2:
@@ -863,29 +934,23 @@ def api_suggest_internal_links():
                 'message': 'Create more content to get internal linking suggestions'
             })
 
-        # Simple keyword matching algorithm
         current_words = set(re.findall(r'\b\w+\b', current_content.lower()))
 
         suggestions = []
 
         for content_item in all_content:
-            # Skip current content
             if content_item.keyword == current_keyword and content_item.title in current_content:
                 continue
 
-            # Calculate relevance score
             content_words = set(re.findall(r'\b\w+\b', content_item.content.lower()))
             common_words = current_words.intersection(content_words)
 
-            # Filter out common words
             stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for'}
             meaningful_words = common_words - stop_words
 
-            if len(meaningful_words) >= 5:  # At least 5 common meaningful words
-                # Calculate relevance percentage
+            if len(meaningful_words) >= 5:
                 relevance = (len(meaningful_words) / len(current_words)) * 100
 
-                # Find best anchor text (keyword or title)
                 anchor_text = content_item.keyword if content_item.keyword else content_item.title
 
                 suggestions.append({
@@ -894,13 +959,11 @@ def api_suggest_internal_links():
                     'keyword': content_item.keyword,
                     'anchor_text': anchor_text,
                     'relevance': round(relevance, 1),
-                    'common_topics': list(meaningful_words)[:5]  # Top 5 common words
+                    'common_topics': list(meaningful_words)[:5]
                 })
 
-        # Sort by relevance
         suggestions.sort(key=lambda x: x['relevance'], reverse=True)
 
-        # Return top 10
         return jsonify({
             'success': True,
             'suggestions': suggestions[:10],
@@ -910,27 +973,18 @@ def api_suggest_internal_links():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# CONTENT OUTLINE GENERATOR
-# ============================================================================
-
-@app.route('/content-outline')
-@login_required
-def content_outline():
-    return render_template('content_outline.html')
-
 @app.route('/api/generate-outline', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("15 per hour")
 def api_generate_outline():
     """Generate article outline with AI"""
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached'}), 403
 
     try:
         data = request.get_json()
         topic = data.get('topic', '').strip()
-        outline_type = data.get('type', 'how-to')  # how-to, listicle, guide, comparison
+        outline_type = data.get('type', 'how-to')
 
         if not topic:
             return jsonify({'error': 'Topic required'}), 400
@@ -972,33 +1026,24 @@ Provide 5-7 main sections (H2 headings) with:
 
 Format with clear markdown headers."""
 
-        response = call_openai(prompt, 1200)
+        result = call_openai(prompt, 1200)
 
-        if response.startswith("Error:"):
-            return jsonify({'error': response}), 500
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
 
         current_user.increment_ai_usage()
 
         return jsonify({
             'success': True,
             'topic': topic,
-            'outline': response
+            'outline': result['content']
         })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# PLAGIARISM CHECKER (Simple Text Comparison)
-# ============================================================================
-
-@app.route('/plagiarism-checker')
-@login_required
-def plagiarism_checker():
-    return render_template('plagiarism_checker.html')
-
 @app.route('/api/check-plagiarism', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("10 per hour")
 def api_check_plagiarism():
     """Simple plagiarism check against user's own content"""
@@ -1012,10 +1057,8 @@ def api_check_plagiarism():
         if len(content.split()) < 50:
             return jsonify({'error': 'Content must be at least 50 words'}), 400
 
-        # Get user's content library
         all_content = Content.query.filter_by(user_id=current_user.id).all()
 
-        # Split content into sentences
         sentences = sent_tokenize(content)
 
         matches = []
@@ -1027,13 +1070,12 @@ def api_check_plagiarism():
             for sent in sentences:
                 sent_lower = sent.lower().strip()
 
-                if len(sent_lower) < 30:  # Skip very short sentences
+                if len(sent_lower) < 30:
                     continue
 
                 for ex_sent in existing_sentences:
                     ex_sent_lower = ex_sent.lower().strip()
 
-                    # Calculate similarity (simple word overlap)
                     words1 = set(sent_lower.split())
                     words2 = set(ex_sent_lower.split())
 
@@ -1043,7 +1085,7 @@ def api_check_plagiarism():
                     overlap = len(words1.intersection(words2))
                     similarity = (overlap / len(words1)) * 100
 
-                    if similarity >= 70:  # 70% similarity threshold
+                    if similarity >= 70:
                         total_matched_sentences += 1
                         matches.append({
                             'original_sentence': sent,
@@ -1052,13 +1094,11 @@ def api_check_plagiarism():
                             'source_title': existing.title,
                             'source_id': existing.id
                         })
-                        break  # Found a match for this sentence
+                        break
 
-        # Calculate overall similarity
         total_sentences = len([s for s in sentences if len(s.split()) >= 5])
         similarity_percentage = (total_matched_sentences / total_sentences * 100) if total_sentences > 0 else 0
 
-        # Verdict
         if similarity_percentage < 10:
             verdict = "Original"
             verdict_color = "success"
@@ -1079,33 +1119,24 @@ def api_check_plagiarism():
             'verdict_color': verdict_color,
             'total_sentences': total_sentences,
             'matched_sentences': total_matched_sentences,
-            'matches': matches[:10],  # Return top 10 matches
+            'matches': matches[:10],
             'total_matches': len(matches)
         })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# IMAGE SEO OPTIMIZER
-# ============================================================================
-
-@app.route('/image-seo')
-@login_required
-def image_seo():
-    return render_template('image_seo.html')
-
 @app.route('/api/optimize-image-seo', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("20 per hour")
 def api_optimize_image_seo():
     """Generate SEO-optimized image attributes"""
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached'}), 403
 
     try:
         data = request.get_json()
-        images = data.get('images', [])  # List of image descriptions
+        images = data.get('images', [])
         keyword = data.get('keyword', '').strip()
 
         if not images:
@@ -1132,10 +1163,11 @@ FILE: [filename.jpg]
 TITLE: [text]
 CAPTION: [text]"""
 
-            response = call_openai(prompt, 200)
+            result = call_openai(prompt, 200)
 
-            if not response.startswith("Error:"):
-                # Parse response
+            if "error" not in result:
+                response = result['content']
+                
                 alt_match = re.search(r'ALT:\s*(.+)', response)
                 file_match = re.search(r'FILE:\s*(.+)', response)
                 title_match = re.search(r'TITLE:\s*(.+)', response)
@@ -1160,22 +1192,13 @@ CAPTION: [text]"""
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# FAQ SCHEMA ENHANCED
-# ============================================================================
-
-@app.route('/faq-schema')
-@login_required
-def faq_schema():
-    return render_template('faq_schema.html')
-
 @app.route('/api/generate-faq-schema', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("15 per hour")
 def api_generate_faq_schema():
     """Generate FAQ schema from content or topic"""
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached'}), 403
 
     try:
         data = request.get_json()
@@ -1208,14 +1231,14 @@ A: [answer]
 
 (Repeat for each Q&A pair)"""
 
-        response = call_openai(prompt, 1000)
+        result = call_openai(prompt, 1000)
 
-        if response.startswith("Error:"):
-            return jsonify({'error': response}), 500
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
 
+        response = result['content']
         current_user.increment_ai_usage()
 
-        # Parse Q&A pairs
         qa_pairs = []
         lines = response.split('\n')
         current_q = None
@@ -1231,11 +1254,9 @@ A: [answer]
             elif line.startswith('A:'):
                 current_a = line[2:].strip()
 
-        # Add last pair
         if current_q and current_a:
             qa_pairs.append({'question': current_q, 'answer': current_a})
 
-        # Generate JSON-LD schema
         schema = {
             "@context": "https://schema.org",
             "@type": "FAQPage",
@@ -1264,22 +1285,13 @@ A: [answer]
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# SOCIAL MEDIA POST GENERATOR
-# ============================================================================
-
-@app.route('/social-posts')
-@login_required
-def social_posts():
-    return render_template('social_posts.html')
-
 @app.route('/api/generate-social-posts', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("20 per hour")
 def api_generate_social_posts():
     """Generate social media posts from content"""
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached'}), 403
 
     try:
         data = request.get_json()
@@ -1291,7 +1303,6 @@ def api_generate_social_posts():
 
         posts = {}
 
-        # Twitter
         if 'twitter' in platforms:
             prompt = f"""Create 3 engaging Twitter posts (280 chars max each) to promote this content:
 
@@ -1304,12 +1315,11 @@ Include:
 
 Provide 3 variations."""
 
-            response = call_openai(prompt, 300)
-            if not response.startswith("Error:"):
-                posts['twitter'] = response
+            result = call_openai(prompt, 300)
+            if "error" not in result:
+                posts['twitter'] = result['content']
                 current_user.increment_ai_usage()
 
-        # LinkedIn
         if 'linkedin' in platforms:
             prompt = f"""Create a professional LinkedIn post (1300 chars max) to promote this content:
 
@@ -1323,12 +1333,11 @@ Include:
 
 Tone: Professional but engaging."""
 
-            response = call_openai(prompt, 400)
-            if not response.startswith("Error:"):
-                posts['linkedin'] = response
+            result = call_openai(prompt, 400)
+            if "error" not in result:
+                posts['linkedin'] = result['content']
                 current_user.increment_ai_usage()
 
-        # Facebook
         if 'facebook' in platforms:
             prompt = f"""Create an engaging Facebook post (500 chars) to promote this content:
 
@@ -1342,9 +1351,9 @@ Include:
 
 Tone: Friendly and engaging."""
 
-            response = call_openai(prompt, 300)
-            if not response.startswith("Error:"):
-                posts['facebook'] = response
+            result = call_openai(prompt, 300)
+            if "error" not in result:
+                posts['facebook'] = result['content']
                 current_user.increment_ai_usage()
 
         return jsonify({
@@ -1355,17 +1364,8 @@ Tone: Friendly and engaging."""
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# COMPETITOR CONTENT ANALYZER
-# ============================================================================
-
-@app.route('/competitor-analyzer')
-@login_required
-def competitor_analyzer():
-    return render_template('competitor_analyzer.html')
-
 @app.route('/api/analyze-competitor', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("10 per hour")
 def api_analyze_competitor():
     """Analyze competitor content structure"""
@@ -1379,7 +1379,6 @@ def api_analyze_competitor():
         if not validators.url(url):
             return jsonify({'error': 'Invalid URL'}), 400
 
-        # Fetch webpage
         headers = {'User-Agent': 'Mozilla/5.0'}
         response = requests.get(url, headers=headers, timeout=10)
 
@@ -1388,34 +1387,28 @@ def api_analyze_competitor():
 
         soup = BeautifulSoup(response.content, 'html.parser')
 
-        # Extract meta tags
         title_tag = soup.find('title')
         title = title_tag.text if title_tag else 'No title found'
 
         meta_desc_tag = soup.find('meta', attrs={'name': 'description'})
         meta_desc = meta_desc_tag['content'] if meta_desc_tag and meta_desc_tag.get('content') else 'No meta description'
 
-        # Extract headings
         h1_tags = [h.text.strip() for h in soup.find_all('h1')]
         h2_tags = [h.text.strip() for h in soup.find_all('h2')]
         h3_tags = [h.text.strip() for h in soup.find_all('h3')]
 
-        # Extract content
         paragraphs = soup.find_all('p')
         text_content = ' '.join([p.text for p in paragraphs])
         word_count = len(text_content.split())
 
-        # Count images
         images = soup.find_all('img')
         image_count = len(images)
         images_with_alt = sum(1 for img in images if img.get('alt'))
 
-        # Count links
         links = soup.find_all('a')
         internal_links = sum(1 for link in links if link.get('href', '').startswith('/') or urlparse(url).netloc in link.get('href', ''))
         external_links = len(links) - internal_links
 
-        # Schema detection
         schema_tags = soup.find_all('script', attrs={'type': 'application/ld+json'})
         has_schema = len(schema_tags) > 0
 
@@ -1448,17 +1441,8 @@ def api_analyze_competitor():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# ROBOTS.TXT GENERATOR
-# ============================================================================
-
-@app.route('/robots-generator')
-@login_required
-def robots_generator():
-    return render_template('robots_generator.html')
-
 @app.route('/api/generate-robots', methods=['POST'])
-@login_required
+@api_login_required
 def api_generate_robots():
     """Generate robots.txt file"""
     try:
@@ -1469,7 +1453,6 @@ def api_generate_robots():
         sitemap_url = data.get('sitemap_url', '')
         crawl_delay = data.get('crawl_delay', 0)
 
-        # Build robots.txt
         robots_txt = "# Robots.txt generated by MySEOTooler\n\n"
 
         robots_txt += "User-agent: *\n"
@@ -1491,7 +1474,6 @@ def api_generate_robots():
         if sitemap_url:
             robots_txt += f"Sitemap: {sitemap_url}\n"
 
-        # Add common best practices
         robots_txt += "\n# Common best practices\n"
         robots_txt += "User-agent: Googlebot\n"
         robots_txt += "Allow: /\n"
@@ -1504,17 +1486,8 @@ def api_generate_robots():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# SITEMAP GENERATOR
-# ============================================================================
-
-@app.route('/sitemap-generator')
-@login_required
-def sitemap_generator():
-    return render_template('sitemap_generator.html')
-
 @app.route('/api/generate-sitemap', methods=['POST'])
-@login_required
+@api_login_required
 def api_generate_sitemap():
     """Generate XML sitemap from URLs"""
     try:
@@ -1524,7 +1497,6 @@ def api_generate_sitemap():
         if not urls:
             return jsonify({'error': 'At least one URL required'}), 400
 
-        # Build XML sitemap
         sitemap_xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
         sitemap_xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
 
@@ -1554,28 +1526,19 @@ def api_generate_sitemap():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# YOUTUBE SCRIPT GENERATOR
-# ============================================================================
-
-@app.route('/youtube-script')
-@login_required
-def youtube_script():
-    return render_template('youtube_script.html')
-
 @app.route('/api/generate-youtube-script', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("10 per hour")
 def api_generate_youtube_script():
     """Generate YouTube video script"""
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached'}), 403
 
     try:
         data = request.get_json()
         topic = data.get('topic', '').strip()
-        duration = data.get('duration', '5-7')  # minutes
-        style = data.get('style', 'educational')  # educational, entertaining, tutorial
+        duration = data.get('duration', '5-7')
+        style = data.get('style', 'educational')
 
         if not topic:
             return jsonify({'error': 'Topic required'}), 400
@@ -1609,33 +1572,24 @@ Include:
 
 Format clearly with timestamps."""
 
-        response = call_openai(prompt, 1500)
+        result = call_openai(prompt, 1500)
 
-        if response.startswith("Error:"):
-            return jsonify({'error': response}), 500
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
 
         current_user.increment_ai_usage()
 
         return jsonify({
             'success': True,
             'topic': topic,
-            'script': response
+            'script': result['content']
         })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============================================================================
-# EMAIL SUBJECT LINE TESTER
-# ============================================================================
-
-@app.route('/email-subject')
-@login_required
-def email_subject():
-    return render_template('email_subject.html')
-
 @app.route('/api/test-subject-line', methods=['POST'])
-@login_required
+@api_login_required
 def api_test_subject_line():
     """Analyze email subject line effectiveness"""
     try:
@@ -1648,31 +1602,25 @@ def api_test_subject_line():
         char_count = len(subject)
         word_count = len(subject.split())
 
-        # Spam triggers
         spam_words = ['free', 'buy now', 'click here', 'limited time', 'act now', '100%',
                      'guarantee', 'cash', 'winner', 'congratulations', '!!!', '$$$']
         found_spam = [word for word in spam_words if word.lower() in subject.lower()]
         spam_score = len(found_spam) * 20
 
-        # Personalization
         has_personalization = any(word in subject.lower() for word in ['you', 'your'])
 
-        # Urgency
         urgency_words = ['today', 'now', 'limited', 'urgent', 'ending', 'last chance']
         has_urgency = any(word in subject.lower() for word in urgency_words)
 
-        # Numbers
         has_numbers = bool(re.search(r'\d', subject))
 
-        # Emojis
         emoji_pattern = re.compile("["
-                                  u"\U0001F600-\U0001F64F"  # emoticons
-                                  u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                                  u"\U0001F600-\U0001F64F"
+                                  u"\U0001F300-\U0001F5FF"
                                   "]+", flags=re.UNICODE)
         has_emoji = bool(emoji_pattern.search(subject))
 
-        # Calculate score
-        score = 50  # Base score
+        score = 50
 
         if 40 <= char_count <= 60:
             score += 20
@@ -1694,7 +1642,6 @@ def api_test_subject_line():
         score -= spam_score
         score = max(0, min(100, score))
 
-        # Grade
         if score >= 80:
             grade = "Excellent"
             grade_color = "success"
@@ -1708,7 +1655,6 @@ def api_test_subject_line():
             grade = "Poor"
             grade_color = "danger"
 
-        # Suggestions
         suggestions = []
 
         if char_count > 60:
@@ -1728,8 +1674,7 @@ def api_test_subject_line():
         if not suggestions:
             suggestions.append("Great subject line!")
 
-        # Predicted metrics
-        predicted_open_rate = round(score * 0.35, 1)  # Rough estimate
+        predicted_open_rate = round(score * 0.35, 1)
 
         return jsonify({
             'success': True,
@@ -1752,11 +1697,11 @@ def api_test_subject_line():
         return jsonify({'error': str(e)}), 500
 
 # ============================================================================
-# EXISTING API ROUTES (Keep all your original routes)
+# CORE API ROUTES - FIXED
 # ============================================================================
 
 @app.route('/api/save-content', methods=['POST'])
-@login_required
+@api_login_required
 def api_save_content():
     try:
         data = request.get_json()
@@ -1765,7 +1710,7 @@ def api_save_content():
         if content_id:
             content = Content.query.filter_by(id=content_id, user_id=current_user.id).first()
             if not content:
-                return jsonify({'error': 'Not found'}), 404
+                return jsonify({'error': 'Content not found'}), 404
             content.title = data.get('title', content.title)
             content.keyword = data.get('keyword', content.keyword)
             content.content = data.get('content', content.content)
@@ -1774,7 +1719,7 @@ def api_save_content():
             content.updated_at = datetime.utcnow()
         else:
             if not current_user.can_create_content():
-                return jsonify({'error': 'Content limit reached'}), 403
+                return jsonify({'error': 'Monthly content limit reached. Upgrade your plan!'}), 403
 
             content_text = data.get('content', '')
             keyword_text = data.get('keyword', '')
@@ -1791,47 +1736,55 @@ def api_save_content():
             current_user.content_count += 1
 
         db.session.commit()
-        return jsonify({'success': True, 'id': content.id, 'message': 'Saved!'})
+        return jsonify({'success': True, 'id': content.id, 'message': 'Content saved successfully!'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/get-content/<int:content_id>')
-@login_required
+@api_login_required
 def api_get_content(content_id):
-    content = Content.query.filter_by(id=content_id, user_id=current_user.id).first()
-    if not content:
-        return jsonify({'error': 'Not found'}), 404
-    return jsonify({'success': True, 'content': content.to_dict()})
+    try:
+        content = Content.query.filter_by(id=content_id, user_id=current_user.id).first()
+        if not content:
+            return jsonify({'error': 'Content not found'}), 404
+        return jsonify({'success': True, 'content': content.to_dict()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/delete-content/<int:content_id>', methods=['DELETE'])
-@login_required
+@api_login_required
 def api_delete_content(content_id):
-    content = Content.query.filter_by(id=content_id, user_id=current_user.id).first()
-    if not content:
-        return jsonify({'error': 'Not found'}), 404
+    try:
+        content = Content.query.filter_by(id=content_id, user_id=current_user.id).first()
+        if not content:
+            return jsonify({'error': 'Content not found'}), 404
 
-    db.session.delete(content)
-    current_user.content_count = max(0, current_user.content_count - 1)
-    db.session.commit()
+        db.session.delete(content)
+        current_user.content_count = max(0, current_user.content_count - 1)
+        db.session.commit()
 
-    return jsonify({'success': True})
+        return jsonify({'success': True, 'message': 'Content deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate-content', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("10 per hour")
 def api_generate_content():
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached. Upgrade!'}), 403
+        return jsonify({'error': 'AI request limit reached for this month. Upgrade your plan!'}), 403
 
-    data = request.get_json()
-    keyword = data.get('keyword', '').strip()
-    word_count = int(data.get('word_count', 1000))
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword', '').strip()
+        word_count = int(data.get('word_count', 1000))
 
-    if not keyword:
-        return jsonify({'error': 'Keyword required'}), 400
+        if not keyword:
+            return jsonify({'error': 'Keyword required'}), 400
 
-    prompt = f"""Write a comprehensive SEO article about "{keyword}".
+        prompt = f"""Write a comprehensive SEO article about "{keyword}".
 
 Requirements:
 - Target: {word_count} words
@@ -1841,38 +1794,42 @@ Requirements:
 - Include introduction and conclusion
 - Use bullet points where appropriate"""
 
-    content = call_openai(prompt, max_tokens=min(word_count * 2, 4000))
+        result = call_openai(prompt, max_tokens=min(word_count * 2, 4000))
 
-    if content.startswith("Error:"):
-        return jsonify({'error': content}), 500
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
 
-    current_user.increment_ai_usage()
+        content = result['content']
+        current_user.increment_ai_usage()
 
-    html_content = markdown.markdown(content)
-    actual_words = len(content.split())
+        html_content = markdown.markdown(content)
+        actual_words = len(content.split())
 
-    return jsonify({
-        'success': True,
-        'content': content,
-        'html_content': html_content,
-        'word_count': actual_words,
-        'seo_score': calculate_seo_score(content, keyword)
-    })
+        return jsonify({
+            'success': True,
+            'content': content,
+            'html_content': html_content,
+            'word_count': actual_words,
+            'seo_score': calculate_seo_score(content, keyword)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate-keywords', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("20 per hour")
 def api_generate_keywords():
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached'}), 403
 
-    data = request.get_json()
-    seed = data.get('keyword', '').strip()
+    try:
+        data = request.get_json()
+        seed = data.get('keyword', '').strip()
 
-    if not seed:
-        return jsonify({'error': 'Keyword required'}), 400
+        if not seed:
+            return jsonify({'error': 'Keyword required'}), 400
 
-    prompt = f"""Generate 15 SEO keyword variations for "{seed}".
+        prompt = f"""Generate 15 SEO keyword variations for "{seed}".
 
 Include:
 - Long-tail keywords
@@ -1881,32 +1838,36 @@ Include:
 
 Format as simple list, one per line."""
 
-    response = call_openai(prompt, 500)
+        result = call_openai(prompt, 500)
 
-    if response.startswith("Error:"):
-        return jsonify({'error': response}), 500
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
 
-    current_user.increment_ai_usage()
+        response = result['content']
+        current_user.increment_ai_usage()
 
-    keywords = [line.strip().lstrip('-•*').strip() for line in response.split('\n')
-                if line.strip() and not line.strip().startswith('#')][:15]
+        keywords = [line.strip().lstrip('-•*').strip() for line in response.split('\n')
+                    if line.strip() and not line.strip().startswith('#')][:15]
 
-    return jsonify({'success': True, 'keywords': keywords})
+        return jsonify({'success': True, 'keywords': keywords})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/serp-analysis', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("20 per hour")
 def api_serp_analysis():
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached. Upgrade your plan!'}), 403
+        return jsonify({'error': 'AI request limit reached. Upgrade your plan!'}), 403
 
-    data = request.get_json()
-    keyword = data.get('keyword', '').strip()
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword', '').strip()
 
-    if not keyword:
-        return jsonify({'error': 'Keyword required'}), 400
+        if not keyword:
+            return jsonify({'error': 'Keyword required'}), 400
 
-    prompt = f"""Analyze the SERP (Search Engine Results Page) for: "{keyword}"
+        prompt = f"""Analyze the SERP (Search Engine Results Page) for: "{keyword}"
 
 Provide detailed analysis in this exact format:
 
@@ -1936,14 +1897,14 @@ BEST PRACTICES:
 - [Best practice 2]
 - [Best practice 3]"""
 
-    response = call_openai(prompt, 800)
+        result = call_openai(prompt, 800)
 
-    if response.startswith("Error:"):
-        return jsonify({'error': response}), 500
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
 
-    current_user.increment_ai_usage()
+        response = result['content']
+        current_user.increment_ai_usage()
 
-    try:
         lines = response.split('\n')
         parsed_data = {
             'keyword': keyword,
@@ -1974,233 +1935,232 @@ BEST PRACTICES:
         })
 
     except Exception as e:
-        return jsonify({
-            'success': True,
-            'data': {
-                'keyword': keyword,
-                'analysis': response,
-                'search_volume': 'Medium',
-                'competition': 'Medium',
-                'difficulty': 50
-            }
-        })
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/analyze-content-seo', methods=['POST'])
-@login_required
+@api_login_required
 def api_analyze_content_seo():
-    data = request.get_json()
-    content = data.get('content', '')
-    keyword = data.get('keyword', '')
+    try:
+        data = request.get_json()
+        content = data.get('content', '')
+        keyword = data.get('keyword', '')
 
-    if not content:
-        return jsonify({'score': 0, 'issues': ['No content provided'], 'suggestions': [], 'grade': 'F'})
+        if not content:
+            return jsonify({'score': 0, 'issues': ['No content provided'], 'suggestions': [], 'grade': 'F'})
 
-    score = 0
-    issues = []
-    suggestions = []
+        score = 0
+        issues = []
+        suggestions = []
 
-    word_count = len(content.split())
-    if word_count >= 1500:
-        score += 20
-    elif word_count >= 1000:
-        score += 15
-        suggestions.append('Add 500+ more words for better SEO')
-    elif word_count >= 500:
-        score += 10
-        issues.append('Content is too short (500-1000 words)')
-    else:
-        issues.append('Critical: Content under 500 words')
-
-    keyword_density = 0
-    if keyword:
-        content_lower = content.lower()
-        keyword_lower = keyword.lower()
-        keyword_count = content_lower.count(keyword_lower)
-        keyword_density = (keyword_count / word_count * 100) if word_count > 0 else 0
-
-        if 1 <= keyword_density <= 3:
-            score += 25
-        elif keyword_density > 0:
+        word_count = len(content.split())
+        if word_count >= 1500:
+            score += 20
+        elif word_count >= 1000:
             score += 15
-            if keyword_density > 3:
-                issues.append(f'Keyword density too high ({keyword_density:.1f}%)')
+            suggestions.append('Add 500+ more words for better SEO')
+        elif word_count >= 500:
+            score += 10
+            issues.append('Content is too short (500-1000 words)')
+        else:
+            issues.append('Critical: Content under 500 words')
+
+        keyword_density = 0
+        if keyword:
+            content_lower = content.lower()
+            keyword_lower = keyword.lower()
+            keyword_count = content_lower.count(keyword_lower)
+            keyword_density = (keyword_count / word_count * 100) if word_count > 0 else 0
+
+            if 1 <= keyword_density <= 3:
+                score += 25
+            elif keyword_density > 0:
+                score += 15
+                if keyword_density > 3:
+                    issues.append(f'Keyword density too high ({keyword_density:.1f}%)')
+                else:
+                    suggestions.append('Use keyword more naturally (aim for 1-3%)')
             else:
-                suggestions.append('Use keyword more naturally (aim for 1-3%)')
-        else:
-            issues.append('Keyword not found in content')
+                issues.append('Keyword not found in content')
 
-        first_100_words = ' '.join(content.split()[:100]).lower()
-        if keyword_lower in first_100_words:
+            first_100_words = ' '.join(content.split()[:100]).lower()
+            if keyword_lower in first_100_words:
+                score += 5
+            else:
+                suggestions.append('Include keyword in first paragraph')
+        else:
+            issues.append('No target keyword specified')
+
+        h2_count = len(re.findall(r'^##\s+.+', content, re.MULTILINE))
+        h3_count = len(re.findall(r'^###\s+.+', content, re.MULTILINE))
+
+        if h2_count >= 3:
+            score += 15
+        elif h2_count >= 1:
+            score += 10
+            suggestions.append(f'Add more H2 headings (found {h2_count}, aim for 3+)')
+        else:
+            issues.append('No H2 headings found')
+
+        if h3_count >= 2:
+            score += 5
+        elif h3_count == 0:
+            suggestions.append('Add H3 subheadings for better structure')
+
+        sentences = re.split(r'[.!?]+', content)
+        sentences = [s for s in sentences if s.strip()]
+        avg_sentence_length = sum(len(s.split()) for s in sentences) / len(sentences) if sentences else 0
+
+        if 15 <= avg_sentence_length <= 20:
+            score += 15
+        elif 10 <= avg_sentence_length <= 25:
+            score += 10
+            suggestions.append('Optimize sentence length (15-20 words avg)')
+        else:
+            if avg_sentence_length > 25:
+                issues.append('Sentences too long (reduce complexity)')
+            else:
+                suggestions.append('Vary sentence length for better flow')
+
+        if re.search(r'^\s*[-*+]\s+', content, re.MULTILINE) or re.search(r'^\s*\d+\.\s+', content, re.MULTILINE):
             score += 5
         else:
-            suggestions.append('Include keyword in first paragraph')
-    else:
-        issues.append('No target keyword specified')
+            suggestions.append('Add bullet points or numbered lists')
 
-    h2_count = len(re.findall(r'^##\s+.+', content, re.MULTILINE))
-    h3_count = len(re.findall(r'^###\s+.+', content, re.MULTILINE))
-
-    if h2_count >= 3:
-        score += 15
-    elif h2_count >= 1:
-        score += 10
-        suggestions.append(f'Add more H2 headings (found {h2_count}, aim for 3+)')
-    else:
-        issues.append('No H2 headings found')
-
-    if h3_count >= 2:
-        score += 5
-    elif h3_count == 0:
-        suggestions.append('Add H3 subheadings for better structure')
-
-    sentences = re.split(r'[.!?]+', content)
-    sentences = [s for s in sentences if s.strip()]
-    avg_sentence_length = sum(len(s.split()) for s in sentences) / len(sentences) if sentences else 0
-
-    if 15 <= avg_sentence_length <= 20:
-        score += 15
-    elif 10 <= avg_sentence_length <= 25:
-        score += 10
-        suggestions.append('Optimize sentence length (15-20 words avg)')
-    else:
-        if avg_sentence_length > 25:
-            issues.append('Sentences too long (reduce complexity)')
-        else:
-            suggestions.append('Vary sentence length for better flow')
-
-    if re.search(r'^\s*[-*+]\s+', content, re.MULTILINE) or re.search(r'^\s*\d+\.\s+', content, re.MULTILINE):
-        score += 5
-    else:
-        suggestions.append('Add bullet points or numbered lists')
-
-    if re.search(r'\[.+?\]\(.+?\)', content):
-        score += 5
-    else:
-        suggestions.append('Add internal/external links')
-
-    paragraphs = [p for p in content.split('\n\n') if p.strip() and not p.strip().startswith('#')]
-    if paragraphs:
-        avg_para_words = sum(len(p.split()) for p in paragraphs) / len(paragraphs)
-        if 50 <= avg_para_words <= 150:
+        if re.search(r'\[.+?\]\(.+?\)', content):
             score += 5
         else:
-            suggestions.append('Keep paragraphs 50-150 words')
+            suggestions.append('Add internal/external links')
 
-    return jsonify({
-        'score': min(score, 100),
-        'word_count': word_count,
-        'keyword_density': round(keyword_density, 2) if keyword else 0,
-        'heading_count': h2_count + h3_count,
-        'issues': issues,
-        'suggestions': suggestions,
-        'grade': get_seo_grade(score)
-    })
+        paragraphs = [p for p in content.split('\n\n') if p.strip() and not p.strip().startswith('#')]
+        if paragraphs:
+            avg_para_words = sum(len(p.split()) for p in paragraphs) / len(paragraphs)
+            if 50 <= avg_para_words <= 150:
+                score += 5
+            else:
+                suggestions.append('Keep paragraphs 50-150 words')
+
+        return jsonify({
+            'success': True,
+            'score': min(score, 100),
+            'word_count': word_count,
+            'keyword_density': round(keyword_density, 2) if keyword else 0,
+            'heading_count': h2_count + h3_count,
+            'issues': issues,
+            'suggestions': suggestions,
+            'grade': get_seo_grade(score)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate-schema', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("20 per hour")
 def api_generate_schema():
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached'}), 403
 
-    data = request.get_json()
-    schema_type = data.get('type', 'Article')
-    title = data.get('title', '')
-    description = data.get('description', '')
+    try:
+        data = request.get_json()
+        schema_type = data.get('type', 'Article')
+        title = data.get('title', '')
+        description = data.get('description', '')
 
-    if not title:
-        return jsonify({'error': 'Title required'}), 400
+        if not title:
+            return jsonify({'error': 'Title required'}), 400
 
-    if schema_type == 'Article':
-        schema = {
-            "@context": "https://schema.org",
-            "@type": "Article",
-            "headline": title,
-            "description": description,
-            "author": {
-                "@type": "Person",
-                "name": current_user.username
-            },
-            "datePublished": datetime.utcnow().strftime('%Y-%m-%d'),
-            "dateModified": datetime.utcnow().strftime('%Y-%m-%d')
-        }
-    elif schema_type == 'Product':
-        schema = {
-            "@context": "https://schema.org",
-            "@type": "Product",
-            "name": title,
-            "description": description,
-            "brand": {
-                "@type": "Brand",
-                "name": data.get('brand', 'Your Brand')
-            },
-            "offers": {
-                "@type": "Offer",
-                "price": data.get('price', '0'),
-                "priceCurrency": data.get('currency', 'USD')
+        if schema_type == 'Article':
+            schema = {
+                "@context": "https://schema.org",
+                "@type": "Article",
+                "headline": title,
+                "description": description,
+                "author": {
+                    "@type": "Person",
+                    "name": current_user.username
+                },
+                "datePublished": datetime.utcnow().strftime('%Y-%m-%d'),
+                "dateModified": datetime.utcnow().strftime('%Y-%m-%d')
             }
-        }
-    elif schema_type == 'FAQ':
-        schema = {
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            "mainEntity": []
-        }
-    elif schema_type == 'Organization':
-        schema = {
-            "@context": "https://schema.org",
-            "@type": "Organization",
-            "name": title,
-            "description": description,
-            "url": data.get('url', ''),
-            "logo": data.get('logo', '')
-        }
-    elif schema_type == 'LocalBusiness':
-        schema = {
-            "@context": "https://schema.org",
-            "@type": "LocalBusiness",
-            "name": title,
-            "description": description,
-            "address": {
-                "@type": "PostalAddress",
-                "streetAddress": data.get('street', ''),
-                "addressLocality": data.get('city', ''),
-                "addressRegion": data.get('state', ''),
-                "postalCode": data.get('zip', '')
-            },
-            "telephone": data.get('phone', '')
-        }
-    else:
-        schema = {
-            "@context": "https://schema.org",
-            "@type": schema_type,
-            "name": title,
-            "description": description
-        }
+        elif schema_type == 'Product':
+            schema = {
+                "@context": "https://schema.org",
+                "@type": "Product",
+                "name": title,
+                "description": description,
+                "brand": {
+                    "@type": "Brand",
+                    "name": data.get('brand', 'Your Brand')
+                },
+                "offers": {
+                    "@type": "Offer",
+                    "price": data.get('price', '0'),
+                    "priceCurrency": data.get('currency', 'USD')
+                }
+            }
+        elif schema_type == 'FAQ':
+            schema = {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": []
+            }
+        elif schema_type == 'Organization':
+            schema = {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": title,
+                "description": description,
+                "url": data.get('url', ''),
+                "logo": data.get('logo', '')
+            }
+        elif schema_type == 'LocalBusiness':
+            schema = {
+                "@context": "https://schema.org",
+                "@type": "LocalBusiness",
+                "name": title,
+                "description": description,
+                "address": {
+                    "@type": "PostalAddress",
+                    "streetAddress": data.get('street', ''),
+                    "addressLocality": data.get('city', ''),
+                    "addressRegion": data.get('state', ''),
+                    "postalCode": data.get('zip', '')
+                },
+                "telephone": data.get('phone', '')
+            }
+        else:
+            schema = {
+                "@context": "https://schema.org",
+                "@type": schema_type,
+                "name": title,
+                "description": description
+            }
 
-    current_user.increment_ai_usage()
+        current_user.increment_ai_usage()
 
-    return jsonify({
-        'success': True,
-        'schema': json.dumps(schema, indent=2)
-    })
+        return jsonify({
+            'success': True,
+            'schema': json.dumps(schema, indent=2)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate-meta-tags', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("20 per hour")
 def api_generate_meta_tags():
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached'}), 403
 
-    data = request.get_json()
-    title = data.get('title', '').strip()
-    content = data.get('content', '').strip()
-    keyword = data.get('keyword', '').strip()
+    try:
+        data = request.get_json()
+        title = data.get('title', '').strip()
+        content = data.get('content', '').strip()
+        keyword = data.get('keyword', '').strip()
 
-    if not title:
-        return jsonify({'error': 'Title required'}), 400
+        if not title:
+            return jsonify({'error': 'Title required'}), 400
 
-    prompt = f"""Create an SEO-optimized meta description for:
+        prompt = f"""Create an SEO-optimized meta description for:
 Title: {title}
 Keyword: {keyword}
 Content snippet: {content[:200]}
@@ -2213,26 +2173,27 @@ Requirements:
 
 Provide ONLY the meta description text, nothing else."""
 
-    meta_description = call_openai(prompt, 100)
+        result = call_openai(prompt, 100)
 
-    if meta_description.startswith("Error:"):
-        return jsonify({'error': meta_description}), 500
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
 
-    meta_description = meta_description.strip().strip('"').strip("'")
+        meta_description = result['content'].strip().strip('"').strip("'")
+        current_user.increment_ai_usage()
 
-    meta_tags = {
-        'title': title[:60],
-        'description': meta_description[:160],
-        'keywords': keyword,
-        'og_title': title[:60],
-        'og_description': meta_description[:160],
-        'og_type': 'article',
-        'twitter_card': 'summary_large_image',
-        'twitter_title': title[:60],
-        'twitter_description': meta_description[:160]
-    }
+        meta_tags = {
+            'title': title[:60],
+            'description': meta_description[:160],
+            'keywords': keyword,
+            'og_title': title[:60],
+            'og_description': meta_description[:160],
+            'og_type': 'article',
+            'twitter_card': 'summary_large_image',
+            'twitter_title': title[:60],
+            'twitter_description': meta_description[:160]
+        }
 
-    html = f"""<!-- Primary Meta Tags -->
+        html = f"""<!-- Primary Meta Tags -->
 <title>{meta_tags['title']}</title>
 <meta name="title" content="{meta_tags['title']}">
 <meta name="description" content="{meta_tags['description']}">
@@ -2248,30 +2209,31 @@ Provide ONLY the meta description text, nothing else."""
 <meta property="twitter:title" content="{meta_tags['twitter_title']}">
 <meta property="twitter:description" content="{meta_tags['twitter_description']}">"""
 
-    current_user.increment_ai_usage()
-
-    return jsonify({
-        'success': True,
-        'meta_tags': meta_tags,
-        'html': html
-    })
+        return jsonify({
+            'success': True,
+            'meta_tags': meta_tags,
+            'html': html
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate-alt-text', methods=['POST'])
-@login_required
+@api_login_required
 @limiter.limit("30 per hour")
 def api_generate_alt_text():
     if not current_user.can_use_ai():
-        return jsonify({'error': 'AI limit reached'}), 403
+        return jsonify({'error': 'AI request limit reached'}), 403
 
-    data = request.get_json()
-    image_context = data.get('context', '').strip()
-    keyword = data.get('keyword', '').strip()
-    image_name = data.get('image_name', '').strip()
+    try:
+        data = request.get_json()
+        image_context = data.get('context', '').strip()
+        keyword = data.get('keyword', '').strip()
+        image_name = data.get('image_name', '').strip()
 
-    if not image_context and not image_name:
-        return jsonify({'error': 'Image context or filename required'}), 400
+        if not image_context and not image_name:
+            return jsonify({'error': 'Image context or filename required'}), 400
 
-    prompt = f"""Generate SEO-optimized alt text for an image.
+        prompt = f"""Generate SEO-optimized alt text for an image.
 
 Context: {image_context or 'Image from article'}
 Filename: {image_name}
@@ -2285,77 +2247,81 @@ Requirements:
 
 Provide ONLY the alt text, nothing else."""
 
-    alt_text = call_openai(prompt, 50)
+        result = call_openai(prompt, 50)
 
-    if alt_text.startswith("Error:"):
-        return jsonify({'error': alt_text}), 500
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
 
-    alt_text = alt_text.strip().strip('"').strip("'")[:125]
+        alt_text = result['content'].strip().strip('"').strip("'")[:125]
+        current_user.increment_ai_usage()
 
-    current_user.increment_ai_usage()
-
-    return jsonify({
-        'success': True,
-        'alt_text': alt_text,
-        'html': f'<img src="your-image.jpg" alt="{alt_text}">'
-    })
+        return jsonify({
+            'success': True,
+            'alt_text': alt_text,
+            'html': f'<img src="your-image.jpg" alt="{alt_text}">'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/export/<int:content_id>/<format>')
-@login_required
+@api_login_required
 def api_export(content_id, format):
-    content = Content.query.filter_by(id=content_id, user_id=current_user.id).first()
-    if not content:
-        return jsonify({'error': 'Not found'}), 404
+    try:
+        content = Content.query.filter_by(id=content_id, user_id=current_user.id).first()
+        if not content:
+            return jsonify({'error': 'Content not found'}), 404
 
-    allowed = current_user.get_limits()['export_formats']
-    if format not in allowed:
-        return jsonify({'error': f'{format} not available in {current_user.tier} tier'}), 403
+        allowed = current_user.get_limits()['export_formats']
+        if format not in allowed:
+            return jsonify({'error': f'{format} export not available in {current_user.tier} tier. Upgrade your plan!'}), 403
 
-    safe_filename = re.sub(r'[^\w\s-]', '', content.title)[:50]
+        safe_filename = re.sub(r'[^\w\s-]', '', content.title)[:50]
 
-    if format == 'txt':
-        output = BytesIO()
-        output.write(f"{content.title}\n\n{content.content}".encode('utf-8'))
-        output.seek(0)
-        return send_file(output, mimetype='text/plain', as_attachment=True, download_name=f"{safe_filename}.txt")
+        if format == 'txt':
+            output = BytesIO()
+            output.write(f"{content.title}\n\n{content.content}".encode('utf-8'))
+            output.seek(0)
+            return send_file(output, mimetype='text/plain', as_attachment=True, download_name=f"{safe_filename}.txt")
 
-    elif format == 'html':
-        html = f"""<!DOCTYPE html>
+        elif format == 'html':
+            html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>{content.title}</title></head>
 <body><h1>{content.title}</h1>{markdown.markdown(content.content)}</body></html>"""
-        output = BytesIO()
-        output.write(html.encode('utf-8'))
-        output.seek(0)
-        return send_file(output, mimetype='text/html', as_attachment=True, download_name=f"{safe_filename}.html")
+            output = BytesIO()
+            output.write(html.encode('utf-8'))
+            output.seek(0)
+            return send_file(output, mimetype='text/html', as_attachment=True, download_name=f"{safe_filename}.html")
 
-    elif format == 'md':
-        output = BytesIO()
-        output.write(f"# {content.title}\n\n{content.content}".encode('utf-8'))
-        output.seek(0)
-        return send_file(output, mimetype='text/markdown', as_attachment=True, download_name=f"{safe_filename}.md")
+        elif format == 'md':
+            output = BytesIO()
+            output.write(f"# {content.title}\n\n{content.content}".encode('utf-8'))
+            output.seek(0)
+            return send_file(output, mimetype='text/markdown', as_attachment=True, download_name=f"{safe_filename}.md")
 
-    elif format == 'docx':
-        doc = Document()
-        doc.add_heading(content.title, 0)
-        for line in content.content.split('\n'):
-            line = line.strip()
-            if line.startswith('### '):
-                doc.add_heading(line[4:], 3)
-            elif line.startswith('## '):
-                doc.add_heading(line[3:], 2)
-            elif line.startswith('# '):
-                doc.add_heading(line[2:], 1)
-            elif line:
-                doc.add_paragraph(line)
-        output = BytesIO()
-        doc.save(output)
-        output.seek(0)
-        return send_file(output,
-                        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        as_attachment=True,
-                        download_name=f"{safe_filename}.docx")
+        elif format == 'docx':
+            doc = Document()
+            doc.add_heading(content.title, 0)
+            for line in content.content.split('\n'):
+                line = line.strip()
+                if line.startswith('### '):
+                    doc.add_heading(line[4:], 3)
+                elif line.startswith('## '):
+                    doc.add_heading(line[3:], 2)
+                elif line.startswith('# '):
+                    doc.add_heading(line[2:], 1)
+                elif line:
+                    doc.add_paragraph(line)
+            output = BytesIO()
+            doc.save(output)
+            output.seek(0)
+            return send_file(output,
+                            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                            as_attachment=True,
+                            download_name=f"{safe_filename}.docx")
 
-    return jsonify({'error': 'Invalid format'}), 400
+        return jsonify({'error': 'Invalid format'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ============================================================================
 # ADMIN ROUTES
@@ -2379,13 +2345,17 @@ def admin_toggle_user(user_id):
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
 
-    user = User.query.get_or_404(user_id)
-    if user.id == current_user.id:
-        return jsonify({'error': 'Cannot deactivate yourself'}), 400
+    try:
+        user = User.query.get_or_404(user_id)
+        if user.id == current_user.id:
+            return jsonify({'error': 'Cannot deactivate yourself'}), 400
 
-    user.is_active = not user.is_active
-    db.session.commit()
-    return jsonify({'success': True, 'is_active': user.is_active})
+        user.is_active = not user.is_active
+        db.session.commit()
+        return jsonify({'success': True, 'is_active': user.is_active})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/admin/user/<int:user_id>/tier', methods=['POST'])
 @login_required
@@ -2393,15 +2363,19 @@ def admin_change_tier(user_id):
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
 
-    user = User.query.get_or_404(user_id)
-    tier = request.get_json().get('tier')
+    try:
+        user = User.query.get_or_404(user_id)
+        tier = request.get_json().get('tier')
 
-    if tier in ['free', 'pro', 'enterprise']:
-        user.tier = tier
-        db.session.commit()
-        return jsonify({'success': True, 'tier': tier})
+        if tier in ['free', 'pro', 'enterprise']:
+            user.tier = tier
+            db.session.commit()
+            return jsonify({'success': True, 'tier': tier})
 
-    return jsonify({'error': 'Invalid tier'}), 400
+        return jsonify({'error': 'Invalid tier'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 # ============================================================================
 # INITIALIZE DATABASE
@@ -2423,7 +2397,7 @@ if __name__ == '__main__':
     print("🚀 MySEOToolver V5 - COMPLETE AI-Powered SEO Platform")
     print("="*70)
     print(f"✅ Database: {'PostgreSQL (Railway)' if os.environ.get('DATABASE_URL') else 'SQLite (Local)'}")
-    print(f"✅ OpenAI: {'Connected' if client else '⚠️  Set OPENAI_API_KEY'}")
+    print(f"✅ OpenAI: {'Connected (' + openai_api_key[:15] + '...)' if client else '⚠️  Set OPENAI_API_KEY in Railway Variables'}")
     print(f"✅ Server: http://0.0.0.0:{port}")
     print(f"✅ Environment: {'Production' if not debug_mode else 'Development'}")
     print("="*70 + "\n")
