@@ -1,86 +1,538 @@
 {% extends "base.html" %}
 
+{% block title %}AI Content Editor - {{ content.keyword if content else 'New Content' }} - My SEO King Tool V5{% endblock %}
+
+{% block styles %}
+<style>
+    /* Override base styles for full-screen editor */
+    body {
+        overflow: hidden;
+    }
+    
+    main {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    footer {
+        display: none; /* Hide footer on editor page for max space */
+    }
+    
+    /* Editor Container */
+    .editor-container {
+        display: flex;
+        height: calc(100vh - 72px); /* Subtract navbar height */
+        flex-direction: column;
+        background: #f5f7fa;
+    }
+    
+    /* Editor Header */
+    .editor-header {
+        background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+        color: white;
+        padding: 15px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .editor-header h1 {
+        font-size: 1.5em;
+        margin: 0;
+    }
+    .editor-header .keyword {
+        opacity: 0.9;
+        font-size: 0.9em;
+        margin-top: 5px;
+    }
+    .header-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    /* Metrics Toolbar */
+    .editor-toolbar {
+        background: white;
+        padding: 15px 30px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        gap: 30px;
+        align-items: center;
+        overflow-x: auto;
+    }
+    
+    /* Score Circle */
+    .score-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .score-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8em;
+        font-weight: bold;
+        position: relative;
+        background: conic-gradient(#667eea 0deg, #e0e0e0 0deg);
+        transition: all 0.3s;
+    }
+    .score-circle::before {
+        content: '';
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: white;
+        position: absolute;
+    }
+    .score-value {
+        position: relative;
+        z-index: 1;
+        color: #667eea;
+    }
+    
+    .score-circle.score-excellent {
+        background: conic-gradient(#28a745 var(--score-deg), #e0e0e0 var(--score-deg));
+    }
+    .score-circle.score-excellent .score-value { color: #28a745; }
+    .score-circle.score-good {
+        background: conic-gradient(#ffc107 var(--score-deg), #e0e0e0 var(--score-deg));
+    }
+    .score-circle.score-good .score-value { color: #ffc107; }
+    .score-circle.score-fair {
+        background: conic-gradient(#fd7e14 var(--score-deg), #e0e0e0 var(--score-deg));
+    }
+    .score-circle.score-fair .score-value { color: #fd7e14; }
+    .score-circle.score-poor {
+        background: conic-gradient(#dc3545 var(--score-deg), #e0e0e0 var(--score-deg));
+    }
+    .score-circle.score-poor .score-value { color: #dc3545; }
+    
+    /* Metrics */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        flex: 1;
+    }
+    .metric-item { text-align: center; }
+    .metric-value {
+        font-size: 1.3em;
+        font-weight: bold;
+        color: #4F46E5;
+    }
+    .metric-label {
+        font-size: 0.75em;
+        color: #888;
+        margin-top: 2px;
+    }
+    
+    /* AI Toolbar */
+    .ai-toolbar {
+        background: #f8f9fa;
+        padding: 12px 30px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        overflow-x: auto;
+    }
+    
+    .ai-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85em;
+        font-weight: 600;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .ai-btn-primary {
+        background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+        color: white;
+    }
+    .ai-btn-secondary {
+        background: white;
+        color: #4F46E5;
+        border: 2px solid #4F46E5;
+    }
+    .ai-btn-success {
+        background: #10B981;
+        color: white;
+    }
+    .ai-btn-warning {
+        background: #ffc107;
+        color: #000;
+    }
+    .ai-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .ai-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    /* Main Content Area */
+    .editor-main {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+    }
+    
+    /* Left Panel - Editor */
+    .editor-panel {
+        flex: 2;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    /* Title & Keyword Inputs */
+    .editor-inputs {
+        background: white;
+        padding: 20px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .editor-inputs input {
+        width: 100%;
+        border: none;
+        padding: 10px 0;
+        font-size: 1.1em;
+        border-bottom: 1px solid #e0e0e0;
+        margin-bottom: 10px;
+    }
+    .editor-inputs input:first-child {
+        font-size: 1.5em;
+        font-weight: bold;
+    }
+    .editor-inputs input:focus {
+        outline: none;
+        border-bottom-color: #4F46E5;
+    }
+    
+    /* Format Toolbar */
+    .format-toolbar {
+        background: white;
+        padding: 10px 20px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        gap: 5px;
+    }
+    .format-btn {
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .format-btn:hover { background: #f0f0f0; }
+    
+    .editor-content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #fafafa;
+    }
+    
+    #contentEditor {
+        width: 100%;
+        min-height: 100%;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 25px;
+        font-size: 1.05em;
+        line-height: 1.8;
+        font-family: Georgia, serif;
+        resize: none;
+        background: white;
+    }
+    #contentEditor:focus {
+        outline: none;
+        border-color: #4F46E5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    
+    /* Right Panel - SEO */
+    .suggestions-panel {
+        width: 350px;
+        background: white;
+        border-left: 1px solid #e0e0e0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .panel-header {
+        background: #4F46E5;
+        color: white;
+        padding: 15px;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .panel-content { padding: 15px; }
+    
+    #issuesList, #suggestionsList {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    #issuesList li, #suggestionsList li {
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 6px;
+        font-size: 0.85em;
+        line-height: 1.5;
+    }
+    
+    #issuesList li {
+        background: #fff3cd;
+        border-left: 3px solid #ffc107;
+    }
+    
+    #suggestionsList li {
+        background: #d1ecf1;
+        border-left: 3px solid #17a2b8;
+    }
+    
+    /* Modal */
+    .modal-backdrop-custom {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 1050;
+        align-items: center;
+        justify-content: center;
+        overflow-y: auto;
+        padding: 20px;
+    }
+    .modal-backdrop-custom.active { display: flex; }
+    
+    .modal-content-custom {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 700px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .modal-header-custom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    .modal-header-custom h2 {
+        color: #4F46E5;
+        font-size: 1.5em;
+        margin: 0;
+    }
+    .close-modal {
+        background: none;
+        border: none;
+        font-size: 2em;
+        cursor: pointer;
+        color: #999;
+        line-height: 1;
+    }
+    .close-modal:hover { color: #4F46E5; }
+    
+    /* Notification */
+    .notification {
+        position: fixed;
+        top: 90px; /* Below navbar */
+        right: 20px;
+        background: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-left: 4px solid #4F46E5;
+        z-index: 2000;
+        animation: slideIn 0.3s ease;
+        max-width: 300px;
+    }
+    .notification.success { border-left-color: #10B981; }
+    .notification.error { border-left-color: #dc3545; }
+    @keyframes slideIn {
+        from { transform: translateX(120%); }
+        to { transform: translateX(0); }
+    }
+    
+    /* Auto-save indicator */
+    .auto-save {
+        font-size: 0.85em;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    /* Loading Spinner */
+    .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #4F46E5;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 20px;
+        color: #4F46E5;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <!-- Editor Panel -->
-        <div class="col-md-8">
-            <div class="card">
-                <div class="editor-header">
-                    <input type="text" id="contentTitle" class="form-control" 
-                           placeholder="Enter title..." 
-                           value="{{ content.title if content else '' }}"
-                           style="font-size: 24px; font-weight: bold; border: none; margin-bottom: 10px;">
-                    
-                    <input type="text" id="contentKeyword" class="form-control" 
-                           placeholder="Target keyword..." 
-                           value="{{ content.keyword if content else '' }}"
-                           oninput="updateSEOScore()"
-                           style="border: none; border-bottom: 1px solid #ddd; margin-bottom: 15px;">
+<div class="editor-container">
+    <!-- Editor Header -->
+    <div class="editor-header">
+        <div>
+            <h1>✨ AI Content Editor</h1>
+            <div class="keyword">📌 <span id="headerKeyword">{{ content.keyword if content else 'Enter keyword below' }}</span></div>
+        </div>
+        <div class="header-right">
+            <div class="auto-save" id="saveStatus">
+                <span>💾</span>
+                <span id="save-text">Ready</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Metrics Toolbar -->
+    <div class="editor-toolbar">
+        <div class="score-container">
+            <div>
+                <div class="score-circle" id="scoreCircle" style="--score-deg: 0deg;">
+                    <span class="score-value" id="scoreValue">0</span>
                 </div>
-                
-                <textarea id="contentEditor" class="content-textarea" 
-                          placeholder="Start writing your SEO-optimized content..."
-                          oninput="updateSEOScore()">{{ content.content if content else '' }}</textarea>
-                
-                <div class="editor-footer">
-                    <button onclick="saveContent()" class="btn btn-success">💾 Save</button>
-                    <button onclick="generateAIContent()" class="btn btn-primary">🤖 AI Generate</button>
-                    <span id="saveStatus" style="margin-left: 15px; color: #666;"></span>
-                </div>
+                <div style="text-align: center; font-size: 0.75em; color: #666; margin-top: 5px;">SEO Score</div>
             </div>
         </div>
         
-        <!-- SEO Score Panel -->
-        <div class="col-md-4">
-            <div class="card seo-panel">
-                <h3>📊 SEO Score</h3>
+        <div class="metrics-grid">
+            <div class="metric-item">
+                <div class="metric-value" id="wordCount">0</div>
+                <div class="metric-label">Words</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-value" id="headingCount">0</div>
+                <div class="metric-label">Headings</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-value" id="keywordDensity">0%</div>
+                <div class="metric-label">Keyword Density</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-value"><span id="scoreGrade">-</span></div>
+                <div class="metric-label">Grade</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AI Toolbar -->
+    <div class="ai-toolbar">
+        <button class="ai-btn ai-btn-success" onclick="saveContent()">💾 Save</button>
+        <button class="ai-btn ai-btn-primary" onclick="generateAIContent()">🤖 Generate Content</button>
+        <button class="ai-btn ai-btn-secondary" onclick="openExportModal()">📥 Export</button>
+        <button class="ai-btn ai-btn-secondary" onclick="copyContent()">📋 Copy All</button>
+        <button class="ai-btn ai-btn-warning" onclick="window.location.href='{{ url_for('index') }}'">📊 Back to Dashboard</button>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="editor-main">
+        <!-- Left: Editor -->
+        <div class="editor-panel">
+            <div class="editor-inputs">
+                <input type="text" id="contentTitle" placeholder="Enter your title..." value="{{ content.title if content else '' }}">
+                <input type="text" id="contentKeyword" placeholder="Target keyword..." value="{{ content.keyword if content else '' }}" oninput="updateKeywordDisplay(); updateSEOScore();">
+            </div>
+            
+            <div class="format-toolbar">
+                <button class="format-btn" onclick="insertFormat('**', '**')" title="Bold"><b>B</b></button>
+                <button class="format-btn" onclick="insertFormat('*', '*')" title="Italic"><i>I</i></button>
+                <button class="format-btn" onclick="insertFormat('## ', '')" title="H2">H2</button>
+                <button class="format-btn" onclick="insertFormat('### ', '')" title="H3">H3</button>
+                <button class="format-btn" onclick="insertFormat('- ', '')" title="List">• List</button>
+                <button class="format-btn" onclick="insertFormat('[', '](url)')" title="Link">🔗</button>
+            </div>
+            
+            <div class="editor-content">
+                <textarea id="contentEditor" placeholder="Start writing your SEO-optimized content..." oninput="updateSEOScore()">{{ content.content if content else '' }}</textarea>
+            </div>
+        </div>
+        
+        <!-- Right: SEO Panel -->
+        <div class="suggestions-panel">
+            <div class="panel-header">📊 SEO Analysis</div>
+            <div class="panel-content">
+                <h4 style="margin-bottom: 10px; color: #4F46E5;">⚠️ Issues:</h4>
+                <ul id="issuesList">
+                    <li>Start writing to see SEO analysis...</li>
+                </ul>
                 
-                <!-- Score Display -->
-                <div class="score-display">
-                    <div class="score-circle" id="scoreCircle">
-                        <span id="scoreValue">0</span>
-                        <span class="score-label">/100</span>
-                    </div>
-                    <div id="scoreGrade" class="score-grade">F</div>
-                </div>
-                
-                <!-- Stats -->
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <span class="stat-label">Words</span>
-                        <span id="wordCount" class="stat-number">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Headings</span>
-                        <span id="headingCount" class="stat-number">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Keyword %</span>
-                        <span id="keywordDensity" class="stat-number">0%</span>
-                    </div>
-                </div>
-                
-                <!-- Issues -->
-                <div id="seoIssues" class="seo-issues">
-                    <h4>⚠️ Issues</h4>
-                    <ul id="issuesList"></ul>
-                </div>
-                
-                <!-- Suggestions -->
-                <div id="seoSuggestions" class="seo-suggestions">
-                    <h4>💡 Suggestions</h4>
-                    <ul id="suggestionsList"></ul>
-                </div>
+                <h4 style="margin: 20px 0 10px; color: #4F46E5;">💡 Suggestions:</h4>
+                <ul id="suggestionsList">
+                    <li>Enter a keyword and content to get suggestions...</li>
+                </ul>
             </div>
         </div>
     </div>
 </div>
 
-<input type="hidden" id="contentId" value="{{ content.id if content else '' }}">
+<!-- Export Modal -->
+<div class="modal-backdrop-custom" id="export-modal">
+    <div class="modal-content-custom">
+        <div class="modal-header-custom">
+            <h2>💾 Export Content</h2>
+            <button class="close-modal" onclick="closeExportModal()">&times;</button>
+        </div>
+        <div style="display: grid; gap: 10px;">
+            <button class="ai-btn ai-btn-primary" style="width: 100%;" onclick="exportAs('txt')">📄 Plain Text (.txt)</button>
+            <button class="ai-btn ai-btn-primary" style="width: 100%;" onclick="exportAs('md')">📝 Markdown (.md)</button>
+            <button class="ai-btn ai-btn-primary" style="width: 100%;" onclick="exportAs('html')">🌐 HTML</button>
+        </div>
+    </div>
+</div>
 
+<!-- Hidden Fields -->
+<input type="hidden" id="contentId" value="{{ content.id if content else '' }}">
+{% endblock %}
+
+{% block scripts %}
 <script>
 let autoSaveTimer;
+
+// Update keyword in header
+function updateKeywordDisplay() {
+    const keyword = document.getElementById('contentKeyword').value;
+    document.getElementById('headerKeyword').textContent = keyword || 'Enter keyword below';
+}
 
 // Auto-update SEO score
 function updateSEOScore() {
@@ -91,6 +543,8 @@ function updateSEOScore() {
 async function analyzeSEO() {
     const content = document.getElementById('contentEditor').value;
     const keyword = document.getElementById('contentKeyword').value;
+    
+    if (!content && !keyword) return;
     
     try {
         const response = await fetch('/api/analyze-content-seo', {
@@ -113,8 +567,10 @@ function updateSEODisplay(data) {
     document.getElementById('scoreValue').textContent = score;
     document.getElementById('scoreGrade').textContent = data.grade || 'F';
     
-    // Color code the circle
+    // Update circle with conic gradient
     const circle = document.getElementById('scoreCircle');
+    const scoreDeg = (score / 100) * 360;
+    circle.style.setProperty('--score-deg', scoreDeg + 'deg');
     circle.className = 'score-circle score-' + getScoreClass(score);
     
     // Update stats
@@ -125,22 +581,28 @@ function updateSEODisplay(data) {
     // Update issues
     const issuesList = document.getElementById('issuesList');
     issuesList.innerHTML = '';
-    (data.issues || []).forEach(issue => {
-        const li = document.createElement('li');
-        li.textContent = issue;
-        li.className = 'issue-item';
-        issuesList.appendChild(li);
-    });
+    if (data.issues && data.issues.length > 0) {
+        data.issues.forEach(issue => {
+            const li = document.createElement('li');
+            li.textContent = issue;
+            issuesList.appendChild(li);
+        });
+    } else {
+        issuesList.innerHTML = '<li style="background: #d4edda; border-left-color: #28a745;">✅ No issues found!</li>';
+    }
     
     // Update suggestions
     const suggestionsList = document.getElementById('suggestionsList');
     suggestionsList.innerHTML = '';
-    (data.suggestions || []).forEach(suggestion => {
-        const li = document.createElement('li');
-        li.textContent = suggestion;
-        li.className = 'suggestion-item';
-        suggestionsList.appendChild(li);
-    });
+    if (data.suggestions && data.suggestions.length > 0) {
+        data.suggestions.forEach(suggestion => {
+            const li = document.createElement('li');
+            li.textContent = suggestion;
+            suggestionsList.appendChild(li);
+        });
+    } else {
+        suggestionsList.innerHTML = '<li>Keep writing for more suggestions...</li>';
+    }
 }
 
 function getScoreClass(score) {
@@ -157,12 +619,12 @@ async function saveContent() {
     const id = document.getElementById('contentId').value;
     
     if (!title || !content) {
-        alert('Title and content required');
+        showNotification('Title and content required', 'error');
         return;
     }
     
-    const status = document.getElementById('saveStatus');
-    status.textContent = '💾 Saving...';
+    const status = document.getElementById('save-text');
+    status.textContent = 'Saving...';
     
     try {
         const response = await fetch('/api/save-content', {
@@ -184,13 +646,16 @@ async function saveContent() {
                 document.getElementById('contentId').value = data.id;
                 window.history.pushState({}, '', '/editor?id=' + data.id);
             }
-            setTimeout(() => status.textContent = '', 3000);
+            showNotification('Content saved successfully!', 'success');
+            setTimeout(() => status.textContent = 'Ready', 3000);
         } else {
-            status.textContent = '❌ ' + (data.error || 'Error');
+            status.textContent = '❌ Error';
+            showNotification(data.error || 'Error saving content', 'error');
         }
         
     } catch (error) {
-        status.textContent = '❌ Error saving';
+        status.textContent = '❌ Error';
+        showNotification('Error saving content', 'error');
         console.error(error);
     }
 }
@@ -199,7 +664,7 @@ async function generateAIContent() {
     const keyword = document.getElementById('contentKeyword').value;
     
     if (!keyword) {
-        alert('Please enter a target keyword first');
+        showNotification('Please enter a target keyword first', 'error');
         return;
     }
     
@@ -207,7 +672,7 @@ async function generateAIContent() {
         return;
     }
     
-    const status = document.getElementById('saveStatus');
+    const status = document.getElementById('save-text');
     status.textContent = '🤖 Generating...';
     
     try {
@@ -229,17 +694,93 @@ async function generateAIContent() {
             }
             updateSEOScore();
             status.textContent = '✅ Generated!';
-            setTimeout(() => status.textContent = '', 3000);
+            showNotification('AI content generated successfully!', 'success');
+            setTimeout(() => status.textContent = 'Ready', 3000);
         } else {
-            alert('Error: ' + (data.error || 'Generation failed'));
-            status.textContent = '';
+            showNotification(data.error || 'Generation failed', 'error');
+            status.textContent = 'Ready';
         }
         
     } catch (error) {
-        alert('Error generating content');
-        status.textContent = '';
+        showNotification('Error generating content', 'error');
+        status.textContent = 'Ready';
         console.error(error);
     }
+}
+
+// Format toolbar functions
+function insertFormat(before, after) {
+    const textarea = document.getElementById('contentEditor');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end);
+    
+    const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+    textarea.value = newText;
+    
+    textarea.focus();
+    textarea.setSelectionRange(start + before.length, end + before.length);
+    updateSEOScore();
+}
+
+// Copy content
+function copyContent() {
+    const content = document.getElementById('contentEditor').value;
+    navigator.clipboard.writeText(content).then(() => {
+        showNotification('Content copied to clipboard!', 'success');
+    });
+}
+
+// Modal functions
+function openExportModal() {
+    document.getElementById('export-modal').classList.add('active');
+}
+
+function closeExportModal() {
+    document.getElementById('export-modal').classList.remove('active');
+}
+
+// Export functions
+function exportAs(format) {
+    const title = document.getElementById('contentTitle').value || 'content';
+    const content = document.getElementById('contentEditor').value;
+    
+    let blob, filename;
+    
+    if (format === 'txt') {
+        blob = new Blob([content], { type: 'text/plain' });
+        filename = title + '.txt';
+    } else if (format === 'md') {
+        blob = new Blob([content], { type: 'text/markdown' });
+        filename = title + '.md';
+    } else if (format === 'html') {
+        const html = '<h1>' + title + '</h1>\n' + content.replace(/\n/g, '<br>');
+        blob = new Blob([html], { type: 'text/html' });
+        filename = title + '.html';
+    }
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showNotification('File exported successfully!', 'success');
+    closeExportModal();
+}
+
+// Notification system
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = 'notification ' + type;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
 }
 
 // Initial SEO analysis
@@ -249,161 +790,16 @@ if (document.getElementById('contentEditor').value) {
 
 // Auto-save every 30 seconds
 setInterval(() => {
-    if (document.getElementById('contentEditor').value) {
+    if (document.getElementById('contentEditor').value && document.getElementById('contentTitle').value) {
         saveContent();
     }
 }, 30000);
+
+// Close modal on escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeExportModal();
+    }
+});
 </script>
-
-<style>
-.container-fluid {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.content-textarea {
-    width: 100%;
-    min-height: 500px;
-    border: none;
-    padding: 20px;
-    font-size: 16px;
-    line-height: 1.6;
-    font-family: 'Georgia', serif;
-    resize: vertical;
-}
-
-.content-textarea:focus {
-    outline: none;
-}
-
-.editor-header {
-    padding: 20px 20px 0 20px;
-}
-
-.editor-footer {
-    padding: 15px 20px;
-    border-top: 1px solid #e0e0e0;
-    background: #f8f9fa;
-}
-
-.seo-panel {
-    position: sticky;
-    top: 20px;
-}
-
-.score-display {
-    text-align: center;
-    margin: 30px 0;
-}
-
-.score-circle {
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    border: 10px solid #ddd;
-    margin-bottom: 15px;
-    transition: all 0.3s;
-}
-
-.score-circle #scoreValue {
-    font-size: 48px;
-    font-weight: bold;
-}
-
-.score-label {
-    font-size: 18px;
-    color: #666;
-}
-
-.score-excellent {
-    border-color: #28a745;
-    color: #28a745;
-}
-
-.score-good {
-    border-color: #ffc107;
-    color: #ffc107;
-}
-
-.score-fair {
-    border-color: #fd7e14;
-    color: #fd7e14;
-}
-
-.score-poor {
-    border-color: #dc3545;
-    color: #dc3545;
-}
-
-.score-grade {
-    font-size: 32px;
-    font-weight: bold;
-    color: #333;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin: 20px 0;
-}
-
-.stat-item {
-    text-align: center;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-}
-
-.stat-label {
-    display: block;
-    font-size: 12px;
-    color: #666;
-    margin-bottom: 5px;
-}
-
-.stat-number {
-    display: block;
-    font-size: 24px;
-    font-weight: bold;
-    color: #333;
-}
-
-.seo-issues, .seo-suggestions {
-    margin-top: 20px;
-}
-
-.seo-issues h4, .seo-suggestions h4 {
-    font-size: 14px;
-    margin-bottom: 10px;
-    color: #333;
-}
-
-.seo-issues ul, .seo-suggestions ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.issue-item {
-    padding: 8px;
-    margin: 5px 0;
-    background: #fff3cd;
-    border-left: 3px solid #ffc107;
-    font-size: 13px;
-}
-
-.suggestion-item {
-    padding: 8px;
-    margin: 5px 0;
-    background: #d1ecf1;
-    border-left: 3px solid #17a2b8;
-    font-size: 13px;
-}
-</style>
 {% endblock %}
