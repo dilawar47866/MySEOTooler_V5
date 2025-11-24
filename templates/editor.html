@@ -15,13 +15,13 @@
     }
     
     footer {
-        display: none; /* Hide footer on editor page for max space */
+        display: none;
     }
     
     /* Editor Container */
     .editor-container {
         display: flex;
-        height: calc(100vh - 72px); /* Subtract navbar height */
+        height: calc(100vh - 72px);
         flex-direction: column;
         background: #f5f7fa;
     }
@@ -35,6 +35,7 @@
         justify-content: space-between;
         align-items: center;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        flex-shrink: 0;
     }
     .editor-header h1 {
         font-size: 1.5em;
@@ -60,6 +61,7 @@
         gap: 30px;
         align-items: center;
         overflow-x: auto;
+        flex-shrink: 0;
     }
     
     /* Score Circle */
@@ -140,6 +142,7 @@
         gap: 8px;
         flex-wrap: wrap;
         overflow-x: auto;
+        flex-shrink: 0;
     }
     
     .ai-btn {
@@ -184,6 +187,7 @@
         display: flex;
         flex: 1;
         overflow: hidden;
+        min-height: 0;
     }
     
     /* Left Panel - Editor */
@@ -192,6 +196,7 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        min-height: 0;
     }
     
     /* Title & Keyword Inputs */
@@ -199,6 +204,7 @@
         background: white;
         padding: 20px;
         border-bottom: 1px solid #e0e0e0;
+        flex-shrink: 0;
     }
     .editor-inputs input {
         width: 100%;
@@ -224,6 +230,7 @@
         border-bottom: 1px solid #e0e0e0;
         display: flex;
         gap: 5px;
+        flex-shrink: 0;
     }
     .format-btn {
         padding: 6px 12px;
@@ -235,24 +242,30 @@
     }
     .format-btn:hover { background: #f0f0f0; }
     
+    /* Editor Content */
     .editor-content {
         flex: 1;
-        padding: 20px;
         overflow-y: auto;
+        overflow-x: hidden;
         background: #fafafa;
+        padding: 20px;
+        min-height: 0;
     }
     
+    /* Textarea */
     #contentEditor {
         width: 100%;
-        min-height: 100%;
+        height: auto;
+        min-height: calc(100vh - 400px);
         border: 2px solid #e0e0e0;
         border-radius: 8px;
         padding: 25px;
         font-size: 1.05em;
         line-height: 1.8;
         font-family: Georgia, serif;
-        resize: none;
+        resize: vertical;
         background: white;
+        display: block;
     }
     #contentEditor:focus {
         outline: none;
@@ -266,8 +279,10 @@
         background: white;
         border-left: 1px solid #e0e0e0;
         overflow-y: auto;
+        overflow-x: hidden;
         display: flex;
         flex-direction: column;
+        min-height: 0;
     }
     
     .panel-header {
@@ -278,9 +293,13 @@
         position: sticky;
         top: 0;
         z-index: 10;
+        flex-shrink: 0;
     }
     
-    .panel-content { padding: 15px; }
+    .panel-content {
+        padding: 15px;
+        flex: 1;
+    }
     
     #issuesList, #suggestionsList {
         list-style: none;
@@ -358,7 +377,7 @@
     /* Notification */
     .notification {
         position: fixed;
-        top: 90px; /* Below navbar */
+        top: 90px;
         right: 20px;
         background: white;
         padding: 15px 20px;
@@ -404,6 +423,25 @@
         text-align: center;
         padding: 20px;
         color: #4F46E5;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 1200px) {
+        .suggestions-panel {
+            width: 300px;
+        }
+    }
+    
+    @media (max-width: 992px) {
+        .editor-main {
+            flex-direction: column;
+        }
+        .suggestions-panel {
+            width: 100%;
+            max-height: 300px;
+            border-left: none;
+            border-top: 1px solid #e0e0e0;
+        }
     }
 </style>
 {% endblock %}
