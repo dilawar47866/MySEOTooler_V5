@@ -182,7 +182,7 @@
         transform: none;
     }
     
-    /* Main Content Area */
+    /* Main Content Area - CRITICAL FIX */
     .editor-main {
         display: flex;
         flex: 1;
@@ -190,13 +190,14 @@
         min-height: 0;
     }
     
-    /* Left Panel - Editor */
+    /* Left Panel - Editor - CRITICAL FIX */
     .editor-panel {
         flex: 2;
         display: flex;
         flex-direction: column;
         overflow: hidden;
         min-height: 0;
+        background: white;
     }
     
     /* Title & Keyword Inputs */
@@ -242,46 +243,46 @@
     }
     .format-btn:hover { background: #f0f0f0; }
     
-    /* Editor Content */
+    /* Editor Content - REMOVED PADDING, REMOVED BACKGROUND */
     .editor-content {
         flex: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
-        background: #fafafa;
-        padding: 20px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
         min-height: 0;
     }
     
-    /* Textarea */
+    /* Textarea - COMPLETE FIX */
     #contentEditor {
         width: 100%;
-        height: auto;
-        min-height: calc(100vh - 400px);
-        border: 2px solid #e0e0e0;
-        border-radius: 8px;
+        height: 100%;
+        border: none;
+        border-left: 1px solid #e0e0e0;
+        border-right: 1px solid #e0e0e0;
         padding: 25px;
         font-size: 1.05em;
         line-height: 1.8;
         font-family: Georgia, serif;
-        resize: vertical;
+        resize: none;
         background: white;
         display: block;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
     #contentEditor:focus {
         outline: none;
-        border-color: #4F46E5;
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        border-left-color: #4F46E5;
+        border-right-color: #4F46E5;
     }
     
-    /* Right Panel - SEO */
+    /* Right Panel - SEO - COMPLETE FIX */
     .suggestions-panel {
         width: 350px;
         background: white;
         border-left: 1px solid #e0e0e0;
-        overflow-y: auto;
-        overflow-x: hidden;
         display: flex;
         flex-direction: column;
+        overflow: hidden;
         min-height: 0;
     }
     
@@ -290,15 +291,14 @@
         color: white;
         padding: 15px;
         font-weight: 600;
-        position: sticky;
-        top: 0;
-        z-index: 10;
         flex-shrink: 0;
     }
     
     .panel-content {
         padding: 15px;
         flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
     
     #issuesList, #suggestionsList {
