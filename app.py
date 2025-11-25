@@ -96,9 +96,17 @@ except ImportError:
 
 try:
     from nltk.tokenize import sent_tokenize
+    import nltk
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt', quiet=True)
 except ImportError:
     def sent_tokenize(text):
-        return text.split('.')
+        # Better fallback without NLTK
+        import re
+        sentences = re.split(r'[.!?]+', text)
+        return [s.strip() for s in sentences if s.strip()]
 
 
 # ============================================================================
