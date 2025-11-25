@@ -6,60 +6,84 @@
 <div class="container-fluid py-5">
     <div class="text-center mb-5">
         <h1 class="fw-bold display-5">Simple, Transparent Pricing</h1>
-        <p class="text-muted lead">Unlock the full power of AI SEO tools.</p>
+        <p class="text-muted lead">Choose the plan that fits your content needs.</p>
     </div>
 
-    <div class="row justify-content-center align-items-center">
+    <div class="row justify-content-center align-items-stretch">
         
-        <!-- Free Plan -->
+        <!-- STARTER (Free) -->
         <div class="col-md-4">
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body p-5">
-                    <h5 class="fw-bold text-muted text-uppercase mb-4">Free Starter</h5>
+            <div class="card border-0 shadow-sm mb-4 h-100">
+                <div class="card-body p-5 d-flex flex-column">
+                    <h5 class="fw-bold text-muted text-uppercase mb-4">Starter</h5>
                     <h2 class="display-4 fw-bold mb-4">$0<span class="fs-5 text-muted fw-normal">/mo</span></h2>
                     
-                    <ul class="list-unstyled mb-5">
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Credits / month</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Basic AI Editor</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Readability Checker</li>
-                        <li class="mb-2 text-muted"><i class="fas fa-times me-2"></i> Competitor Analysis</li>
-                        <li class="mb-2 text-muted"><i class="fas fa-times me-2"></i> Real Keyword Data</li>
+                    <ul class="list-unstyled mb-5 flex-grow-1">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Requests/mo</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Basic SEO Tools</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Standard Support</li>
+                        <li class="mb-2 text-muted"><i class="fas fa-times me-2"></i> Competitor Spy</li>
                         <li class="mb-2 text-muted"><i class="fas fa-times me-2"></i> Bulk Generators</li>
                     </ul>
 
-                    {% if current_user.is_authenticated and current_user.tier == 'free' %}
-                        <button class="btn btn-outline-primary w-100 py-3 disabled">Current Plan</button>
-                    {% else %}
+                    <!-- Logic to check if this is current plan -->
+                    {% if not current_user.is_authenticated %}
                         <a href="/signup" class="btn btn-outline-primary w-100 py-3">Get Started</a>
+                    {% elif current_user.tier|lower == 'free' %}
+                        <button class="btn btn-outline-secondary w-100 py-3" disabled>Current Plan</button>
+                    {% else %}
+                        <!-- If they are pro/enterprise, they can downgrade (logic not implemented, so just show button) -->
+                        <button class="btn btn-outline-primary w-100 py-3" disabled>Included</button>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Pro Plan -->
+        <!-- PRO KING -->
         <div class="col-md-4">
-            <div class="card border-primary border-2 shadow mb-4 position-relative">
+            <div class="card border-primary border-2 shadow mb-4 h-100 position-relative">
                 <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary px-3 py-2">
-                    MOST POPULAR
+                    POPULAR
                 </span>
-                <div class="card-body p-5">
-                    <h5 class="fw-bold text-primary text-uppercase mb-4">Pro Marketer</h5>
+                <div class="card-body p-5 d-flex flex-column">
+                    <h5 class="fw-bold text-primary text-uppercase mb-4">Pro King</h5>
                     <h2 class="display-4 fw-bold mb-4">$29<span class="fs-5 text-muted fw-normal">/mo</span></h2>
                     
-                    <ul class="list-unstyled mb-5">
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Credits</strong> / month</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Competitor Spy</strong></li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Real Keyword Volume</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Keyword Clustering</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> All Technical Tools</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Priority Support</li>
+                    <ul class="list-unstyled mb-5 flex-grow-1">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Requests/mo</strong></li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Competitor Spy</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Bulk Image SEO</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Priority Email Support</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> All Pro Tools</li>
                     </ul>
 
-                    {% if current_user.is_authenticated and current_user.tier == 'pro' %}
-                        <button class="btn btn-primary w-100 py-3 disabled">Current Plan</button>
+                    {% if current_user.is_authenticated and 'pro' in current_user.tier|lower %}
+                        <button class="btn btn-primary w-100 py-3" disabled>Current Plan</button>
                     {% else %}
-                        <!-- In a real app, this would link to Stripe -->
-                        <button class="btn btn-primary w-100 py-3" onclick="alert('Stripe integration would go here!')">Upgrade to Pro</button>
+                        <button class="btn btn-primary w-100 py-3" onclick="window.open('https://buy.stripe.com/test_link_here', '_blank')">Upgrade to Pro King</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ENTERPRISE -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm mb-4 h-100">
+                <div class="card-body p-5 d-flex flex-column">
+                    <h5 class="fw-bold text-dark text-uppercase mb-4">Enterprise</h5>
+                    <h2 class="display-4 fw-bold mb-4">$99<span class="fs-5 text-muted fw-normal">/mo</span></h2>
+                    
+                    <ul class="list-unstyled mb-5 flex-grow-1">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Unlimited AI</strong></li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> All Pro Features</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> API Access</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Dedicated Account Manager</li>
+                    </ul>
+
+                    {% if current_user.is_authenticated and 'enterprise' in current_user.tier|lower %}
+                        <button class="btn btn-dark w-100 py-3" disabled>Current Plan</button>
+                    {% else %}
+                        <button class="btn btn-outline-dark w-100 py-3" onclick="window.location.href='mailto:support@myseokingtool.com'">Contact Sales</button>
                     {% endif %}
                 </div>
             </div>
