@@ -1,59 +1,97 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto">
-    <h2 class="text-3xl font-bold text-slate-800 mb-8">Welcome back, {{ current_user.username }}!</h2>
+<div class="container-fluid mt-4">
+    <!-- Welcome Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3">Dashboard</h1>
+            <p class="text-muted">Welcome back, {{ current_user.username }}! You have <strong>{{ limits['ai_requests_per_month'] - current_user.ai_requests_this_month }}</strong> AI credits remaining.</p>
+        </div>
+        <a href="/editor" class="btn btn-primary"><i class="fas fa-plus"></i> New Article</a>
+    </div>
 
-    <!-- Stats Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <div class="text-slate-500 text-sm font-medium">Content Generated</div>
-            <div class="text-3xl font-bold text-slate-800 mt-2">{{ total_content }} / {{ limits['content_per_month'] }}</div>
+    <!-- Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-primary text-white h-100">
+                <div class="card-body">
+                    <h5>Total Content</h5>
+                    <h2 class="fw-bold">{{ total_content }}</h2>
+                </div>
+            </div>
         </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <div class="text-slate-500 text-sm font-medium">Total Words</div>
-            <div class="text-3xl font-bold text-blue-600 mt-2">{{ "{:,}".format(total_words) }}</div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <h5 class="text-muted">Total Words</h5>
+                    <h2 class="fw-bold">{{ total_words }}</h2>
+                </div>
+            </div>
         </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-            <div class="text-slate-500 text-sm font-medium">Avg SEO Score</div>
-            <div class="text-3xl font-bold text-green-500 mt-2">{{ avg_score }}</div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <h5 class="text-muted">Avg SEO Score</h5>
+                    <h2 class="fw-bold text-success">{{ avg_score }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <h5 class="text-muted">Current Plan</h5>
+                    <h2 class="fw-bold text-uppercase">{{ current_user.tier }}</h2>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Quick Tools Grid -->
-    <h3 class="text-xl font-bold text-slate-800 mb-6">Quick Access</h3>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <!-- Card 1 -->
-        <a href="{{ url_for('content_generator') }}" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition border border-slate-100 text-center group">
-            <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition">
-                <i class="fas fa-pen-fancy text-xl"></i>
+    <!-- TOOLS GRID -->
+    <h4 class="mb-3 text-muted">SEO Tools Suite</h4>
+    <div class="row g-4">
+        <!-- Content Tools -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-header bg-white fw-bold"><i class="fas fa-pen-nib text-primary"></i> Content Creation</div>
+                <div class="list-group list-group-flush">
+                    <a href="/editor" class="list-group-item list-group-item-action">AI SEO Editor</a>
+                    <a href="/content-outline" class="list-group-item list-group-item-action">Outline Generator</a>
+                    <a href="/content-brief" class="list-group-item list-group-item-action">Content Brief Generator</a>
+                    <a href="/content-library" class="list-group-item list-group-item-action">My Content Library</a>
+                </div>
             </div>
-            <h4 class="font-bold text-slate-700">AI Writer</h4>
-        </a>
+        </div>
 
-        <!-- Card 2 -->
-        <a href="{{ url_for('keyword_research') }}" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition border border-slate-100 text-center group">
-            <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition">
-                <i class="fas fa-search text-xl"></i>
+        <!-- Technical SEO -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-header bg-white fw-bold"><i class="fas fa-cogs text-success"></i> Technical SEO</div>
+                <div class="list-group list-group-flush">
+                    <a href="/competitor-analyzer" class="list-group-item list-group-item-action">Competitor Analysis</a>
+                    <a href="/robots-generator" class="list-group-item list-group-item-action">Robots.txt Generator</a>
+                    <a href="/sitemap-generator" class="list-group-item list-group-item-action">Sitemap Generator</a>
+                    <a href="/schema-generator" class="list-group-item list-group-item-action">Schema Markup</a>
+                </div>
             </div>
-            <h4 class="font-bold text-slate-700">Keywords</h4>
-        </a>
+        </div>
 
-        <!-- Card 3 -->
-        <a href="{{ url_for('social_posts') }}" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition border border-slate-100 text-center group">
-            <div class="w-12 h-12 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition">
-                <i class="fas fa-share-alt text-xl"></i>
+        <!-- Image & Social -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-header bg-white fw-bold"><i class="fas fa-images text-warning"></i> Images & Social</div>
+                <div class="list-group list-group-flush">
+                    <a href="/alt-text-generator" class="list-group-item list-group-item-action">Alt Text Generator</a>
+                    <a href="/image-seo" class="list-group-item list-group-item-action">Bulk Image SEO Check</a>
+                    <a href="/social-posts" class="list-group-item list-group-item-action">Social Media Posts</a>
+                    <a href="/youtube-script" class="list-group-item list-group-item-action">YouTube Script Writer</a>
+                </div>
             </div>
-            <h4 class="font-bold text-slate-700">Social Posts</h4>
-        </a>
-
-        <!-- Card 4 -->
-        <a href="{{ url_for('competitor_analyzer') }}" class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition border border-slate-100 text-center group">
-            <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition">
-                <i class="fas fa-spy text-xl"></i>
-            </div>
-            <h4 class="font-bold text-slate-700">Competitor Spy</h4>
-        </a>
+        </div>
     </div>
 </div>
+
+<style>
+.hover-card:hover { transform: translateY(-5px); transition: 0.3s ease; }
+</style>
 {% endblock %}
