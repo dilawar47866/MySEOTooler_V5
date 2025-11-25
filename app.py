@@ -329,7 +329,7 @@ def api_generate_seo_terms():
         return jsonify({'success': True, 'terms': terms})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- NEW: PAA Questions Generator ---
+# --- PAA Questions Generator ---
 @app.route('/api/generate-questions', methods=['POST'])
 @login_required
 def api_generate_questions():
@@ -351,6 +351,43 @@ def api_generate_questions():
         
         return jsonify({'success': True, 'questions': questions})
     except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- NEW: Internal Link Suggester ---
+@app.route('/api/suggest-internal-links', methods=['POST'])
+@login_required
+def api_suggest_internal_links():
+    try:
+        data = request.get_json()
+        search = data.get('keyword', '')
+        current_id = data.get('current_id')
+        
+        # Search for other posts by user where title is similar
+        query = Content.query.filter(
+            Content.user_id == current_user.id,
+            Content.title.ilike(f'%{search}%')
+        )
+        
+        # Exclude the current post if we are editing one
+        if current_id:
+            try:
+                query = query.filter(Content.id != int(current_id))
+            except: pass
+            
+        results = query.limit(5).all()
+        
+        # Fallback: If no matches, show recent posts
+        if not results:
+            base_query = Content.query.filter(Content.user_id == current_user.id)
+            if current_id:
+                try:
+                    base_query = base_query.filter(Content.id != int(current_id))
+                except: pass
+            results = base_query.order_by(Content.updated_at.desc()).limit(5).all()
+
+        links = [{'id': c.id, 'title': c.title} for c in results]
+        return jsonify({'success': True, 'links': links})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
 
 # --- Keyword Clusters ---
 @app.route('/api/generate-clusters', methods=['POST'])
