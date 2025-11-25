@@ -11,79 +11,82 @@
 
     <div class="row justify-content-center align-items-stretch">
         
-        <!-- STARTER (Free) -->
+        <!-- FREE PLAN (Unchanged) -->
         <div class="col-md-4">
             <div class="card border-0 shadow-sm mb-4 h-100">
-                <div class="card-body p-5 d-flex flex-column">
+                <div class="card-body p-5">
                     <h5 class="fw-bold text-muted text-uppercase mb-4">Starter</h5>
-                    <h2 class="display-4 fw-bold mb-4">$0<span class="fs-5 text-muted fw-normal">/mo</span></h2>
-                    
-                    <ul class="list-unstyled mb-5 flex-grow-1">
+                    <h2 class="display-4 fw-bold mb-4">$0</h2>
+                    <ul class="list-unstyled mb-5">
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Requests/mo</li>
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Basic SEO Tools</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Standard Support</li>
-                        <li class="mb-2 text-muted"><i class="fas fa-times me-2"></i> Competitor Spy</li>
-                        <li class="mb-2 text-muted"><i class="fas fa-times me-2"></i> Bulk Generators</li>
                     </ul>
-
-                    <!-- Logic to check if this is current plan -->
                     {% if not current_user.is_authenticated %}
                         <a href="/signup" class="btn btn-outline-primary w-100 py-3">Get Started</a>
-                    {% elif current_user.tier|lower == 'free' %}
+                    {% elif current_user.tier == 'free' %}
                         <button class="btn btn-outline-secondary w-100 py-3" disabled>Current Plan</button>
-                    {% else %}
-                        <!-- If they are pro/enterprise, they can downgrade (logic not implemented, so just show button) -->
-                        <button class="btn btn-outline-primary w-100 py-3" disabled>Included</button>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- PRO KING -->
+        <!-- PRO KING (PayPal Integration) -->
         <div class="col-md-4">
             <div class="card border-primary border-2 shadow mb-4 h-100 position-relative">
-                <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary px-3 py-2">
-                    POPULAR
-                </span>
-                <div class="card-body p-5 d-flex flex-column">
+                <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary px-3 py-2">POPULAR</span>
+                <div class="card-body p-5">
                     <h5 class="fw-bold text-primary text-uppercase mb-4">Pro King</h5>
                     <h2 class="display-4 fw-bold mb-4">$29<span class="fs-5 text-muted fw-normal">/mo</span></h2>
-                    
-                    <ul class="list-unstyled mb-5 flex-grow-1">
+                    <ul class="list-unstyled mb-5">
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Requests/mo</strong></li>
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Competitor Spy</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Bulk Image SEO</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Priority Email Support</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> All Pro Tools</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Bulk Tools</li>
                     </ul>
 
                     {% if current_user.is_authenticated and 'pro' in current_user.tier|lower %}
                         <button class="btn btn-primary w-100 py-3" disabled>Current Plan</button>
                     {% else %}
-                        <button class="btn btn-primary w-100 py-3" onclick="window.open('https://buy.stripe.com/test_link_here', '_blank')">Upgrade to Pro King</button>
+                        <!-- PAYPAL FORM -->
+                        <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+                            <input type="hidden" name="cmd" value="_xclick">
+                            <input type="hidden" name="business" value="dilawarahsanrizvi7@gmail.com">
+                            <input type="hidden" name="item_name" value="Pro King Subscription - MySEO King">
+                            <input type="hidden" name="amount" value="29.00">
+                            <input type="hidden" name="currency_code" value="USD">
+                            <!-- Auto Redirect after payment -->
+                            <input type="hidden" name="return" value="https://myseokingtool.com/payment/success/pro">
+                            <button type="submit" class="btn btn-primary w-100 py-3">Pay with PayPal</button>
+                        </form>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- ENTERPRISE -->
+        <!-- ENTERPRISE (PayPal Integration) -->
         <div class="col-md-4">
             <div class="card border-0 shadow-sm mb-4 h-100">
-                <div class="card-body p-5 d-flex flex-column">
+                <div class="card-body p-5">
                     <h5 class="fw-bold text-dark text-uppercase mb-4">Enterprise</h5>
                     <h2 class="display-4 fw-bold mb-4">$99<span class="fs-5 text-muted fw-normal">/mo</span></h2>
-                    
-                    <ul class="list-unstyled mb-5 flex-grow-1">
+                    <ul class="list-unstyled mb-5">
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Unlimited AI</strong></li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> All Pro Features</li>
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i> API Access</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Dedicated Account Manager</li>
                     </ul>
 
                     {% if current_user.is_authenticated and 'enterprise' in current_user.tier|lower %}
                         <button class="btn btn-dark w-100 py-3" disabled>Current Plan</button>
                     {% else %}
-                        <button class="btn btn-outline-dark w-100 py-3" onclick="window.location.href='mailto:support@myseokingtool.com'">Contact Sales</button>
+                         <!-- PAYPAL FORM -->
+                         <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+                            <input type="hidden" name="cmd" value="_xclick">
+                            <input type="hidden" name="business" value="dilawarahsanrizvi7@gmail.com">
+                            <input type="hidden" name="item_name" value="Enterprise Plan - MySEO King">
+                            <input type="hidden" name="amount" value="99.00">
+                            <input type="hidden" name="currency_code" value="USD">
+                            <!-- Auto Redirect after payment -->
+                            <input type="hidden" name="return" value="https://myseokingtool.com/payment/success/enterprise">
+                            <button type="submit" class="btn btn-outline-dark w-100 py-3">Pay with PayPal</button>
+                        </form>
                     {% endif %}
                 </div>
             </div>
