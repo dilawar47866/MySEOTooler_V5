@@ -22,10 +22,8 @@ import validators
 from functools import wraps
 
 # ============================================================================
-# 1. CONFIGURATION & NLTK
+# 1. SAFE IMPORTS & CONFIG
 # ============================================================================
-
-# Safe NLTK Import
 try:
     import nltk
     from nltk.tokenize import word_tokenize, sent_tokenize
@@ -41,18 +39,14 @@ except ImportError:
 
 def safe_sent_tokenize(text):
     if NLTK_AVAILABLE:
-        try:
-            return sent_tokenize(text)
-        except:
-            pass
+        try: return sent_tokenize(text)
+        except: pass
     return [s.strip() for s in re.split(r'[.!?]+', text) if s.strip()]
 
 def safe_word_tokenize(text):
     if NLTK_AVAILABLE:
-        try:
-            return word_tokenize(text)
-        except:
-            pass
+        try: return word_tokenize(text)
+        except: pass
     return text.split()
 
 load_dotenv()
@@ -73,14 +67,12 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 limiter = Limiter(app=app, key_func=get_remote_address, storage_uri="memory://")
-
 openai_api_key = os.getenv('OPENAI_API_KEY')
 client = OpenAI(api_key=openai_api_key) if openai_api_key else None
 
 # ============================================================================
-# 2. DATABASE MODELS
+# 2. MODELS
 # ============================================================================
-
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -97,18 +89,13 @@ class User(UserMixin, db.Model):
 
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-
     def check_password(self, password):
         return bcrypt.check_password_hash(self.password_hash, password)
-
     def reset_monthly_limits(self):
         now = datetime.utcnow()
         if self.last_reset_date is None or self.last_reset_date.month != now.month:
-            self.content_count = 0
-            self.ai_requests_this_month = 0
-            self.last_reset_date = now
+            self.content_count = 0; self.ai_requests_this_month = 0; self.last_reset_date = now
             db.session.commit()
-
     def get_limits(self):
         limits = {
             'free': {'content_per_month': 5, 'ai_requests_per_month': 50, 'export_formats': ['txt', 'html']},
@@ -116,18 +103,12 @@ class User(UserMixin, db.Model):
             'enterprise': {'content_per_month': 999999, 'ai_requests_per_month': 999999, 'export_formats': ['txt', 'html', 'md', 'docx']}
         }
         return limits.get(self.tier, limits['free'])
-
     def can_create_content(self):
-        self.reset_monthly_limits()
-        return self.content_count < self.get_limits()['content_per_month']
-
+        self.reset_monthly_limits(); return self.content_count < self.get_limits()['content_per_month']
     def can_use_ai(self):
-        self.reset_monthly_limits()
-        return self.ai_requests_this_month < self.get_limits()['ai_requests_per_month']
-
+        self.reset_monthly_limits(); return self.ai_requests_this_month < self.get_limits()['ai_requests_per_month']
     def increment_ai_usage(self):
-        self.ai_requests_this_month += 1
-        db.session.commit()
+        self.ai_requests_this_month += 1; db.session.commit()
 
 class Content(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -140,60 +121,42 @@ class Content(db.Model):
     word_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    
     def to_dict(self):
-        return {
-            'id': self.id,
-            'title': self.title,
-            'keyword': self.keyword,
-            'content': self.content,
-            'html_content': self.html_content,
-            'seo_score': self.seo_score,
-            'word_count': self.word_count,
-            'created_at': self.created_at.strftime('%Y-%m-%d')
-        }
+        return {'id': self.id, 'title': self.title, 'keyword': self.keyword, 'content': self.content, 
+                'html_content': self.html_content, 'seo_score': self.seo_score, 'word_count': self.word_count, 
+                'created_at': self.created_at.strftime('%Y-%m-%d')}
 
 @login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+def load_user(user_id): return User.query.get(int(user_id))
 
 # ============================================================================
 # 3. HELPER FUNCTIONS
 # ============================================================================
-
 def call_openai(prompt, max_tokens=1000, system_prompt="You are an SEO expert.", temperature=0.7):
-    if not client:
-        return {"error": "OpenAI API key not configured."}
+    if not client: return {"error": "OpenAI API key not configured."}
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=max_tokens,
-            temperature=temperature
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
+            max_tokens=max_tokens, temperature=temperature
         )
         return {"success": True, "content": response.choices[0].message.content}
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception as e: return {"error": str(e)}
 
 def api_login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return jsonify({'error': 'Authentication required'}), 401
+        if not current_user.is_authenticated: return jsonify({'error': 'Authentication required'}), 401
         return f(*args, **kwargs)
     return decorated_function
 
 # ============================================================================
-# 4. PAGE ROUTES
+# 4. CORE ROUTES (Landing, Auth, Dashboard)
 # ============================================================================
-
 @app.route('/')
 def landing():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+    if current_user.is_authenticated: return redirect(url_for('dashboard'))
     return render_template('landing.html')
 
 @app.route('/dashboard')
@@ -209,34 +172,28 @@ def dashboard():
 
 @app.route('/index')
 @login_required
-def index():
-    return redirect(url_for('dashboard'))
+def index(): return redirect(url_for('dashboard'))
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+    if current_user.is_authenticated: return redirect(url_for('dashboard'))
     if request.method == 'POST':
         try:
             data = request.get_json() if request.is_json else request.form
-            if User.query.filter_by(email=data.get('email').lower()).first():
-                return jsonify({'error': 'Email taken'}), 400
+            if User.query.filter_by(email=data.get('email').lower()).first(): return jsonify({'error': 'Email taken'}), 400
             user = User(username=data.get('username'), email=data.get('email').lower())
             user.set_password(data.get('password'))
-            if User.query.count() == 0:
-                user.is_admin = True
+            if User.query.count() == 0: user.is_admin = True
             db.session.add(user)
             db.session.commit()
             login_user(user)
             return jsonify({'success': True, 'redirect': url_for('dashboard')})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
+        except Exception as e: return jsonify({'error': str(e)}), 500
     return render_template('signup.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+    if current_user.is_authenticated: return redirect(url_for('dashboard'))
     if request.method == 'POST':
         data = request.get_json() if request.is_json else request.form
         user = User.query.filter_by(email=data.get('email').lower()).first()
@@ -254,23 +211,46 @@ def logout():
 
 @app.route('/profile')
 @login_required
-def profile():
-    return render_template('profile.html', user=current_user, limits=current_user.get_limits())
+def profile(): return render_template('profile.html', user=current_user, limits=current_user.get_limits())
 
 @app.route('/pricing')
-def pricing():
-    @app.route('/admin')
+def pricing(): return render_template('pricing.html')
+
+# ============================================================================
+# 5. ADMIN ROUTES
+# ============================================================================
+@app.route('/admin')
 @login_required
 def admin():
-    # Security Check: Only Admins allowed
-    if not current_user.is_admin:
-        return redirect(url_for('dashboard'))
-    
+    if not current_user.is_admin: return redirect(url_for('dashboard'))
     users = User.query.order_by(User.created_at.desc()).all()
-    total_users = len(users)
-    total_content = Content.query.count()return render_template('pricing.html')
+    return render_template('admin.html', users=users, total_users=len(users), total_content=Content.query.count())
 
-# Tool Routes (Templates)
+@app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
+@login_required
+def admin_toggle_user(user_id):
+    if not current_user.is_admin: return jsonify({'error': 'Unauthorized'}), 403
+    user = User.query.get_or_404(user_id)
+    if user.id == current_user.id: return jsonify({'error': 'Cannot ban yourself'}), 400
+    user.is_active = not user.is_active
+    db.session.commit()
+    return jsonify({'success': True, 'status': user.is_active})
+
+@app.route('/admin/user/<int:user_id>/tier', methods=['POST'])
+@login_required
+def admin_change_tier(user_id):
+    if not current_user.is_admin: return jsonify({'error': 'Unauthorized'}), 403
+    user = User.query.get_or_404(user_id)
+    data = request.get_json()
+    if data.get('tier') in ['free', 'pro', 'enterprise']:
+        user.tier = data.get('tier')
+        db.session.commit()
+        return jsonify({'success': True, 'tier': user.tier})
+    return jsonify({'error': 'Invalid tier'}), 400
+
+# ============================================================================
+# 6. TOOL TEMPLATE ROUTES
+# ============================================================================
 @app.route('/keyword-research')
 @login_required
 def keyword_research(): return render_template('keyword_research.html')
@@ -289,8 +269,7 @@ def content_library():
 @login_required
 def editor():
     content = None
-    if request.args.get('id'):
-        content = Content.query.filter_by(id=request.args.get('id'), user_id=current_user.id).first()
+    if request.args.get('id'): content = Content.query.filter_by(id=request.args.get('id'), user_id=current_user.id).first()
     return render_template('editor.html', content=content)
 @app.route('/schema-generator')
 @login_required
@@ -348,15 +327,14 @@ def youtube_script(): return render_template('youtube_script.html')
 def email_subject(): return render_template('email_subject.html')
 
 # ============================================================================
-# 5. API ROUTES (CORE LOGIC)
+# 7. API ENDPOINTS
 # ============================================================================
 
-# --- Content Generator with Humanizer ---
+# Humanizer / AI Writer
 @app.route('/api/generate-content', methods=['POST'])
 @api_login_required
 def api_generate_content():
-    if not current_user.can_use_ai():
-        return jsonify({'error': 'Limit reached'}), 403
+    if not current_user.can_use_ai(): return jsonify({'error': 'Limit reached'}), 403
     try:
         data = request.get_json()
         keyword = data.get('keyword', '')
@@ -372,8 +350,7 @@ def api_generate_content():
         prompt = f"Write a {mode} style article about: {keyword}. Minimum 1000 words."
         result = call_openai(prompt, 2000, system_prompt=system, temperature=temp)
         
-        if 'error' in result:
-            return jsonify(result), 500
+        if 'error' in result: return jsonify(result), 500
         
         html = markdown.markdown(result['content'])
         score = 0
@@ -389,23 +366,18 @@ def api_generate_content():
         db.session.commit()
 
         return jsonify({'success': True, 'content': result['content'], 'html_content': html, 'id': c.id})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- WordPress Publisher ---
+# WordPress
 @app.route('/api/publish-wordpress', methods=['POST'])
 @api_login_required
 def api_publish_wordpress():
     try:
         data = request.get_json()
-        wp_url = data.get('url')
-        wp_user = data.get('user')
-        wp_pass = data.get('password')
-        title = data.get('title')
-        content = data.get('content')
+        wp_url, wp_user, wp_pass = data.get('url'), data.get('user'), data.get('password')
+        title, content = data.get('title'), data.get('content')
         
-        if not all([wp_url, wp_user, wp_pass]):
-            return jsonify({'error': 'Missing credentials'}), 400
+        if not all([wp_url, wp_user, wp_pass]): return jsonify({'error': 'Missing credentials'}), 400
         
         creds = f"{wp_user}:{wp_pass}"
         token = base64.b64encode(creds.encode()).decode('utf-8')
@@ -415,13 +387,11 @@ def api_publish_wordpress():
         payload = {'title': title, 'content': content, 'status': 'draft'}
         
         r = requests.post(endpoint, headers=headers, json=payload)
-        if r.status_code == 201:
-            return jsonify({'success': True, 'link': r.json().get('link')})
+        if r.status_code == 201: return jsonify({'success': True, 'link': r.json().get('link')})
         return jsonify({'error': f"WP Error: {r.text}"}), 400
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- General Utilities ---
+# General Tools
 @app.route('/api/generate-keywords', methods=['POST'])
 @api_login_required
 def api_generate_keywords():
@@ -513,22 +483,24 @@ def api_save_content():
 @api_login_required
 def api_export(id, fmt):
     c = Content.query.get_or_404(id)
-    if c.user_id != current_user.id:
-        return jsonify({'error': 'Auth'}), 403
-    if fmt == 'txt':
-        return send_file(BytesIO(c.content.encode()), download_name=f"{c.title}.txt", as_attachment=True)
+    if c.user_id != current_user.id: return jsonify({'error': 'Auth'}), 403
+    if fmt == 'txt': return send_file(BytesIO(c.content.encode()), download_name=f"{c.title}.txt", as_attachment=True)
     return jsonify({'error': 'Format not supported'}), 400
+
+# ============================================================================
+# 8. INIT & RUN
+# ============================================================================
 
 @app.route('/health')
 def health():
     return jsonify({'status': 'healthy'})
 
-# ============================================================================
-# 7. INIT & RUN
-# ============================================================================
-# This creates the database tables on Railway/Gunicorn start
+# This ensures tables exist when Gunicorn starts
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+    except Exception as e:
+        print(f"DB Warning: {e}")
 
 if __name__ == '__main__':
     app.run(debug=True, port=int(os.environ.get('PORT', 5001)))
