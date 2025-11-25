@@ -22,10 +22,51 @@ import json
 import textstat
 import validators
 from collections import Counter
-import nltk
-from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.corpus import stopwords
 from functools import wraps
+
+# NLTK imports with error handling
+try:
+    import nltk
+    from nltk.tokenize import word_tokenize, sent_tokenize
+    from nltk.corpus import stopwords
+    
+    # Download required NLTK data (only downloads if not present)
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt', quiet=True)
+    
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords', quiet=True)
+        
+    NLTK_AVAILABLE = True
+except ImportError:
+    NLTK_AVAILABLE = False
+    print("⚠️ NLTK not available - using fallback tokenization")
+
+# Fallback tokenization if NLTK fails
+def safe_sent_tokenize(text):
+    """Safe sentence tokenization with fallback"""
+    if NLTK_AVAILABLE:
+        try:
+            return sent_tokenize(text)
+        except Exception:
+            pass
+    # Fallback: simple sentence splitting
+    sentences = re.split(r'[.!?]+', text)
+    return [s.strip() for s in sentences if s.strip()]
+
+def safe_word_tokenize(text):
+    """Safe word tokenization with fallback"""
+    if NLTK_AVAILABLE:
+        try:
+            return word_tokenize(text)
+        except Exception:
+            pass
+    # Fallback: simple word splitting
+    return text.split()
 
 # Load environment
 load_dotenv()
@@ -115,7 +156,7 @@ class User(UserMixin, db.Model):
 
     def reset_monthly_limits(self):
         now = datetime.utcnow()
-        if self.last_reset_date.month != now.month or self.last_reset_date.year != now.year:
+        if self.last_reset_date is None or self.last_reset_date.month != now.month or self.last_reset_date.year != now.year:
             self.content_count = 0
             self.ai_requests_this_month = 0
             self.last_reset_date = now
@@ -163,8 +204,8 @@ class Content(db.Model):
             'html_content': self.html_content,
             'seo_score': self.seo_score,
             'word_count': self.word_count,
-            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M'),
-            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M'),
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else '',
+            'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M') if self.updated_at else '',
             'content_type': self.content_type
         }
 
@@ -197,6 +238,9 @@ def call_openai(prompt, max_tokens=1000):
 
 def calculate_seo_score(content, keyword):
     """Calculate basic SEO score"""
+    if not content:
+        return 0
+        
     score = 0
     content_lower = content.lower()
     keyword_lower = keyword.lower() if keyword else ""
@@ -240,21 +284,43 @@ def get_seo_grade(score):
         return 'F'
 
 # ============================================================================
-# ERROR HANDLERS
+# ERROR HANDLERS - WITH FALLBACK HTML
 # ============================================================================
 
 @app.errorhandler(404)
 def not_found(error):
     if request.path.startswith('/api/'):
         return jsonify({'error': 'Endpoint not found'}), 404
-    return render_template('404.html'), 404
+    try:
+        return render_template('404.html'), 404
+    except:
+        return '''
+        <!DOCTYPE html>
+        <html><head><title>404 - Not Found</title></head>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1>404 - Page Not Found</h1>
+            <p>The page you're looking for doesn't exist.</p>
+            <a href="/">Go Home</a>
+        </body></html>
+        ''', 404
 
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback()
     if request.path.startswith('/api/'):
         return jsonify({'error': 'Internal server error'}), 500
-    return render_template('500.html'), 500
+    try:
+        return render_template('500.html'), 500
+    except:
+        return '''
+        <!DOCTYPE html>
+        <html><head><title>500 - Server Error</title></head>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1>500 - Server Error</h1>
+            <p>Something went wrong. Please try again.</p>
+            <a href="/">Go Home</a>
+        </body></html>
+        ''', 500
 
 # ============================================================================
 # AUTHENTICATION ROUTES
@@ -740,7 +806,7 @@ def api_analyze_headline():
         total_words = word_count if word_count > 0 else 1
         word_balance = {
             'common': round((common_count / total_words) * 100),
-            'uncommon': round((uncommon_count / total_words) * 100),
+            'uncommon': round((uncommon_count / total_words) * 100) if uncommon_count > 0 else 0,
             'emotional': round((emotional_count / total_words) * 100),
             'power': round((power_word_count / total_words) * 100)
         }
@@ -797,7 +863,6 @@ Format as a simple numbered list, one keyword per line. Only provide the keyword
 
         result = call_openai(prompt, 500)
 
-        # Check if OpenAI returned an error
         if "error" in result:
             return jsonify({'error': result['error']}), 500
 
@@ -949,7 +1014,7 @@ def api_suggest_internal_links():
             meaningful_words = common_words - stop_words
 
             if len(meaningful_words) >= 5:
-                relevance = (len(meaningful_words) / len(current_words)) * 100
+                relevance = (len(meaningful_words) / len(current_words)) * 100 if current_words else 0
 
                 anchor_text = content_item.keyword if content_item.keyword else content_item.title
 
@@ -1059,13 +1124,14 @@ def api_check_plagiarism():
 
         all_content = Content.query.filter_by(user_id=current_user.id).all()
 
-        sentences = sent_tokenize(content)
+        # Use safe tokenization
+        sentences = safe_sent_tokenize(content)
 
         matches = []
         total_matched_sentences = 0
 
         for existing in all_content:
-            existing_sentences = sent_tokenize(existing.content)
+            existing_sentences = safe_sent_tokenize(existing.content)
 
             for sent in sentences:
                 sent_lower = sent.lower().strip()
@@ -1379,7 +1445,7 @@ def api_analyze_competitor():
         if not validators.url(url):
             return jsonify({'error': 'Invalid URL'}), 400
 
-        headers = {'User-Agent': 'Mozilla/5.0'}
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
         response = requests.get(url, headers=headers, timeout=10)
 
         if response.status_code != 200:
@@ -1388,7 +1454,7 @@ def api_analyze_competitor():
         soup = BeautifulSoup(response.content, 'html.parser')
 
         title_tag = soup.find('title')
-        title = title_tag.text if title_tag else 'No title found'
+        title = title_tag.text.strip() if title_tag else 'No title found'
 
         meta_desc_tag = soup.find('meta', attrs={'name': 'description'})
         meta_desc = meta_desc_tag['content'] if meta_desc_tag and meta_desc_tag.get('content') else 'No meta description'
@@ -1923,11 +1989,15 @@ BEST PRACTICES:
                 parsed_data['competition'] = line.split(':')[1].strip().split()[0]
             elif 'DIFFICULTY SCORE:' in line:
                 try:
-                    parsed_data['difficulty'] = int(re.search(r'\d+', line).group())
+                    match = re.search(r'\d+', line)
+                    if match:
+                        parsed_data['difficulty'] = int(match.group())
                 except:
                     pass
-            elif line.strip().startswith(('1.', '2.', '3.', '4.', '5.')) and 'RELATED' in response[:response.index(line) if line in response else 0]:
-                parsed_data['related_keywords'].append(line.split('.', 1)[1].strip())
+            elif line.strip().startswith(('1.', '2.', '3.', '4.', '5.')):
+                keyword_text = line.split('.', 1)[1].strip() if '.' in line else line.strip()
+                if keyword_text:
+                    parsed_data['related_keywords'].append(keyword_text)
 
         return jsonify({
             'success': True,
@@ -2378,6 +2448,14 @@ def admin_change_tier(user_id):
         return jsonify({'error': str(e)}), 500
 
 # ============================================================================
+# HEALTH CHECK FOR RAILWAY
+# ============================================================================
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()})
+
+# ============================================================================
 # INITIALIZE DATABASE
 # ============================================================================
 
@@ -2400,6 +2478,7 @@ if __name__ == '__main__':
     print(f"✅ OpenAI: {'Connected (' + openai_api_key[:15] + '...)' if client else '⚠️  Set OPENAI_API_KEY in Railway Variables'}")
     print(f"✅ Server: http://0.0.0.0:{port}")
     print(f"✅ Environment: {'Production' if not debug_mode else 'Development'}")
+    print(f"✅ NLTK: {'Available' if NLTK_AVAILABLE else 'Using fallback'}")
     print("="*70 + "\n")
 
     app.run(debug=debug_mode, host='0.0.0.0', port=port)
