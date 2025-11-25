@@ -1,316 +1,132 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid mt-3">
-    <div class="row">
-        <!-- LEFT SIDE: Editor -->
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                    <div class="input-group w-75">
-                        <span class="input-group-text bg-light">Title</span>
-                        <input type="text" id="docTitle" class="form-control fw-bold" value="{{ content.title if content else '' }}" placeholder="Article Title...">
-                    </div>
-                    <div>
-                        <span id="saveStatus" class="text-muted small me-2">Saved</span>
-                        <button class="btn btn-success btn-sm" onclick="saveContent()">
-                            <i class="fas fa-save"></i> Save
-                        </button>
-                    </div>
+<div class="container-fluid" style="height: calc(100vh - 80px);">
+    <div class="row h-100">
+        <!-- MAIN EDITOR AREA -->
+        <div class="col-lg-9 col-md-8 h-100 d-flex flex-column p-0 bg-white border-end">
+            <!-- Toolbar -->
+            <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
+                <div class="input-group w-50">
+                    <input type="text" id="docTitle" class="form-control border-0 bg-transparent fw-bold fs-5" 
+                           value="{{ content.title if content else '' }}" placeholder="Enter Article Title..." style="box-shadow: none;">
                 </div>
-
-                <!-- Toolbar -->
-                <div class="card-body border-bottom bg-light p-2">
-                    <button class="btn btn-sm btn-light" onclick="execCmd('bold')"><i class="fas fa-bold"></i></button>
-                    <button class="btn btn-sm btn-light" onclick="execCmd('italic')"><i class="fas fa-italic"></i></button>
-                    <button class="btn btn-sm btn-light" onclick="execCmd('formatBlock', 'H2')">H2</button>
-                    <button class="btn btn-sm btn-light" onclick="execCmd('formatBlock', 'H3')">H3</button>
-                    <button class="btn btn-sm btn-light" onclick="execCmd('insertUnorderedList')"><i class="fas fa-list-ul"></i></button>
-                    
-                    <div class="vr mx-2"></div>
-                    
-                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#aiModal">
-                        <i class="fas fa-magic"></i> AI Writer
+                <div>
+                    <span id="saveStatus" class="text-muted small me-3">Saved</span>
+                    <button class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#aiModal">
+                        <i class="fas fa-robot"></i> AI Writer
+                    </button>
+                    <button class="btn btn-success btn-sm rounded-pill px-3" onclick="saveContent()">
+                        <i class="fas fa-save"></i> Save
                     </button>
                 </div>
+            </div>
 
-                <!-- Editor Area -->
-                <div class="card-body p-0">
-                    <div id="editor" contenteditable="true" class="p-4" style="min-height: 600px; outline: none; font-size: 1.1rem; line-height: 1.6;">
-                        {% if content and content.html_content %}
-                            {{ content.html_content | safe }}
-                        {% else %}
-                            <p>Start writing or generate content with AI...</p>
-                        {% endif %}
-                    </div>
-                </div>
+            <!-- Formatting Bar -->
+            <div class="bg-white border-bottom p-2 sticky-top d-flex gap-2">
+                <button class="btn btn-sm btn-light" onclick="execCmd('bold')"><b>B</b></button>
+                <button class="btn btn-sm btn-light" onclick="execCmd('italic')"><i>I</i></button>
+                <button class="btn btn-sm btn-light" onclick="execCmd('formatBlock', 'H2')">H2</button>
+                <button class="btn btn-sm btn-light" onclick="execCmd('formatBlock', 'H3')">H3</button>
+                <button class="btn btn-sm btn-light" onclick="execCmd('insertUnorderedList')"><i class="fas fa-list"></i></button>
+                <button class="btn btn-sm btn-light" onclick="execCmd('createLink', prompt('Enter URL:', 'http://'))"><i class="fas fa-link"></i></button>
+            </div>
+
+            <!-- Writing Canvas -->
+            <div id="editor" contenteditable="true" class="flex-grow-1 p-5" 
+                 style="outline: none; overflow-y: auto; font-size: 18px; line-height: 1.8; max-width: 900px; margin: 0 auto; font-family: 'Georgia', serif; color: #333;">
+                {% if content and content.html_content %}
+                    {{ content.html_content | safe }}
+                {% else %}
+                    <p>Start writing here...</p>
+                {% endif %}
             </div>
         </div>
 
-        <!-- RIGHT SIDE: SEO Sidebar -->
-        <div class="col-md-4">
-            <div class="sticky-top" style="top: 20px;">
-                <!-- Score Card -->
-                <div class="card shadow-sm mb-3">
-                    <div class="card-body text-center">
-                        <h5 class="text-muted">SEO Score</h5>
-                        <div class="position-relative d-inline-block my-3">
-                            <div style="width: 100px; height: 100px; border-radius: 50%; background: conic-gradient(#28a745 0% 0%, #e9ecef 0% 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto;" id="scoreCircle">
-                                <span class="h2 fw-bold mb-0" id="scoreValue">0</span>
-                            </div>
-                        </div>
-                        <p id="scoreText" class="text-muted small">Needs Improvement</p>
+        <!-- SEO SIDEBAR -->
+        <div class="col-lg-3 col-md-4 h-100 bg-light p-0 overflow-auto border-start">
+            <div class="p-4">
+                <h6 class="fw-bold text-uppercase text-muted small mb-3">SEO Score</h6>
+                
+                <!-- Score Circle -->
+                <div class="d-flex justify-content-center mb-4">
+                    <div class="position-relative d-flex align-items-center justify-content-center shadow-sm bg-white" 
+                         id="scoreCircle" 
+                         style="width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(red 0%, #ddd 0%); transition: 0.5s;">
+                        <span class="h1 fw-bold mb-0" id="scoreValue">0</span>
                     </div>
                 </div>
 
-                <!-- Keyword Settings -->
-                <div class="card shadow-sm mb-3">
-                    <div class="card-header bg-white fw-bold">Target Keyword</div>
-                    <div class="card-body">
-                        <input type="text" id="targetKeyword" class="form-control mb-2" value="{{ content.keyword if content else '' }}" placeholder="Enter focus keyword">
-                        <small class="text-muted">Enter a keyword to calculate score.</small>
-                    </div>
+                <!-- Keyword Input -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold">Focus Keyword</label>
+                    <input type="text" id="targetKeyword" class="form-control" value="{{ content.keyword if content else '' }}" placeholder="e.g. digital marketing">
                 </div>
 
                 <!-- Checklist -->
-                <div class="card shadow-sm">
-                    <div class="card-header bg-white fw-bold">SEO Checklist</div>
-                    <ul class="list-group list-group-flush small">
-                        <li class="list-group-item d-flex justify-content-between">
-                            Word Count (> 800)
-                            <span id="checkWords" class="badge bg-secondary">0</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            Keyword in Title
-                            <span id="checkTitle" class="badge bg-danger"><i class="fas fa-times"></i></span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            Keyword in First Paragraph
-                            <span id="checkIntro" class="badge bg-danger"><i class="fas fa-times"></i></span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            Keyword Density (0.5% - 2.5%)
-                            <span id="checkDensity" class="badge bg-secondary">0%</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            Headings (H2/H3)
-                            <span id="checkHeadings" class="badge bg-secondary">0</span>
-                        </li>
-                    </ul>
-                </div>
+                <h6 class="fw-bold text-uppercase text-muted small mb-2">Optimization</h6>
+                <ul class="list-group list-group-flush rounded shadow-sm">
+                    <li class="list-group-item d-flex justify-content-between align-items-center small">
+                        <span>Word Count (>800)</span>
+                        <span id="checkWords" class="badge bg-secondary">0</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center small">
+                        <span>Title contains Keyword</span>
+                        <span id="checkTitle" class="badge bg-danger">No</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center small">
+                        <span>Intro contains Keyword</span>
+                        <span id="checkIntro" class="badge bg-danger">No</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center small">
+                        <span>Keyword Density</span>
+                        <span id="checkDensity" class="badge bg-secondary">0%</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center small">
+                        <span>Use of H2/H3</span>
+                        <span id="checkHeadings" class="badge bg-secondary">0</span>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
 </div>
 
-<!-- AI Generation Modal -->
+<!-- AI Modal (Same logic as before, kept for functionality) -->
 <div class="modal fade" id="aiModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">AI Content Generator</h5>
+                <h5 class="modal-title">AI Writer Assistant</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label>Topic / Keyword</label>
-                    <input type="text" id="aiKeyword" class="form-control" placeholder="e.g. Benefits of Yoga">
-                </div>
-                <div class="mb-3">
-                    <label>Tone</label>
-                    <select id="aiMode" class="form-select">
-                        <option value="standard">Standard SEO</option>
-                        <option value="human">Human/Opinionated</option>
-                    </select>
-                </div>
-                <div id="aiLoading" class="text-center text-primary" style="display:none;">
-                    <div class="spinner-border spinner-border-sm"></div> Writing article... please wait (approx 20s)...
+                <label class="form-label">What should we write about?</label>
+                <input type="text" id="aiKeyword" class="form-control mb-3" placeholder="Topic or Keyword...">
+                <label class="form-label">Writing Tone</label>
+                <select id="aiMode" class="form-select mb-3">
+                    <option value="standard">SEO Optimized (Standard)</option>
+                    <option value="human">Human-Like (Opinionated)</option>
+                </select>
+                <div id="aiLoading" class="alert alert-info" style="display:none;">
+                    <div class="spinner-border spinner-border-sm me-2"></div> Generating content...
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary w-100" onclick="generateAI()">Generate</button>
+                <button class="btn btn-primary w-100" onclick="generateAI()">Generate Article</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-const contentId = "{{ content.id if content else '' }}";
-const editor = document.getElementById('editor');
-const titleInput = document.getElementById('docTitle');
-const keywordInput = document.getElementById('targetKeyword');
-
-// 1. EDITOR COMMANDS
-function execCmd(command, value = null) {
-    document.execCommand(command, false, value);
-    updateSeoScore(); // Update score on format change
-}
-
-// 2. REAL-TIME SEO SCORING LOGIC
-function updateSeoScore() {
-    const text = editor.innerText || "";
-    const html = editor.innerHTML;
-    const keyword = keywordInput.value.toLowerCase().trim();
-    const title = titleInput.value.toLowerCase().trim();
-
-    let score = 0;
-    const wordCount = text.trim().split(/\s+/).length; // Simple word count
-    
-    // A. Word Count Check (Goal: 800)
-    const wordsEl = document.getElementById('checkWords');
-    wordsEl.innerText = wordCount;
-    if(wordCount > 800) { wordsEl.className = "badge bg-success"; score += 30; }
-    else if(wordCount > 300) { wordsEl.className = "badge bg-warning text-dark"; score += 15; }
-    else { wordsEl.className = "badge bg-danger"; }
-
-    if(keyword) {
-        // B. Keyword in Title
-        const titleCheck = document.getElementById('checkTitle');
-        if(title.includes(keyword)) { 
-            titleCheck.className = "badge bg-success"; titleCheck.innerHTML = '<i class="fas fa-check"></i>';
-            score += 20;
-        } else {
-            titleCheck.className = "badge bg-danger"; titleCheck.innerHTML = '<i class="fas fa-times"></i>';
-        }
-
-        // C. Keyword in Intro (First 200 chars)
-        const introCheck = document.getElementById('checkIntro');
-        if(text.substring(0, 200).toLowerCase().includes(keyword)) {
-            introCheck.className = "badge bg-success"; introCheck.innerHTML = '<i class="fas fa-check"></i>';
-            score += 20;
-        } else {
-            introCheck.className = "badge bg-danger"; introCheck.innerHTML = '<i class="fas fa-times"></i>';
-        }
-
-        // D. Density
-        const regex = new RegExp(keyword, "gi");
-        const matches = (text.match(regex) || []).length;
-        const density = wordCount > 0 ? ((matches / wordCount) * 100).toFixed(1) : 0;
-        const densityEl = document.getElementById('checkDensity');
-        densityEl.innerText = density + "%";
-        
-        if(density >= 0.5 && density <= 2.5) { 
-            densityEl.className = "badge bg-success"; score += 20; 
-        } else {
-            densityEl.className = "badge bg-warning text-dark"; score += 5; 
-        }
-    }
-
-    // E. Headings Count
-    const h2Count = (html.match(/<h2/g) || []).length;
-    const h3Count = (html.match(/<h3/g) || []).length;
-    const hCheck = document.getElementById('checkHeadings');
-    hCheck.innerText = h2Count + h3Count;
-    if((h2Count + h3Count) > 2) { hCheck.className = "badge bg-success"; score += 10; }
-
-    // Update UI Score Circle
-    score = Math.min(score, 100); // Cap at 100
-    document.getElementById('scoreValue').innerText = score;
-    
-    // Visual Gradient update
-    const circle = document.getElementById('scoreCircle');
-    circle.style.background = `conic-gradient(${getScoreColor(score)} ${score}%, #e9ecef ${score}% 100%)`;
-}
-
-function getScoreColor(s) {
-    if(s < 40) return '#dc3545'; // Red
-    if(s < 70) return '#ffc107'; // Yellow
-    return '#28a745'; // Green
-}
-
-// Event Listeners for Real-time updates
-editor.addEventListener('keyup', updateSeoScore);
-titleInput.addEventListener('keyup', updateSeoScore);
-keywordInput.addEventListener('keyup', updateSeoScore);
-
-// 3. AI GENERATION
-async function generateAI() {
-    const keyword = document.getElementById('aiKeyword').value;
-    const mode = document.getElementById('aiMode').value;
-
-    if(!keyword) return alert("Please enter a topic");
-
-    document.getElementById('aiLoading').style.display = 'block';
-    
-    try {
-        const res = await fetch('/api/generate-content', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ keyword: keyword, mode: mode })
-        });
-        
-        const data = await res.json();
-        document.getElementById('aiLoading').style.display = 'none';
-
-        if(data.error) {
-            alert("AI Generation Failed: " + data.error);
-        } else {
-            // Insert content into editor
-            editor.innerHTML = data.html_content;
-            titleInput.value = `${keyword} (${mode})`;
-            keywordInput.value = keyword;
-            
-            // Close modal
-            const modalEl = document.getElementById('aiModal');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            modal.hide();
-            
-            updateSeoScore(); // Recalculate
-        }
-    } catch(e) {
-        document.getElementById('aiLoading').style.display = 'none';
-        alert("Network Error or Timeout");
-    }
-}
-
-// 4. AUTO SAVE & MANUAL SAVE
-async function saveContent() {
-    const status = document.getElementById('saveStatus');
-    status.innerText = "Saving...";
-    
-    const data = {
-        id: contentId,
-        title: titleInput.value,
-        keyword: keywordInput.value,
-        content: editor.innerText, // Plain text for logic
-        html_content: editor.innerHTML // HTML for display
-    };
-
-    try {
-        const res = await fetch('/api/save-content', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        });
-        const result = await res.json();
-        
-        if(result.success) {
-            status.innerText = "Saved " + new Date().toLocaleTimeString();
-        } else {
-            status.innerText = "Save Failed";
-        }
-    } catch(e) {
-        status.innerText = "Error Saving";
-    }
-}
-
-// Trigger score on load
-window.onload = updateSeoScore;
-</script>
-<script>
-// CHANGED: Use 'let' so we can update the ID dynamically
 let contentId = "{{ content.id if content else '' }}";
 const editor = document.getElementById('editor');
 const titleInput = document.getElementById('docTitle');
 const keywordInput = document.getElementById('targetKeyword');
 
-// 1. EDITOR COMMANDS
-function execCmd(command, value = null) {
-    document.execCommand(command, false, value);
-    updateSeoScore();
-}
+function execCmd(command, value = null) { document.execCommand(command, false, value); updateSeoScore(); }
 
-// 2. REAL-TIME SEO SCORING LOGIC
 function updateSeoScore() {
     const text = editor.innerText || "";
     const html = editor.innerHTML;
@@ -320,7 +136,6 @@ function updateSeoScore() {
     let score = 0;
     const wordCount = text.trim().split(/\s+/).length;
     
-    // Word Count
     const wordsEl = document.getElementById('checkWords');
     wordsEl.innerText = wordCount;
     if(wordCount > 800) { wordsEl.className = "badge bg-success"; score += 30; }
@@ -328,23 +143,14 @@ function updateSeoScore() {
     else { wordsEl.className = "badge bg-danger"; }
 
     if(keyword) {
-        // Title Check
         const titleCheck = document.getElementById('checkTitle');
-        if(title.includes(keyword)) { 
-            titleCheck.className = "badge bg-success"; titleCheck.innerHTML = '<i class="fas fa-check"></i>'; score += 20;
-        } else {
-            titleCheck.className = "badge bg-danger"; titleCheck.innerHTML = '<i class="fas fa-times"></i>';
-        }
+        if(title.includes(keyword)) { titleCheck.className = "badge bg-success"; titleCheck.innerText = "Yes"; score += 20; }
+        else { titleCheck.className = "badge bg-danger"; titleCheck.innerText = "No"; }
 
-        // Intro Check
         const introCheck = document.getElementById('checkIntro');
-        if(text.substring(0, 200).toLowerCase().includes(keyword)) {
-            introCheck.className = "badge bg-success"; introCheck.innerHTML = '<i class="fas fa-check"></i>'; score += 20;
-        } else {
-            introCheck.className = "badge bg-danger"; introCheck.innerHTML = '<i class="fas fa-times"></i>';
-        }
+        if(text.substring(0, 200).toLowerCase().includes(keyword)) { introCheck.className = "badge bg-success"; introCheck.innerText = "Yes"; score += 20; }
+        else { introCheck.className = "badge bg-danger"; introCheck.innerText = "No"; }
 
-        // Density
         const regex = new RegExp(keyword, "gi");
         const matches = (text.match(regex) || []).length;
         const density = wordCount > 0 ? ((matches / wordCount) * 100).toFixed(1) : 0;
@@ -352,100 +158,65 @@ function updateSeoScore() {
         if(density >= 0.5 && density <= 2.5) { score += 20; } else { score += 5; }
     }
 
-    // Headings
     const hCount = (html.match(/<h[23]/g) || []).length;
     document.getElementById('checkHeadings').innerText = hCount;
     if(hCount > 2) score += 10;
 
     score = Math.min(score, 100);
     document.getElementById('scoreValue').innerText = score;
-    document.getElementById('scoreCircle').style.background = `conic-gradient(${score < 50 ? 'red' : 'green'} ${score}%, #e9ecef ${score}% 100%)`;
+    
+    let color = score < 50 ? '#dc3545' : (score < 80 ? '#ffc107' : '#198754');
+    document.getElementById('scoreCircle').style.background = `conic-gradient(${color} ${score}%, #e9ecef ${score}% 100%)`;
 }
 
 editor.addEventListener('keyup', updateSeoScore);
 titleInput.addEventListener('keyup', updateSeoScore);
 keywordInput.addEventListener('keyup', updateSeoScore);
 
-// 3. AI GENERATION (FIXED: Updates ID)
 async function generateAI() {
     const keyword = document.getElementById('aiKeyword').value;
     const mode = document.getElementById('aiMode').value;
-
-    if(!keyword) return alert("Please enter a topic");
+    if(!keyword) return alert("Enter a keyword");
 
     document.getElementById('aiLoading').style.display = 'block';
-    
     try {
         const res = await fetch('/api/generate-content', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ keyword: keyword, mode: mode })
         });
-        
         const data = await res.json();
         document.getElementById('aiLoading').style.display = 'none';
 
-        if(data.error) {
-            alert("AI Error: " + data.error);
-        } else {
+        if(data.error) { alert(data.error); } else {
             editor.innerHTML = data.html_content;
             titleInput.value = `${keyword} (${mode})`;
             keywordInput.value = keyword;
-            
-            // CRITICAL FIX: Update the JS ID so subsequent saves update this file
-            contentId = data.id; 
-            console.log("New Content ID set to:", contentId);
-
-            const modalEl = document.getElementById('aiModal');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            modal.hide();
-            
+            contentId = data.id;
+            bootstrap.Modal.getInstance(document.getElementById('aiModal')).hide();
             updateSeoScore();
-            saveContent(); // Auto save immediately
+            saveContent();
         }
-    } catch(e) {
-        document.getElementById('aiLoading').style.display = 'none';
-        alert("Network Error");
-    }
+    } catch(e) { alert("Network Error"); }
 }
 
-// 4. SAVE CONTENT (FIXED: Handles New Creation)
 async function saveContent() {
-    const status = document.getElementById('saveStatus');
-    status.innerText = "Saving...";
-    
-    const data = {
-        id: contentId, // Sends ID if it exists, or empty string if new
-        title: titleInput.value,
-        keyword: keywordInput.value,
-        content: editor.innerText, 
-        html_content: editor.innerHTML 
-    };
-
+    document.getElementById('saveStatus').innerText = "Saving...";
     try {
         const res = await fetch('/api/save-content', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
+            body: JSON.stringify({
+                id: contentId, title: titleInput.value,
+                keyword: keywordInput.value, content: editor.innerText, html_content: editor.innerHTML
+            })
         });
         const result = await res.json();
-        
         if(result.success) {
-            status.innerText = "Saved " + new Date().toLocaleTimeString();
-            // If this was a new creation, update the ID for future saves
-            if(result.id) {
-                contentId = result.id;
-                // Optional: Update URL without reload so refresh works
-                window.history.pushState({}, "", `/editor?id=${contentId}`);
-            }
-        } else {
-            status.innerText = "Save Failed";
-            alert("Error: " + result.error);
-        }
-    } catch(e) {
-        status.innerText = "Error Saving";
-        console.error(e);
-    }
+            document.getElementById('saveStatus').innerText = "Saved";
+            if(result.id) { contentId = result.id; window.history.pushState({}, "", `/editor?id=${contentId}`); }
+        } else { alert(result.error); }
+    } catch(e) { alert("Save Error"); }
 }
 
 window.onload = updateSeoScore;
