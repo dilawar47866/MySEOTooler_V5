@@ -68,7 +68,11 @@
 
         <div class="p-4 border-t border-slate-800">
             <a href="{{ url_for('profile') }}" class="flex items-center px-4 py-2 text-sm text-slate-400 hover:text-white">
-                <i class="fas fa-user-circle w-6"></i> Profile
+                <i class="fas fa-user-circle w-6"></i> {% if current_user.is_admin %}
+<a href="{{ url_for('admin') }}" class="flex items-center px-4 py-2 text-sm text-yellow-400 hover:text-yellow-300 font-bold mb-2">
+    <i class="fas fa-crown w-6"></i> Admin Panel
+</a>
+{% endif %}Profile
             </a>
             <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-2 text-sm text-red-400 hover:text-red-300">
                 <i class="fas fa-sign-out-alt w-6"></i> Logout
