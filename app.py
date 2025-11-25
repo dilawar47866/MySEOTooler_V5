@@ -514,7 +514,12 @@ def api_export(id, fmt):
 def health():
     return jsonify({'status': 'healthy'})
 
+# ============================================================================
+# 7. INIT & RUN
+# ============================================================================
+# This creates the database tables on Railway/Gunicorn start
+with app.app_context():
+    db.create_all()
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True, port=int(os.environ.get('PORT', 5001)))
