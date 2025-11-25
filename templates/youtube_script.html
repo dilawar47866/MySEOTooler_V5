@@ -1,26 +1,121 @@
 {% extends "base.html" %}
+
+{% block title %}YouTube Script Generator - MySEO King{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-    <h2><i class="fab fa-youtube text-danger"></i> YouTube Script Writer</h2>
-    <div class="card p-4 shadow-sm">
-        <div class="input-group mb-4">
-            <input type="text" id="topic" class="form-control" placeholder="Enter Video Topic...">
-            <button class="btn btn-danger" onclick="genScript()">Generate Script</button>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">YouTube Script Generator</h2>
+                    <p class="text-muted">Generate engaging video scripts with hooks that retain viewers.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fab fa-youtube fa-2x text-danger"></i>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Input -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Video Topic</label>
+                                <textarea id="videoTopic" class="form-control" rows="3" placeholder="E.g. How to bake sourdough bread for beginners"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Target Audience</label>
+                                <input type="text" id="audience" class="form-control" placeholder="Home cooks">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Tone</label>
+                                <select id="videoTone" class="form-select">
+                                    <option value="Energetic & Fast">Energetic & Fast (MrBeast style)</option>
+                                    <option value="Educational & Calm">Educational & Calm</option>
+                                    <option value="Funny & Sarcastic">Funny & Sarcastic</option>
+                                </select>
+                            </div>
+
+                            <button class="btn btn-danger w-100 py-2 text-white" id="genBtn" onclick="generateScript()">
+                                <i class="fas fa-video me-2"></i> Write Script
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Output -->
+                <div class="col-md-8">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">Video Script</span>
+                            <button class="btn btn-sm btn-outline-dark" onclick="copyScript()">Copy Text</button>
+                        </div>
+                        <div class="card-body">
+                            <div id="scriptOutput" class="h-100 p-3 bg-light rounded border" style="min-height: 400px; white-space: pre-wrap;">
+                                <div class="text-center text-muted pt-5 mt-5">
+                                    <i class="fab fa-youtube fa-3x mb-3 opacity-25"></i>
+                                    <p>Enter details on the left to generate your script.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
-    <div id="loading" class="text-center mt-3 d-none"><div class="spinner-border"></div></div>
-    <div id="output" class="card p-4 bg-light d-none mt-3" style="white-space: pre-wrap;"></div>
 </div>
+
 <script>
-async function genScript() {
-    const t = document.getElementById('topic').value;
-    if(!t) return;
-    document.getElementById('loading').classList.remove('d-none');
-    const res = await fetch('/api/generate-content', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keyword: `Write a YouTube video script for "${t}". Include Intro, 3 Main Points, and Outro.`, mode:'standard'})});
-    const d = await res.json();
-    document.getElementById('loading').classList.add('d-none');
-    document.getElementById('output').classList.remove('d-none');
-    document.getElementById('output').innerText = d.content;
+async function generateScript() {
+    const topic = document.getElementById('videoTopic').value;
+    const audience = document.getElementById('audience').value;
+    const tone = document.getElementById('videoTone').value;
+
+    if(!topic) return alert("Please enter a video topic");
+
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Writing...';
+
+    const prompt = `Write a YouTube video script for a video about "${topic}".
+    Target Audience: ${audience}.
+    Tone: ${tone}.
+    
+    Structure:
+    1. THE HOOK (0-30s): Grab attention immediately.
+    2. THE INTRO: Tell them what they will learn.
+    3. THE BODY: 3 Main Tips/Steps.
+    4. THE CTA: Ask to subscribe.
+    
+    Format with timestamps like [0:00] and Scene directions like [Camera zooms in].`;
+
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+        });
+        const data = await res.json();
+        if(data.success) {
+            document.getElementById('scriptOutput').innerHTML = data.html_content;
+        }
+    } catch(e) { console.error(e); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-video me-2"></i> Write Script';
+    }
+}
+
+function copyScript() {
+    const text = document.getElementById('scriptOutput').innerText;
+    navigator.clipboard.writeText(text);
+    alert("Copied script!");
 }
 </script>
 {% endblock %}
