@@ -1,220 +1,103 @@
 {% extends "base.html" %}
-{% block title %}Sitemap Generator - My SEO King Tool V5{% endblock %}
+
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <h1><i class="fas fa-sitemap"></i> XML Sitemap Generator</h1>
-            <p class="text-muted mb-4">Create search engine-friendly XML sitemaps</p>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-sitemap"></i> XML Sitemap Generator</h2>
+    </div>
 
-            <!-- Input Card -->
-            <div class="card p-4 mb-4">
-                <div id="urlsContainer">
-                    <h5 class="mb-3">Add URLs to Your Sitemap</h5>
-                    
-                    <div class="url-entry mb-3">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <input type="url" class="form-control url-input" 
-                                       placeholder="https://yoursite.com/page">
-                            </div>
-                            <div class="col-md-2">
-                                <select class="form-control priority-input">
-                                    <option value="1.0">Priority: 1.0</option>
-                                    <option value="0.9">Priority: 0.9</option>
-                                    <option value="0.8" selected>Priority: 0.8</option>
-                                    <option value="0.7">Priority: 0.7</option>
-                                    <option value="0.6">Priority: 0.6</option>
-                                    <option value="0.5">Priority: 0.5</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <select class="form-control changefreq-input">
-                                    <option value="daily">Daily</option>
-                                    <option value="weekly" selected>Weekly</option>
-                                    <option value="monthly">Monthly</option>
-                                    <option value="yearly">Yearly</option>
-                                </select>
-                            </div>
-                            <div class="col-md-1">
-                                <button onclick="removeUrl(this)" class="btn btn-danger btn-block" style="display:none;">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- Explanation -->
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> This tool crawls your homepage to find internal links and builds a valid XML sitemap. 
+        <br><strong>Note:</strong> To ensure speed, this demo is limited to the first 50 links found.
+    </div>
 
-                <button onclick="addUrlField()" class="btn btn-secondary mb-3">
-                    <i class="fas fa-plus"></i> Add Another URL
-                </button>
-                
-                <button onclick="generateSitemap()" class="btn btn-primary btn-lg btn-block">
-                    <i class="fas fa-cog"></i> Generate Sitemap
+    <!-- Input -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <label class="form-label fw-bold">Website URL</label>
+            <div class="input-group">
+                <input type="url" id="siteUrl" class="form-control" placeholder="https://yourwebsite.com">
+                <button class="btn btn-primary" onclick="generateSitemap()">
+                    <i class="fas fa-magic"></i> Generate Sitemap
                 </button>
             </div>
+        </div>
+    </div>
 
-            <!-- Results -->
-            <div id="results" style="display:none;">
-                <div class="card p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h3 class="mb-0">📄 Generated sitemap.xml</h3>
-                        <div>
-                            <span class="badge badge-info mr-2">
-                                <span id="urlCount"></span> URLs
-                            </span>
-                            <button onclick="copySitemap()" class="btn btn-success mr-2">
-                                <i class="fas fa-copy"></i> Copy
-                            </button>
-                            <button onclick="downloadSitemap()" class="btn btn-secondary">
-                                <i class="fas fa-download"></i> Download
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <pre id="sitemapContent" style="background: #2d3748; color: #e2e8f0; padding: 20px; border-radius: 8px; max-height: 500px; overflow: auto; font-size: 12px;"></pre>
-                    
-                    <div class="alert alert-info mt-3 mb-0">
-                        <strong><i class="fas fa-info-circle"></i> Next Steps:</strong>
-                        <ol class="mb-0 mt-2">
-                            <li>Save as <code>sitemap.xml</code></li>
-                            <li>Upload to your website root</li>
-                            <li>Submit to Google Search Console</li>
-                            <li>Add sitemap URL to robots.txt</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
+    <!-- Loading State -->
+    <div id="loadingMap" class="text-center py-4" style="display:none;">
+        <div class="spinner-border text-warning" role="status"></div>
+        <p class="mt-2">Crawling website links... Please wait.</p>
+    </div>
 
-            <!-- Guide -->
-            <div class="card p-4 mt-4">
-                <h5><i class="fas fa-question-circle"></i> Priority & Change Frequency Guide</h5>
-                <div class="row">
-                    <div class="col-md-6">
-                        <strong>Priority (0.0 - 1.0):</strong>
-                        <ul class="mt-2">
-                            <li><strong>1.0:</strong> Homepage, most important pages</li>
-                            <li><strong>0.8:</strong> Category pages, key content</li>
-                            <li><strong>0.6:</strong> Regular blog posts</li>
-                            <li><strong>0.5:</strong> Archive pages, tags</li>
-                        </ul>
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Change Frequency:</strong>
-                        <ul class="mt-2">
-                            <li><strong>Daily:</strong> Homepage, news sites</li>
-                            <li><strong>Weekly:</strong> Blog posts, active pages</li>
-                            <li><strong>Monthly:</strong> Product pages, guides</li>
-                            <li><strong>Yearly:</strong> Static pages, about us</li>
-                        </ul>
-                    </div>
-                </div>
+    <!-- Output -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light fw-bold">XML Output</div>
+        <div class="card-body">
+            <textarea id="xmlOutput" class="form-control" 
+                style="min-height: 400px; font-family: monospace; white-space: pre;" placeholder="Your XML will appear here..."></textarea>
+            
+            <div class="mt-3">
+                <button class="btn btn-outline-secondary" onclick="copySitemap()">
+                    <i class="fas fa-copy"></i> Copy XML
+                </button>
+                <button class="btn btn-outline-success" onclick="downloadSitemap()">
+                    <i class="fas fa-download"></i> Download sitemap.xml
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function addUrlField() {
-    const container = document.getElementById('urlsContainer');
-    const div = document.createElement('div');
-    div.className = 'url-entry mb-3';
-    div.innerHTML = `
-        <div class="row">
-            <div class="col-md-6">
-                <input type="url" class="form-control url-input" 
-                       placeholder="https://yoursite.com/page">
-            </div>
-            <div class="col-md-2">
-                <select class="form-control priority-input">
-                    <option value="1.0">Priority: 1.0</option>
-                    <option value="0.9">Priority: 0.9</option>
-                    <option value="0.8" selected>Priority: 0.8</option>
-                    <option value="0.7">Priority: 0.7</option>
-                    <option value="0.6">Priority: 0.6</option>
-                    <option value="0.5">Priority: 0.5</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select class="form-control changefreq-input">
-                    <option value="daily">Daily</option>
-                    <option value="weekly" selected>Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                </select>
-            </div>
-            <div class="col-md-1">
-                <button onclick="removeUrl(this)" class="btn btn-danger btn-block">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `;
-    container.appendChild(div);
-}
-
-function removeUrl(button) {
-    button.closest('.url-entry').remove();
-}
-
 async function generateSitemap() {
-    const urlEntries = document.querySelectorAll('.url-entry');
-    const urls = [];
-    
-    urlEntries.forEach(entry => {
-        const url = entry.querySelector('.url-input').value.trim();
-        const priority = entry.querySelector('.priority-input').value;
-        const changefreq = entry.querySelector('.changefreq-input').value;
-        
-        if (url) {
-            urls.push({ url, priority, changefreq });
-        }
-    });
-    
-    if (urls.length === 0) {
-        alert('⚠️ Please add at least one URL');
-        return;
-    }
-    
+    const url = document.getElementById('siteUrl').value;
+    if(!url) return alert("Please enter a valid URL");
+
+    document.getElementById('loadingMap').style.display = 'block';
+    document.getElementById('xmlOutput').value = "";
+
     try {
         const res = await fetch('/api/generate-sitemap', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({urls: urls})
+            body: JSON.stringify({url: url})
         });
         
         const data = await res.json();
+        document.getElementById('loadingMap').style.display = 'none';
         
-        if (!res.ok) throw new Error(data.error || 'Generation failed');
-        
-        document.getElementById('sitemapContent').textContent = data.sitemap_xml;
-        document.getElementById('urlCount').textContent = data.url_count;
-        document.getElementById('results').style.display = 'block';
-        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
-        
-    } catch (err) {
-        alert('❌ ' + err.message);
+        if(data.success) {
+            document.getElementById('xmlOutput').value = data.sitemap;
+        } else {
+            document.getElementById('xmlOutput').value = "Error: " + data.error;
+            alert("Failed to generate sitemap: " + data.error);
+        }
+    } catch(e) {
+        document.getElementById('loadingMap').style.display = 'none';
+        alert("Error connecting to server.");
     }
 }
 
 function copySitemap() {
-    const text = document.getElementById('sitemapContent').textContent;
-    navigator.clipboard.writeText(text).then(() => {
-        alert('✅ Sitemap copied to clipboard!');
-    });
+    const copyText = document.getElementById("xmlOutput");
+    copyText.select();
+    document.execCommand("copy");
+    alert("XML copied to clipboard!");
 }
 
 function downloadSitemap() {
-    const text = document.getElementById('sitemapContent').textContent;
-    const blob = new Blob([text], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'sitemap.xml';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const text = document.getElementById("xmlOutput").value;
+    if(!text) return alert("Generate a sitemap first!");
+    
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/xml;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', 'sitemap.xml');
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
 }
 </script>
 {% endblock %}
