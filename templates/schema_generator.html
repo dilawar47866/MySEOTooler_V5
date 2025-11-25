@@ -1,74 +1,126 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fas fa-code mr-2 text-purple-600"></i> Schema Generator</h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-                <label class="block text-sm font-bold mb-2 text-slate-700">Page Title / Headline:</label>
-                <input type="text" id="title" class="w-full p-3 border rounded-lg" placeholder="e.g. Ultimate Guide to SEO">
-            </div>
-            <div>
-                <label class="block text-sm font-bold mb-2 text-slate-700">Schema Type:</label>
-                <select id="type" class="w-full p-3 border rounded-lg bg-white">
-                    <option value="Article">Article</option>
-                    <option value="Product">Product</option>
-                    <option value="Organization">Organization</option>
-                    <option value="FAQPage">FAQ Page</option>
-                </select>
+<div class="container mt-5">
+    <h2><i class="fas fa-code text-dark"></i> Schema Markup Generator</h2>
+    <p class="text-muted">Generate JSON-LD structured data for Google Rich Snippets.</p>
+
+    <div class="row">
+        <!-- Form Side -->
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <select id="schemaType" class="form-select fw-bold" onchange="toggleForm()">
+                        <option value="Article">Article / Blog Post</option>
+                        <option value="Organization">Organization</option>
+                        <option value="LocalBusiness">Local Business</option>
+                    </select>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Common Fields -->
+                    <div class="mb-3">
+                        <label>URL</label>
+                        <input type="url" id="url" class="form-control" placeholder="https://example.com/page">
+                    </div>
+
+                    <!-- Article Form -->
+                    <div id="formArticle">
+                        <div class="mb-3">
+                            <label>Headline</label>
+                            <input type="text" id="headline" class="form-control" placeholder="Article Title">
+                        </div>
+                        <div class="mb-3">
+                            <label>Image URL</label>
+                            <input type="url" id="image" class="form-control" placeholder="https://example.com/image.jpg">
+                        </div>
+                        <div class="mb-3">
+                            <label>Author Name</label>
+                            <input type="text" id="author" class="form-control" placeholder="John Doe">
+                        </div>
+                        <div class="mb-3">
+                            <label>Publisher (Org Name)</label>
+                            <input type="text" id="publisher" class="form-control" placeholder="My Company">
+                        </div>
+                    </div>
+
+                    <!-- Organization/Business Form -->
+                    <div id="formOrg" style="display:none;">
+                        <div class="mb-3">
+                            <label>Name</label>
+                            <input type="text" id="orgName" class="form-control" placeholder="Company Name">
+                        </div>
+                        <div class="mb-3">
+                            <label>Logo URL</label>
+                            <input type="url" id="orgLogo" class="form-control" placeholder="https://example.com/logo.png">
+                        </div>
+                        <div class="mb-3">
+                            <label>SameAs (Social Profiles)</label>
+                            <input type="text" id="orgSocial" class="form-control" placeholder="https://facebook.com/mybrand">
+                            <small class="text-muted">Comma separated</small>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary w-100 mt-3" onclick="generateSchema()">Generate Code</button>
+                </div>
             </div>
         </div>
-        
-        <button onclick="generateSchema()" id="btn" class="bg-purple-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-700 transition w-full">
-            <i class="fas fa-bolt mr-2"></i> Generate JSON-LD
-        </button>
 
-        <div id="result" class="hidden mt-8">
-            <div class="flex justify-between items-center mb-2">
-                <h3 class="font-bold text-lg">Result:</h3>
-                <button onclick="copySchema()" class="text-sm text-blue-500 hover:underline">Copy to Clipboard</button>
+        <!-- Output Side -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-dark text-white">JSON-LD Output</div>
+                <div class="card-body bg-light p-0">
+                    <textarea id="output" class="form-control h-100 border-0 bg-dark text-success" style="font-family: monospace; min-height: 400px; resize: none;" readonly></textarea>
+                </div>
+                <div class="card-footer bg-white">
+                    <button class="btn btn-outline-dark btn-sm" onclick="copyCode()">Copy to Clipboard</button>
+                </div>
             </div>
-            <textarea id="schemaOutput" readonly class="w-full h-64 p-4 bg-slate-900 text-green-400 font-mono text-sm rounded-lg"></textarea>
         </div>
     </div>
 </div>
 
 <script>
-async function generateSchema() {
-    const btn = document.getElementById('btn');
-    const title = document.getElementById('title').value;
-    const type = document.getElementById('type').value;
-    
-    if(!title) return alert("Please enter a title");
-    
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-    btn.disabled = true;
-    
-    try {
-        const res = await fetch('/api/generate-schema', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({title: title, type: type})
-        });
-        const data = await res.json();
-        if(data.error) throw new Error(data.error);
-        
-        document.getElementById('schemaOutput').value = data.schema;
-        document.getElementById('result').classList.remove('hidden');
-    } catch(e) {
-        alert(e.message);
-    } finally {
-        btn.innerHTML = '<i class="fas fa-bolt"></i> Generate JSON-LD';
-        btn.disabled = false;
-    }
+function toggleForm() {
+    const type = document.getElementById('schemaType').value;
+    document.getElementById('formArticle').style.display = (type === 'Article') ? 'block' : 'none';
+    document.getElementById('formOrg').style.display = (type !== 'Article') ? 'block' : 'none';
 }
 
-function copySchema() {
-    const copyText = document.getElementById("schemaOutput");
-    copyText.select();
-    document.execCommand("copy");
-    alert("Copied to clipboard!");
+function generateSchema() {
+    const type = document.getElementById('schemaType').value;
+    const url = document.getElementById('url').value;
+    let schema = {};
+
+    if(type === 'Article') {
+        schema = {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "mainEntityOfPage": { "@type": "WebPage", "@id": url },
+            "headline": document.getElementById('headline').value,
+            "image": document.getElementById('image').value,
+            "author": { "@type": "Person", "name": document.getElementById('author').value },
+            "publisher": { "@type": "Organization", "name": document.getElementById('publisher').value }
+        };
+    } else {
+        const social = document.getElementById('orgSocial').value.split(',').map(s => s.trim());
+        schema = {
+            "@context": "https://schema.org",
+            "@type": type,
+            "url": url,
+            "name": document.getElementById('orgName').value,
+            "logo": document.getElementById('orgLogo').value,
+            "sameAs": social
+        };
+    }
+
+    document.getElementById('output').value = `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n<\/script>`;
+}
+
+function copyCode() {
+    document.getElementById('output').select();
+    document.execCommand('copy');
+    alert("Copied!");
 }
 </script>
 {% endblock %}
