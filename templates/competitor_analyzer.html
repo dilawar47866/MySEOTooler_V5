@@ -1,57 +1,117 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fas fa-spy mr-2 text-green-500"></i> Competitor Analyzer</h2>
-        
-        <div class="mb-6">
-            <label class="block text-sm font-bold mb-2 text-slate-700">Enter Competitor URL:</label>
-            <input type="text" id="urlInput" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-green-500" placeholder="https://competitor.com/article">
+<div class="container mt-4">
+    <h2>Competitor Analysis</h2>
+    <div class="card p-4">
+        <div class="input-group mb-3">
+            <input type="url" id="compUrl" class="form-control" placeholder="Enter Competitor URL (e.g. https://example.com)">
+            <button class="btn btn-primary" onclick="analyzeCompetitor()">Analyze</button>
         </div>
         
-        <button onclick="analyze()" id="btn" class="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 transition w-full">
-            <i class="fas fa-search mr-2"></i> Analyze URL
-        </button>
+        <div id="loading" class="text-center" style="display:none;">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>Scanning website... (This may take 10 seconds)</p>
+        </div>
 
-        <div id="result" class="hidden mt-8 bg-slate-50 p-6 rounded-lg border"></div>
+        <div id="results" style="display:none;">
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-light p-3 text-center">
+                        <h5>Word Count</h5>
+                        <h3 id="wordCount">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light p-3 text-center">
+                        <h5>Images Found</h5>
+                        <h3 id="imageCount">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light p-3 text-center">
+                        <h5>Title Status</h5>
+                        <span id="titleStatus" class="badge bg-success">OK</span>
+                    </div>
+                </div>
+            </div>
+
+            <h4>Page Title</h4>
+            <p id="pageTitle" class="p-2 bg-white border rounded"></p>
+
+            <h4>H1 Tags</h4>
+            <ul id="h1List" class="list-group mb-4"></ul>
+
+            <h4>Images & Alt Text</h4>
+            <div id="imageList" class="list-group" style="max-height: 300px; overflow-y: auto;"></div>
+        </div>
     </div>
 </div>
 
 <script>
-async function analyze() {
-    const btn = document.getElementById('btn');
-    const url = document.getElementById('urlInput').value;
-    
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
-    btn.disabled = true;
-    
+async function analyzeCompetitor() {
+    const url = document.getElementById('compUrl').value;
+    if(!url) return alert("Please enter a URL");
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+
     try {
         const res = await fetch('/api/analyze-competitor', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({url: url})
         });
+
         const data = await res.json();
+        document.getElementById('loading').style.display = 'none';
+
+        if(data.error) {
+            alert("Error: " + data.error);
+            return;
+        }
+
+        const analysis = data.analysis;
+        document.getElementById('results').style.display = 'block';
         
-        if(data.error) throw new Error(data.error);
+        // Populate Data
+        document.getElementById('wordCount').innerText = analysis.word_count;
+        document.getElementById('imageCount').innerText = analysis.total_images;
+        document.getElementById('pageTitle').innerText = analysis.title;
         
-        let html = `<h3 class="font-bold text-xl mb-4">${data.analysis.title}</h3>`;
-        html += `<div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="bg-white p-3 rounded shadow-sm">Words: <b>${data.analysis.word_count}</b></div>
-                    <div class="bg-white p-3 rounded shadow-sm">Images: <b>${data.analysis.image_count}</b></div>
-                 </div>`;
-        html += `<h4 class="font-bold mt-4">H1 Tags Used:</h4><ul class="list-disc pl-5">`;
-        data.analysis.h1_tags.forEach(h => html += `<li>${h}</li>`);
-        html += `</ul>`;
-        
-        document.getElementById('result').innerHTML = html;
-        document.getElementById('result').classList.remove('hidden');
-    } catch(e) {
-        alert(e.message);
-    } finally {
-        btn.innerHTML = '<i class="fas fa-search"></i> Analyze URL';
-        btn.disabled = false;
+        // H1 List
+        const h1Container = document.getElementById('h1List');
+        h1Container.innerHTML = '';
+        if(analysis.h1_tags.length === 0) {
+            h1Container.innerHTML = '<li class="list-group-item text-danger">No H1 Tags Found!</li>';
+        } else {
+            analysis.h1_tags.forEach(tag => {
+                h1Container.innerHTML += `<li class="list-group-item">${tag}</li>`;
+            });
+        }
+
+        // Image List (Fixes "Undefined")
+        const imgContainer = document.getElementById('imageList');
+        imgContainer.innerHTML = '';
+        if(analysis.images && analysis.images.length > 0) {
+            analysis.images.forEach(img => {
+                const altStatus = img.alt ? `<span class="text-success">Alt: ${img.alt}</span>` : `<span class="text-danger">Missing Alt Text</span>`;
+                imgContainer.innerHTML += `
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div style="max-width: 80%;">
+                            <small class="text-muted d-block text-truncate">${img.src}</small>
+                            ${altStatus}
+                        </div>
+                        <a href="${img.src}" target="_blank" class="btn btn-sm btn-outline-secondary">View</a>
+                    </div>
+                </div>`;
+            });
+        } else {
+            imgContainer.innerHTML = '<p>No images found on page.</p>';
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Failed to analyze. Please check the console.");
+        document.getElementById('loading').style.display = 'none';
     }
 }
 </script>
-{% endblock %}
