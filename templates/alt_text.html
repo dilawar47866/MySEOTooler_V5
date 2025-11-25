@@ -1,55 +1,112 @@
 {% extends "base.html" %}
+
+{% block title %}Alt Text Generator - MySEO King{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
+<div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <h2 class="mb-4"><i class="fas fa-image"></i> AI Alt Text Generator</h2>
-            <p>Describe your image, and the AI will generate SEO-optimized Alt Text.</p>
-
-            <div class="card shadow-sm p-4">
-                <label class="fw-bold">What is in the image?</label>
-                <textarea id="imgDesc" class="form-control mt-2" rows="3" placeholder="e.g. A red ferrari driving on a coastal road at sunset"></textarea>
-                
-                <label class="fw-bold mt-3">Target Keyword (Optional)</label>
-                <input type="text" id="keyword" class="form-control mt-2" placeholder="e.g. luxury cars">
-
-                <button class="btn btn-success w-100 mt-3" onclick="generateAlt()">Generate Alt Text</button>
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Image Alt Text Generator</h2>
+                    <p class="text-muted">Generate SEO-optimized alt attributes for your images using AI.</p>
+                </div>
+                <i class="fas fa-images fa-3x text-primary opacity-25"></i>
             </div>
 
-            <div id="outputArea" class="mt-4" style="display:none;">
-                <label>Recommended Alt Text:</label>
-                <input type="text" id="altResult" class="form-control form-control-lg bg-light" readonly>
-                <button class="btn btn-outline-secondary btn-sm mt-2" onclick="copyAlt()">Copy</button>
+            <!-- Input Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Describe the Image</label>
+                        <textarea id="imageDescription" class="form-control" rows="3" placeholder="E.g., A golden retriever puppy running through a field of sunflowers at sunset..."></textarea>
+                        <div class="form-text">Be descriptive about what is happening in the image.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Target Keyword (Optional)</label>
+                        <input type="text" id="targetKeyword" class="form-control" placeholder="E.g., cute puppy wallpaper">
+                    </div>
+
+                    <button onclick="generateAltText()" id="generateBtn" class="btn btn-primary w-100 py-2">
+                        <i class="fas fa-magic me-2"></i> Generate Alt Text
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Section (Hidden by default) -->
+            <div id="resultsArea" class="d-none">
+                <h5 class="fw-bold mb-3">Generated Options</h5>
+                
+                <div class="card shadow-sm">
+                    <div class="card-body" id="resultsContent">
+                        <!-- Results will appear here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- JavaScript Logic -->
 <script>
-async function generateAlt() {
-    const desc = document.getElementById('imgDesc').value;
-    const kw = document.getElementById('keyword').value;
-    if(!desc) return alert("Describe the image first");
+async function generateAltText() {
+    const desc = document.getElementById('imageDescription').value;
+    const keyword = document.getElementById('targetKeyword').value;
+    const btn = document.getElementById('generateBtn');
+    const resultsArea = document.getElementById('resultsArea');
+    const resultsContent = document.getElementById('resultsContent');
 
-    const prompt = `Generate 1 SEO optimized ALT TEXT for an image showing: "${desc}". Include keyword: "${kw}". Output ONLY the alt text, nothing else.`;
+    if (!desc) {
+        alert("Please describe the image first.");
+        return;
+    }
+
+    // UI Loading State
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Generating...';
+    resultsArea.classList.add('d-none');
+
+    // Construct a prompt to send to your generic AI endpoint
+    // Since app.py doesn't have a specific alt-text endpoint, we use the generic one
+    const prompt = `Generate 5 SEO-friendly Alt Text options for an image described as: "${desc}". 
+    ${keyword ? `Target keyword to include naturally: "${keyword}".` : ''}
+    Format the output as a numbered list. Do not include quotes.`;
 
     try {
-        const res = await fetch('/api/generate-content', {
+        const response = await fetch('/api/generate-content', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ keyword: prompt, mode: "standard" })
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                keyword: prompt, // sending the full prompt as 'keyword' to reuse your existing API
+                mode: 'ai'
+            })
         });
-        const data = await res.json();
-        if(data.content) {
-            document.getElementById('outputArea').style.display = 'block';
-            document.getElementById('altResult').value = data.content.replace(/"/g, '');
-        }
-    } catch(e) { alert("Error"); }
-}
 
-function copyAlt() {
-    navigator.clipboard.writeText(document.getElementById('altResult').value);
-    alert("Copied!");
+        const data = await response.json();
+
+        if (data.error) {
+            alert("Error: " + data.error);
+        } else {
+            // Process Markdown to HTML logic or simple text formatting
+            let html = data.html_content;
+            
+            // If the API returns markdown list, let's style it slightly better
+            resultsContent.innerHTML = html;
+            resultsArea.classList.remove('d-none');
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Something went wrong. Please try again.");
+    } finally {
+        // Reset Button
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-2"></i> Generate Alt Text';
+    }
 }
 </script>
 {% endblock %}
