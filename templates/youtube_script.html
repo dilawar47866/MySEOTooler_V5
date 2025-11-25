@@ -2,20 +2,24 @@
 {% block content %}
 <div class="container mt-5">
     <h2><i class="fab fa-youtube text-danger"></i> YouTube Script Writer</h2>
-    <div class="input-group mb-4">
-        <input type="text" id="topic" class="form-control" placeholder="Video Topic...">
-        <button class="btn btn-danger" onclick="genScript()">Generate Script</button>
+    <div class="card p-4 shadow-sm">
+        <div class="input-group mb-4">
+            <input type="text" id="topic" class="form-control" placeholder="Enter Video Topic...">
+            <button class="btn btn-danger" onclick="genScript()">Generate Script</button>
+        </div>
     </div>
-    <div id="output" class="card p-4 bg-light d-none" style="white-space: pre-wrap;"></div>
+    <div id="loading" class="text-center mt-3 d-none"><div class="spinner-border"></div></div>
+    <div id="output" class="card p-4 bg-light d-none mt-3" style="white-space: pre-wrap;"></div>
 </div>
 <script>
 async function genScript() {
     const t = document.getElementById('topic').value;
     if(!t) return;
-    document.getElementById('output').classList.remove('d-none');
-    document.getElementById('output').innerText = "Writing script...";
+    document.getElementById('loading').classList.remove('d-none');
     const res = await fetch('/api/generate-content', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keyword: `Write a YouTube video script for "${t}". Include Intro, 3 Main Points, and Outro.`, mode:'standard'})});
     const d = await res.json();
+    document.getElementById('loading').classList.add('d-none');
+    document.getElementById('output').classList.remove('d-none');
     document.getElementById('output').innerText = d.content;
 }
 </script>
