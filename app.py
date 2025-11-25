@@ -1,15 +1,17 @@
-from flask import Flask, request, jsonify, render_template, send_file, redirect, url_for, flash
+from flask import Flask, request, jsonify, render_template, send_file, redirect, url_for, flash, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
+from flask_mail import Mail, Message
 from datetime import datetime
-import re, os, requests, base64, json, validators
+import re, os, requests, base64, json, validators, csv
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin
 from dotenv import load_dotenv
 from openai import OpenAI
 import markdown
-from io import BytesIO
+from io import BytesIO, StringIO
+from sqlalchemy import text
 
 # ==========================================
 # 1. CONFIGURATION
@@ -18,13 +20,21 @@ load_dotenv()
 app = Flask(__name__)
 
 # Database Config
-# Use SQLite for local dev, Postgres for production
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///myseotoolver5.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
+# Email Config (Hostinger)
+app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USE_SSL'] = True
+app.config['MAIL_USERNAME'] = 'support@myseokingtool.com'
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
+app.config['MAIL_DEFAULT_SENDER'] = ('MySEO King Team', 'support@myseokingtool.com')
+
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
+mail = Mail(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -53,8 +63,14 @@ class User(UserMixin, db.Model):
         return bcrypt.check_password_hash(self.password_hash, password)
     
     def get_limits(self):
-        limits = {'free': 50, 'pro': 500, 'enterprise': 9999}
-        return {'ai_requests_per_month': limits.get(self.tier, 50)}
+        # Handles "pro", "Pro King", "PRO KING"
+        limits = {
+            'free': 50, 
+            'pro': 500, 
+            'pro king': 500,
+            'enterprise': 9999
+        }
+        return {'ai_requests_per_month': limits.get(self.tier.lower(), 50)}
 
 class Content(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -134,7 +150,6 @@ def profile():
 # --- TECHNICAL SEO ROUTES (For Google Bot) ---
 @app.route('/robots.txt')
 def robots_txt():
-    # Tells Google: "You can crawl everything except my dashboard."
     lines = [
         "User-agent: *",
         "Disallow: /dashboard",
@@ -146,13 +161,8 @@ def robots_txt():
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
-    # Dynamically generates a list of all your tool pages
     base_url = request.url_root.rstrip('/')
-    
-    # Static pages
     pages = ['/', '/pricing', '/login', '/signup']
-    
-    # Add all your tool pages automatically (so Google finds them)
     tool_list = [
         'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
         'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
@@ -160,26 +170,13 @@ def sitemap_xml():
         'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
         'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis'
     ]
-    
-    # NOTE: We link to the public landing pages if you have them. 
-    # Since these tools are behind login, Google can't crawl the tool itself, 
-    # BUT having them in sitemap helps discoverability if you create landing pages for them later.
-    # For now, we map them to a generic structure or assume you might make public landers.
-    # Ideally, create a public landing page for each tool (e.g., /tools/keyword-research-tool) that links to login.
-    
-    # Build XML
-    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    
+    for slug in tool_list:
+        pages.append(f'/tool/{slug}')
+
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     for page in pages:
-        xml += f'  <url>\n'
-        xml += f'    <loc>{base_url}{page}</loc>\n'
-        xml += f'    <changefreq>weekly</changefreq>\n'
-        xml += f'    <priority>{0.8 if page == "/" else 0.6}</priority>\n'
-        xml += f'  </url>\n'
-        
+        xml += f'  <url>\n    <loc>{base_url}{page}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>{0.8 if page == "/" else 0.6}</priority>\n  </url>\n'
     xml += '</urlset>'
-    
     return xml, 200, {'Content-Type': 'application/xml'}
 
 # ==========================================
@@ -222,6 +219,15 @@ def signup():
             db.session.add(user)
             db.session.commit()
             login_user(user)
+
+            # --- SEND WELCOME EMAIL ---
+            try:
+                msg = Message("Welcome to MySEO King! 👑", recipients=[user.email])
+                msg.body = f"Hi {user.username},\n\nWelcome to the #1 AI SEO Tool. We are excited to help you rank higher.\n\nGet started by creating your first project in the AI Editor.\n\nCheers,\nMySEO King Team"
+                mail.send(msg)
+            except Exception as e:
+                print(f"Email failed: {e}")
+
             return jsonify({'success': True, 'redirect': '/dashboard'})
         except Exception as e: 
             return jsonify({'error': str(e)}), 500
@@ -235,7 +241,7 @@ def logout():
     return redirect('/')
 
 # ==========================================
-# 6. ADMIN ROUTES
+# 6. ADMIN ROUTES & PAYMENT
 # ==========================================
 @app.route('/admin')
 @login_required
@@ -245,6 +251,23 @@ def admin():
     users = User.query.order_by(User.id.desc()).all()
     total_content = Content.query.count()
     return render_template('admin.html', users=users, total_content=total_content)
+
+@app.route('/admin/export-users')
+@login_required
+def admin_export_users():
+    if not getattr(current_user, 'is_admin', False): return "Unauthorized", 403
+    
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['ID', 'Username', 'Email', 'Tier', 'Join Date', 'AI Usage'])
+    users = User.query.all()
+    for u in users:
+        cw.writerow([u.id, u.username, u.email, u.tier, u.last_reset_date, u.ai_requests_this_month])
+        
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = "attachment; filename=users_list.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
 
 @app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
 @login_required
@@ -265,6 +288,18 @@ def admin_delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
     return jsonify({'success': True})
+
+@app.route('/payment/success/<plan_name>')
+@login_required
+def payment_success(plan_name):
+    if plan_name == 'pro':
+        current_user.tier = 'pro king'
+    elif plan_name == 'enterprise':
+        current_user.tier = 'enterprise'
+    
+    db.session.commit()
+    flash(f"Payment Successful! You are now on the {plan_name.upper()} plan.", "success")
+    return redirect('/dashboard')
 
 # ==========================================
 # 7. TOOL ROUTES
@@ -373,10 +408,8 @@ def api_generate_seo_terms():
             messages=[{"role": "system", "content": "You are an SEO expert JSON generator."}, {"role": "user", "content": prompt}],
             max_tokens=500
         )
-        
         content = res.choices[0].message.content.replace('```json', '').replace('```', '').strip()
         terms = json.loads(content)
-        
         return jsonify({'success': True, 'terms': terms})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
@@ -396,10 +429,8 @@ def api_generate_questions():
             messages=[{"role": "system", "content": "You are an SEO expert JSON generator."}, {"role": "user", "content": prompt}],
             max_tokens=500
         )
-        
         content = res.choices[0].message.content.replace('```json', '').replace('```', '').strip()
         questions = json.loads(content)
-        
         return jsonify({'success': True, 'questions': questions})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
@@ -412,7 +443,6 @@ def api_suggest_internal_links():
         search = data.get('keyword', '')
         current_id = data.get('current_id')
         
-        # Search for other posts by user where title is similar
         query = Content.query.filter(
             Content.user_id == current_user.id,
             Content.title.ilike(f'%{search}%')
@@ -423,7 +453,6 @@ def api_suggest_internal_links():
             except: pass
         results = query.limit(5).all()
         
-        # Fallback
         if not results:
             base_query = Content.query.filter(Content.user_id == current_user.id)
             if current_id:
@@ -460,13 +489,10 @@ def api_check_readability():
         sentences = re.split(r'[.!?]+', text)
         sentences = [s for s in sentences if len(s.strip()) > 0]
         num_sentences = len(sentences) or 1
-        
         words = re.findall(r'\b\w+\b', text)
         num_words = len(words) or 1
-        
         num_syllables = sum(count_syllables(w) for w in words)
 
-        # Flesch-Kincaid Grade Level
         score = 0.39 * (num_words / num_sentences) + 11.8 * (num_syllables / num_words) - 15.59
         grade = round(score, 1)
 
@@ -598,40 +624,28 @@ def api_export(id, fmt):
     filename = re.sub(r'[\\/*?:"<>|]', "", c.title) or "document"
     return send_file(BytesIO(data.encode()), mimetype=mime, as_attachment=True, download_name=f"{filename}.{fmt}")
 
-# --- Sitemap Gen ---
-@app.route('/api/generate-sitemap', methods=['POST'])
-@login_required
-def api_generate_sitemap():
-    if current_user.tier == 'free': return jsonify({'error': 'Pro Feature'}), 403
+# --- TEMPORARY DATABASE FIXER ROUTE ---
+@app.route('/fix-db')
+def fix_db():
     try:
-        url = request.get_json().get('url')
-        if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        r = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(r.content, 'html.parser')
-        base_url = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
-        links = set([url.rstrip('/')])
-        for a in soup.find_all('a', href=True):
-            full_url = urljoin(base_url, a['href'])
-            if urlparse(full_url).netloc == urlparse(url).netloc:
-                links.add(full_url.split('#')[0].split('?')[0])
-        xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        for link in list(links)[:50]:
-            xml += f'  <url>\n    <loc>{link}</loc>\n    <changefreq>weekly</changefreq>\n  </url>\n'
-        xml += '</urlset>'
-        return jsonify({'success': True, 'sitemap': xml})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- Robots Gen ---
-@app.route('/api/generate-robots', methods=['POST'])
-@login_required
-def api_generate_robots():
-    d = request.get_json()
-    c = f"User-agent: {d.get('userAgent', '*')}\n"
-    if d.get('allow'): c += f"Allow: {d.get('allow')}\n"
-    if d.get('disallow'): c += f"Disallow: {d.get('disallow')}\n"
-    if d.get('sitemap'): c += f"\nSitemap: {d.get('sitemap')}"
-    return jsonify({'success': True, 'content': c})
+        with db.engine.connect() as conn:
+            # Add User columns
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'free';"))
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS content_count INTEGER DEFAULT 0;"))
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS ai_requests_this_month INTEGER DEFAULT 0;"))
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS last_reset_date TIMESTAMP DEFAULT NOW();"))
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;"))
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;"))
+            
+            # Add Content columns
+            conn.execute(text("ALTER TABLE \"content\" ADD COLUMN IF NOT EXISTS html_content TEXT;"))
+            conn.execute(text("ALTER TABLE \"content\" ADD COLUMN IF NOT EXISTS seo_score INTEGER DEFAULT 0;"))
+            conn.execute(text("ALTER TABLE \"content\" ADD COLUMN IF NOT EXISTS word_count INTEGER DEFAULT 0;"))
+            
+            conn.commit()
+        return "Database successfully upgraded! Your users are safe."
+    except Exception as e:
+        return f"Error upgrading database: {str(e)}"
 
 # ==========================================
 # 9. INITIALIZATION
