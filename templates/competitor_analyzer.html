@@ -119,4 +119,40 @@ async function analyzeCompetitor() {
                 h1Container.innerHTML += `<li class="list-group-item">${tag}</li>`;
             });
         } else {
-            h1Container.innerHTML = '<li class="list-group-item text-danger">No H1 
+            h1Container.innerHTML = '<li class="list-group-item text-danger">No H1 tags found.</li>';
+        }
+
+        // 3. Images (Fixes the "undefined" error)
+        const imgContainer = document.getElementById('imageList');
+        imgContainer.innerHTML = '';
+        
+        if(analysis.images && analysis.images.length > 0) {
+            analysis.images.forEach(img => {
+                // Check if Alt text exists
+                const altBadge = img.alt 
+                    ? `<span class="badge bg-success">Alt: ${img.alt}</span>` 
+                    : `<span class="badge bg-danger">Missing Alt Text</span>`;
+
+                imgContainer.innerHTML += `
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-truncate" style="max-width: 70%;">
+                            <strong>Source:</strong> ${img.src}<br>
+                            ${altBadge}
+                        </div>
+                        <a href="${img.src}" target="_blank" class="btn btn-sm btn-outline-secondary">View Image</a>
+                    </div>
+                </div>`;
+            });
+        } else {
+            imgContainer.innerHTML = '<p class="text-muted text-center">No images found to analyze.</p>';
+        }
+
+    } catch (err) {
+        console.error(err);
+        document.getElementById('loading').style.display = 'none';
+        alert("Failed to connect to the server.");
+    }
+}
+</script>
+{% endblock %}
