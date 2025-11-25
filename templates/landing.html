@@ -1,0 +1,1971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Primary SEO Meta Tags -->
+    <title>MySEOKingTool - AI-Powered SEO Content Platform | Rank Higher</title>
+    <meta name="title" content="MySEOKingTool - AI-Powered SEO Content Platform">
+    <meta name="description" content="Create SEO-optimized content in minutes with AI. Keyword research, SERP analysis, content generation, and 20+ SEO tools. Start free today!">
+    <meta name="keywords" content="SEO tool, AI content writer, keyword research, SERP analysis, content optimization">
+    <meta name="author" content="MySEOKingTool">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:title" content="MySEOKingTool - AI-Powered SEO Content Platform">
+    <meta property="og:description" content="Create SEO-optimized content in minutes with AI. 20+ powerful SEO tools.">
+    <meta property="og:image" content="{{ url_for('static', filename='images/og-image.png', _external=True) }}">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ request.url }}">
+    <meta property="twitter:title" content="MySEOKingTool - AI-Powered SEO Content Platform">
+    <meta property="twitter:description" content="Create SEO-optimized content in minutes with AI. 20+ powerful SEO tools.">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{ request.url_root }}">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* ============================================
+           CSS VARIABLES & RESET
+        ============================================ */
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #0ea5e9;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #0f172a;
+            --dark-light: #1e293b;
+            --gray-900: #111827;
+            --gray-800: #1f2937;
+            --gray-700: #374151;
+            --gray-600: #4b5563;
+            --gray-500: #6b7280;
+            --gray-400: #9ca3af;
+            --gray-300: #d1d5db;
+            --gray-200: #e5e7eb;
+            --gray-100: #f3f4f6;
+            --white: #ffffff;
+            --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+            --gradient-2: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+            --gradient-3: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+            --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--dark);
+            color: var(--gray-300);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ============================================
+           ANIMATED BACKGROUND
+        ============================================ */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: var(--gradient-3);
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+            animation: pulse 15s ease-in-out infinite;
+        }
+
+        .bg-animation::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 70%, rgba(14, 165, 233, 0.08) 0%, transparent 50%);
+            animation: pulse 20s ease-in-out infinite reverse;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-5%, -5%) scale(1.1); }
+        }
+
+        /* Floating orbs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.5;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: var(--primary);
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: var(--secondary);
+            top: 60%;
+            right: 10%;
+            animation-delay: -5s;
+        }
+
+        .orb-3 {
+            width: 250px;
+            height: 250px;
+            background: #d946ef;
+            bottom: 10%;
+            left: 30%;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(30px, -30px); }
+            50% { transform: translate(-20px, 20px); }
+            75% { transform: translate(20px, 30px); }
+        }
+
+        /* ============================================
+           NAVIGATION
+        ============================================ */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1rem 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .navbar.scrolled {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            background: var(--gradient-1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--gray-300);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--white);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gradient-1);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .nav-buttons {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--gray-300);
+            border: 1px solid transparent;
+        }
+
+        .btn-ghost:hover {
+            color: var(--white);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-large {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+        }
+
+        /* Mobile menu */
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* ============================================
+           HERO SECTION
+        ============================================ */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 8rem 2rem 4rem;
+            position: relative;
+        }
+
+        .hero-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .hero-content {
+            animation: fadeInUp 1s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            color: var(--primary-light);
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-badge i {
+            animation: sparkle 2s ease-in-out infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            color: var(--white);
+        }
+
+        .hero h1 span {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-description {
+            font-size: 1.25rem;
+            color: var(--gray-400);
+            margin-bottom: 2rem;
+            max-width: 540px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 3rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--white);
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Hero Visual */
+        .hero-visual {
+            position: relative;
+            animation: fadeInRight 1s ease 0.3s both;
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .dashboard-preview {
+            background: var(--dark-light);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: var(--shadow-2xl), var(--shadow-glow);
+            overflow: hidden;
+            transform: perspective(1000px) rotateY(-5deg) rotateX(5deg);
+            transition: transform 0.5s ease;
+        }
+
+        .dashboard-preview:hover {
+            transform: perspective(1000px) rotateY(0) rotateX(0);
+        }
+
+        .preview-header {
+            background: var(--gray-800);
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .preview-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .preview-dot.red { background: #ef4444; }
+        .preview-dot.yellow { background: #f59e0b; }
+        .preview-dot.green { background: #10b981; }
+
+        .preview-content {
+            padding: 1.5rem;
+        }
+
+        .preview-card {
+            background: var(--gray-800);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .preview-score {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .score-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: conic-gradient(var(--success) 0% 85%, var(--gray-700) 85% 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: var(--gray-800);
+            border-radius: 50%;
+        }
+
+        .score-value {
+            position: relative;
+            z-index: 1;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .preview-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .bar-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bar-label {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            width: 80px;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 8px;
+            background: var(--gray-700);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            animation: fillBar 2s ease forwards;
+        }
+
+        @keyframes fillBar {
+            from { width: 0; }
+        }
+
+        .bar-fill.high { background: var(--success); }
+        .bar-fill.medium { background: var(--warning); }
+        .bar-fill.low { background: var(--danger); }
+
+        /* Floating elements */
+        .floating-card {
+            position: absolute;
+            background: var(--dark-light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: var(--shadow-xl);
+            animation: floatCard 3s ease-in-out infinite;
+        }
+
+        .floating-card-1 {
+            top: -20px;
+            right: -30px;
+            animation-delay: 0s;
+        }
+
+        .floating-card-2 {
+            bottom: 50px;
+            left: -40px;
+            animation-delay: -1.5s;
+        }
+
+        @keyframes floatCard {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .floating-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .floating-icon.purple { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+        .floating-icon.blue { background: rgba(14, 165, 233, 0.2); color: #38bdf8; }
+
+        .floating-text {
+            font-size: 0.8rem;
+            color: var(--gray-400);
+        }
+
+        .floating-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--white);
+        }
+
+        /* ============================================
+           FEATURES SECTION
+        ============================================ */
+        .features {
+            padding: 6rem 2rem;
+            position: relative;
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 4rem;
+        }
+
+        .section-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            color: var(--primary-light);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section-title {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--white);
+            margin-bottom: 1rem;
+        }
+
+        .section-description {
+            font-size: 1.1rem;
+            color: var(--gray-400);
+        }
+
+        .features-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-1);
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: var(--shadow-xl), 0 0 30px rgba(99, 102, 241, 0.1);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .feature-icon.gradient-1 {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+            color: var(--primary-light);
+        }
+
+        .feature-icon.gradient-2 {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(6, 182, 212, 0.2));
+            color: var(--secondary);
+        }
+
+        .feature-icon.gradient-3 {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(52, 211, 153, 0.2));
+            color: var(--success);
+        }
+
+        .feature-icon.gradient-4 {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.2));
+            color: var(--warning);
+        }
+
+        .feature-icon.gradient-5 {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(217, 70, 239, 0.2));
+            color: #f472b6;
+        }
+
+        .feature-icon.gradient-6 {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(248, 113, 113, 0.2));
+            color: var(--danger);
+        }
+
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-description {
+            color: var(--gray-400);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .feature-tag {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--gray-400);
+        }
+
+        /* ============================================
+           TOOLS SHOWCASE
+        ============================================ */
+        .tools-showcase {
+            padding: 6rem 2rem;
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .tools-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .tool-item {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .tool-item:hover {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .tool-item i {
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tool-item span {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--gray-300);
+            font-weight: 500;
+        }
+
+        /* ============================================
+           PRICING SECTION
+        ============================================ */
+        .pricing {
+            padding: 6rem 2rem;
+        }
+
+        .pricing-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+        }
+
+        .pricing-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 2.5rem;
+            position: relative;
+            transition: all 0.4s ease;
+        }
+
+        .pricing-card.featured {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: scale(1.05);
+        }
+
+        .pricing-card:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gradient-1);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .pricing-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pricing-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--white);
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-price {
+            font-size: 4rem;
+            font-weight: 800;
+            color: var(--white);
+        }
+
+        .pricing-price span {
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--gray-500);
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .pricing-features li {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            color: var(--gray-300);
+        }
+
+        .pricing-features li i {
+            color: var(--success);
+        }
+
+        .pricing-features li.disabled {
+            color: var(--gray-600);
+        }
+
+        .pricing-features li.disabled i {
+            color: var(--gray-600);
+        }
+
+        .pricing-cta {
+            width: 100%;
+        }
+
+        /* ============================================
+           TESTIMONIALS
+        ============================================ */
+        .testimonials {
+            padding: 6rem 2rem;
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .testimonials-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .testimonial-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+        }
+
+        .testimonial-stars {
+            color: var(--warning);
+            margin-bottom: 1rem;
+        }
+
+        .testimonial-text {
+            font-size: 1.1rem;
+            color: var(--gray-300);
+            margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .author-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--gradient-1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+        }
+
+        .author-name {
+            font-weight: 600;
+            color: var(--white);
+        }
+
+        .author-role {
+            font-size: 0.9rem;
+            color: var(--gray-500);
+        }
+
+        /* ============================================
+           CTA SECTION
+        ============================================ */
+        .cta {
+            padding: 6rem 2rem;
+            text-align: center;
+        }
+
+        .cta-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 30px;
+            padding: 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+            animation: pulse 10s ease-in-out infinite;
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--white);
+            margin-bottom: 1rem;
+        }
+
+        .cta p {
+            font-size: 1.2rem;
+            color: var(--gray-400);
+            margin-bottom: 2rem;
+        }
+
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        /* ============================================
+           FOOTER
+        ============================================ */
+        .footer {
+            background: var(--gray-900);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 4rem 2rem 2rem;
+        }
+
+        .footer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr repeat(3, 1fr);
+            gap: 4rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand {
+            max-width: 300px;
+        }
+
+        .footer-brand .logo {
+            margin-bottom: 1rem;
+        }
+
+        .footer-brand p {
+            color: var(--gray-500);
+            margin-bottom: 1.5rem;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-links a {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-400);
+            transition: all 0.3s ease;
+        }
+
+        .social-links a:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .footer-column h4 {
+            color: var(--white);
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-column ul {
+            list-style: none;
+        }
+
+        .footer-column li {
+            margin-bottom: 0.75rem;
+        }
+
+        .footer-column a {
+            color: var(--gray-500);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-column a:hover {
+            color: var(--primary-light);
+        }
+
+        .footer-bottom {
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-bottom p {
+            color: var(--gray-600);
+        }
+
+        .footer-bottom-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .footer-bottom-links a {
+            color: var(--gray-500);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .footer-bottom-links a:hover {
+            color: var(--primary-light);
+        }
+
+        /* ============================================
+           RESPONSIVE DESIGN
+        ============================================ */
+        @media (max-width: 1024px) {
+            .hero-container {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .hero-description {
+                margin: 0 auto 2rem;
+            }
+
+            .hero-buttons {
+                justify-content: center;
+            }
+
+            .hero-stats {
+                justify-content: center;
+            }
+
+            .hero-visual {
+                max-width: 600px;
+                margin: 0 auto;
+            }
+
+            .dashboard-preview {
+                transform: none;
+            }
+
+            .floating-card {
+                display: none;
+            }
+
+            .pricing-card.featured {
+                transform: none;
+            }
+
+            .footer-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+
+            .hero {
+                padding: 6rem 1rem 3rem;
+            }
+
+            .hero h1 {
+                font-size: 2.25rem;
+            }
+
+            .hero-description {
+                font-size: 1rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .hero-stats {
+                flex-wrap: wrap;
+                gap: 1.5rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .features-grid,
+            .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-container {
+                padding: 2rem;
+            }
+
+            .cta h2 {
+                font-size: 1.75rem;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+            }
+
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        /* ============================================
+           ANIMATIONS ON SCROLL
+        ============================================ */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <span class="logo-text">MySEOKingTool</span>
+            </a>
+            
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#tools">Tools</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#testimonials">Reviews</a>
+            </div>
+            
+            <div class="nav-buttons">
+                <a href="{{ url_for('login') }}" class="btn btn-ghost">Login</a>
+                <a href="{{ url_for('signup') }}" class="btn btn-primary">Start Free</a>
+            </div>
+            
+            <button class="mobile-toggle" id="mobileToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fas fa-sparkles"></i>
+                    <span>AI-Powered SEO Platform</span>
+                </div>
+                
+                <h1>
+                    Create Content That<br>
+                    <span>Ranks #1 on Google</span>
+                </h1>
+                
+                <p class="hero-description">
+                    Transform your content strategy with AI. Generate SEO-optimized articles, 
+                    research keywords, analyze competitors, and boost your rankings — all in one powerful platform.
+                </p>
+                
+                <div class="hero-buttons">
+                    <a href="{{ url_for('signup') }}" class="btn btn-primary btn-large">
+                        <i class="fas fa-rocket"></i>
+                        Start Free Trial
+                    </a>
+                    <a href="#features" class="btn btn-secondary btn-large">
+                        <i class="fas fa-play-circle"></i>
+                        See How It Works
+                    </a>
+                </div>
+                
+                <div class="hero-stats">
+                    <div class="stat">
+                        <div class="stat-value">20+</div>
+                        <div class="stat-label">SEO Tools</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">10K+</div>
+                        <div class="stat-label">Users</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">98%</div>
+                        <div class="stat-label">Satisfaction</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hero-visual">
+                <div class="dashboard-preview">
+                    <div class="preview-header">
+                        <div class="preview-dot red"></div>
+                        <div class="preview-dot yellow"></div>
+                        <div class="preview-dot green"></div>
+                    </div>
+                    <div class="preview-content">
+                        <div class="preview-card">
+                            <div class="preview-score">
+                                <div>
+                                    <div style="font-size: 0.9rem; color: var(--gray-500);">SEO Score</div>
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--white);">Excellent</div>
+                                </div>
+                                <div class="score-circle">
+                                    <span class="score-value">85</span>
+                                </div>
+                            </div>
+                            <div class="preview-bars">
+                                <div class="bar-item">
+                                    <span class="bar-label">Keywords</span>
+                                    <div class="bar-track">
+                                        <div class="bar-fill high" style="width: 90%;"></div>
+                                    </div>
+                                </div>
+                                <div class="bar-item">
+                                    <span class="bar-label">Readability</span>
+                                    <div class="bar-track">
+                                        <div class="bar-fill high" style="width: 85%;"></div>
+                                    </div>
+                                </div>
+                                <div class="bar-item">
+                                    <span class="bar-label">Structure</span>
+                                    <div class="bar-track">
+                                        <div class="bar-fill medium" style="width: 75%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Floating Cards -->
+                <div class="floating-card floating-card-1">
+                    <div class="floating-icon purple">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="floating-text">Traffic Increase</div>
+                    <div class="floating-value">+247%</div>
+                </div>
+                
+                <div class="floating-card floating-card-2">
+                    <div class="floating-icon blue">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <div class="floating-text">Ranking Position</div>
+                    <div class="floating-value">#1</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="section-header">
+            <div class="section-badge">
+                <i class="fas fa-bolt"></i>
+                Features
+            </div>
+            <h2 class="section-title">Everything You Need to Dominate SEO</h2>
+            <p class="section-description">
+                Powerful AI-driven tools designed to help you create content that ranks, 
+                analyze competitors, and grow organic traffic.
+            </p>
+        </div>
+        
+        <div class="features-grid">
+            <div class="feature-card fade-in">
+                <div class="feature-icon gradient-1">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <h3 class="feature-title">AI Content Generator</h3>
+                <p class="feature-description">
+                    Generate SEO-optimized articles, blog posts, and product descriptions in seconds 
+                    using advanced GPT-4 technology.
+                </p>
+                <div class="feature-tags">
+                    <span class="feature-tag">GPT-4 Powered</span>
+                    <span class="feature-tag">SEO Optimized</span>
+                    <span class="feature-tag">Multiple Formats</span>
+                </div>
+            </div>
+            
+            <div class="feature-card fade-in">
+                <div class="feature-icon gradient-2">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3 class="feature-title">Keyword Research</h3>
+                <p class="feature-description">
+                    Discover high-value keywords with search volume, competition data, and 
+                    AI-powered suggestions for your niche.
+                </p>
+                <div class="feature-tags">
+                    <span class="feature-tag">LSI Keywords</span>
+                    <span class="feature-tag">Long-tail</span>
+                    <span class="feature-tag">Competition Analysis</span>
+                </div>
+            </div>
+            
+            <div class="feature-card fade-in">
+                <div class="feature-icon gradient-3">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h3 class="feature-title">SERP Analysis</h3>
+                <p class="feature-description">
+                    Analyze search results, understand ranking factors, and get actionable 
+                    recommendations to outrank competitors.
+                </p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Competitor Insights</span>
+                    <span class="feature-tag">Ranking Factors</span>
+                    <span class="feature-tag">Gap Analysis</span>
+                </div>
+            </div>
+            
+            <div class="feature-card fade-in">
+                <div class="feature-icon gradient-4">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <h3 class="feature-title">Content Editor</h3>
+                <p class="feature-description">
+                    Write and optimize content with real-time SEO scoring, suggestions, 
+                    and readability analysis as you type.
+                </p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Real-time Score</span>
+                    <span class="feature-tag">Suggestions</span>
+                    <span class="feature-tag">Export Options</span>
+                </div>
+            </div>
+            
+            <div class="feature-card fade-in">
+                <div class="feature-icon gradient-5">
+                    <i class="fas fa-code"></i>
+                </div>
+                <h3 class="feature-title">Schema Generator</h3>
+                <p class="feature-description">
+                    Create structured data markup for rich snippets. Article, FAQ, Product, 
+                    Local Business and more schema types.
+                </p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Rich Snippets</span>
+                    <span class="feature-tag">JSON-LD</span>
+                    <span class="feature-tag">Google Ready</span>
+                </div>
+            </div>
+            
+            <div class="feature-card fade-in">
+                <div class="feature-icon gradient-6">
+                    <i class="fas fa-bullhorn"></i>
+                </div>
+                <h3 class="feature-title">Social Media Posts</h3>
+                <p class="feature-description">
+                    Transform your content into engaging social posts for Twitter, LinkedIn, 
+                    Facebook, and more platforms.
+                </p>
+                <div class="feature-tags">
+                    <span class="feature-tag">Multi-platform</span>
+                    <span class="feature-tag">Hashtags</span>
+                    <span class="feature-tag">Engagement Focus</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tools Showcase -->
+    <section class="tools-showcase" id="tools">
+        <div class="section-header">
+            <div class="section-badge">
+                <i class="fas fa-toolbox"></i>
+                20+ Tools
+            </div>
+            <h2 class="section-title">Complete SEO Toolkit</h2>
+            <p class="section-description">
+                Every tool you need to optimize your content and dominate search rankings.
+            </p>
+        </div>
+        
+        <div class="tools-grid">
+            <div class="tool-item fade-in">
+                <i class="fas fa-search"></i>
+                <span>Keyword Research</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-chart-line"></i>
+                <span>SERP Analysis</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-magic"></i>
+                <span>Content Generator</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-edit"></i>
+                <span>SEO Editor</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-code"></i>
+                <span>Schema Generator</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-tags"></i>
+                <span>Meta Tags</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-image"></i>
+                <span>Alt Text Generator</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-book-reader"></i>
+                <span>Readability Checker</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-heading"></i>
+                <span>Headline Analyzer</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-project-diagram"></i>
+                <span>LSI Keywords</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Content Brief</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-link"></i>
+                <span>Internal Linking</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-sitemap"></i>
+                <span>Content Outline</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-shield-alt"></i>
+                <span>Plagiarism Checker</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-photo-video"></i>
+                <span>Image SEO</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-question-circle"></i>
+                <span>FAQ Schema</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-share-alt"></i>
+                <span>Social Posts</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-users"></i>
+                <span>Competitor Analyzer</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-robot"></i>
+                <span>Robots.txt</span>
+            </div>
+            <div class="tool-item fade-in">
+                <i class="fas fa-map"></i>
+                <span>Sitemap Generator</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="section-header">
+            <div class="section-badge">
+                <i class="fas fa-tag"></i>
+                Pricing
+            </div>
+            <h2 class="section-title">Simple, Transparent Pricing</h2>
+            <p class="section-description">
+                Start for free. Upgrade when you need more power.
+            </p>
+        </div>
+        
+        <div class="pricing-grid">
+            <!-- Free Plan -->
+            <div class="pricing-card fade-in">
+                <div class="pricing-header">
+                    <div class="pricing-name">Free</div>
+                    <div class="pricing-price">$0<span>/month</span></div>
+                </div>
+                <ul class="pricing-features">
+                    <li><i class="fas fa-check"></i> 5 content pieces/month</li>
+                    <li><i class="fas fa-check"></i> 50 AI requests/month</li>
+                    <li><i class="fas fa-check"></i> Basic keyword research</li>
+                    <li><i class="fas fa-check"></i> SEO content editor</li>
+                    <li><i class="fas fa-check"></i> TXT & HTML export</li>
+                    <li class="disabled"><i class="fas fa-times"></i> Advanced tools</li>
+                    <li class="disabled"><i class="fas fa-times"></i> Priority support</li>
+                </ul>
+                <a href="{{ url_for('signup') }}" class="btn btn-secondary btn-large pricing-cta">
+                    Get Started Free
+                </a>
+            </div>
+            
+            <!-- Pro Plan -->
+            <div class="pricing-card featured fade-in">
+                <div class="pricing-badge">Most Popular</div>
+                <div class="pricing-header">
+                    <div class="pricing-name">Pro</div>
+                    <div class="pricing-price">$29<span>/month</span></div>
+                </div>
+                <ul class="pricing-features">
+                    <li><i class="fas fa-check"></i> 50 content pieces/month</li>
+                    <li><i class="fas fa-check"></i> 500 AI requests/month</li>
+                    <li><i class="fas fa-check"></i> All SEO tools</li>
+                    <li><i class="fas fa-check"></i> SERP analysis</li>
+                    <li><i class="fas fa-check"></i> All export formats</li>
+                    <li><i class="fas fa-check"></i> Competitor analysis</li>
+                    <li><i class="fas fa-check"></i> Email support</li>
+                </ul>
+                <a href="{{ url_for('signup') }}" class="btn btn-primary btn-large pricing-cta">
+                    Start Pro Trial
+                </a>
+            </div>
+            
+            <!-- Enterprise Plan -->
+            <div class="pricing-card fade-in">
+                <div class="pricing-header">
+                    <div class="pricing-name">Enterprise</div>
+                    <div class="pricing-price">$99<span>/month</span></div>
+                </div>
+                <ul class="pricing-features">
+                    <li><i class="fas fa-check"></i> Unlimited content</li>
+                    <li><i class="fas fa-check"></i> Unlimited AI requests</li>
+                    <li><i class="fas fa-check"></i> All Pro features</li>
+                    <li><i class="fas fa-check"></i> API access</li>
+                    <li><i class="fas fa-check"></i> Team collaboration</li>
+                    <li><i class="fas fa-check"></i> Custom integrations</li>
+                    <li><i class="fas fa-check"></i> Priority support</li>
+                </ul>
+                <a href="{{ url_for('signup') }}" class="btn btn-secondary btn-large pricing-cta">
+                    Contact Sales
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials" id="testimonials">
+        <div class="section-header">
+            <div class="section-badge">
+                <i class="fas fa-star"></i>
+                Testimonials
+            </div>
+            <h2 class="section-title">Loved by Content Creators</h2>
+            <p class="section-description">
+                See what our users say about MySEOKingTool.
+            </p>
+        </div>
+        
+        <div class="testimonials-grid">
+            <div class="testimonial-card fade-in">
+                <div class="testimonial-stars">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-text">
+                    "This tool has completely transformed our content workflow. We went from 
+                    struggling to rank to dominating page 1 in just 3 months!"
+                </p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">SK</div>
+                    <div>
+                        <div class="author-name">Sarah Kim</div>
+                        <div class="author-role">Marketing Director, TechStartup</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="testimonial-card fade-in">
+                <div class="testimonial-stars">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-text">
+                    "The AI content generator saves me hours every week. The quality is incredible 
+                    and my SEO scores have never been higher."
+                </p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">JD</div>
+                    <div>
+                        <div class="author-name">James Davis</div>
+                        <div class="author-role">Freelance Content Writer</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="testimonial-card fade-in">
+                <div class="testimonial-stars">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-text">
+                    "Best investment for our agency. The schema generator and competitor analysis 
+                    tools alone are worth 10x the price."
+                </p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">MR</div>
+                    <div>
+                        <div class="author-name">Maria Rodriguez</div>
+                        <div class="author-role">SEO Agency Owner</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="cta-container">
+            <div class="cta-content">
+                <h2>Ready to Rank Higher?</h2>
+                <p>Join thousands of content creators who trust MySEOKingTool to dominate search results.</p>
+                <div class="cta-buttons">
+                    <a href="{{ url_for('signup') }}" class="btn btn-primary btn-large">
+                        <i class="fas fa-rocket"></i>
+                        Start Free Trial
+                    </a>
+                    <a href="#pricing" class="btn btn-secondary btn-large">
+                        View Pricing
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/" class="logo">
+                        <div class="logo-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <span class="logo-text">MySEOKingTool</span>
+                    </a>
+                    <p>AI-powered SEO content platform. Create content that ranks, analyze competitors, and grow organic traffic.</p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-column">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#tools">Tools</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="#">API</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#">Documentation</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">SEO Guide</a></li>
+                        <li><a href="#">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Contact</a></li>
+                        <li><a href="#">Partners</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; {{ now().year if now is defined else '2024' }} MySEOKingTool. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="/sitemap.xml">Sitemap</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Navbar scroll effect
+        const navbar = document.getElementById('navbar');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Fade in on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.fade-in').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Mobile menu toggle (basic)
+        const mobileToggle = document.getElementById('mobileToggle');
+        mobileToggle.addEventListener('click', () => {
+            // Add your mobile menu logic here
+            alert('Mobile menu - implement based on your needs');
+        });
+
+        // Animate stats counter
+        function animateCounter(element, target) {
+            let current = 0;
+            const increment = target / 50;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    element.textContent = target + (element.dataset.suffix || '');
+                    clearInterval(timer);
+                } else {
+                    element.textContent = Math.floor(current) + (element.dataset.suffix || '');
+                }
+            }, 30);
+        }
+    </script>
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "MySEOKingTool",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "description": "AI-powered SEO content platform with 20+ tools for keyword research, content generation, and optimization.",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "ratingCount": "1250"
+        }
+    }
+    </script>
+</body>
+</html>
