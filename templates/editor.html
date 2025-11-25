@@ -1,78 +1,108 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid" style="height: calc(100vh - 80px);">
-    <div class="row h-100">
-        <!-- MAIN EDITOR -->
-        <div class="col-lg-9 col-md-8 h-100 d-flex flex-column p-0 bg-white border-end">
-            <!-- Toolbar -->
-            <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
-                <div class="input-group w-50">
-                    <input type="text" id="docTitle" class="form-control border-0 bg-transparent fw-bold fs-5" 
-                           value="{{ content.title if content else '' }}" placeholder="Enter Article Title...">
+<style>
+    /* Zen Mode Styles */
+    .zen-mode .sidebar-col { display: none !important; }
+    .zen-mode .editor-col { width: 100% !important; max-width: 800px; margin: 0 auto; border: none !important; }
+    .editor-container { font-family: 'Inter', sans-serif; color: #2d3748; }
+    #editor:empty:before { content: attr(placeholder); color: #a0aec0; display: block; }
+    .floating-toolbar { position: sticky; top: 0; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px); z-index: 10; border-bottom: 1px solid #eee; }
+</style>
+
+<div class="container-fluid h-100 p-0">
+    <div class="row g-0 h-100">
+        
+        <!-- MAIN EDITOR COLUMN -->
+        <div class="col-lg-9 col-md-8 h-100 d-flex flex-column bg-white border-end editor-col position-relative">
+            
+            <!-- TOP NAVIGATION -->
+            <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                <div class="d-flex align-items-center w-50">
+                    <button class="btn btn-light btn-sm me-3 text-muted" onclick="toggleZen()" title="Focus Mode"><i class="fas fa-expand"></i></button>
+                    <input type="text" id="docTitle" class="form-control border-0 fw-bold fs-5 shadow-none" 
+                           value="{{ content.title if content else '' }}" placeholder="Untitled Article...">
                 </div>
                 <div>
-                    <span id="saveStatus" class="text-muted small me-3">Saved</span>
-                    
-                    <!-- WORDPRESS BUTTON -->
-                    <button class="btn btn-dark btn-sm rounded-pill px-3 me-1" data-bs-toggle="modal" data-bs-target="#wpModal">
-                        <i class="fab fa-wordpress"></i> Publish
-                    </button>
-
+                    <span id="saveStatus" class="text-muted small me-3"><i class="fas fa-check-circle"></i> Saved</span>
                     <button class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#aiModal">
-                        <i class="fas fa-robot"></i> AI Writer
+                        <i class="fas fa-magic me-1"></i> AI Writer
                     </button>
-                    <button class="btn btn-success btn-sm rounded-pill px-3" onclick="saveContent()">
-                        <i class="fas fa-save"></i> Save
-                    </button>
+                    <div class="btn-group ms-2">
+                        <button class="btn btn-dark btn-sm rounded-pill px-3 dropdown-toggle" data-bs-toggle="dropdown">Publish</button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#wpModal"><i class="fab fa-wordpress me-2"></i> WordPress</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportDoc('txt')"><i class="fas fa-file-alt me-2"></i> Download TXT</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportDoc('html')"><i class="fas fa-code me-2"></i> Download HTML</a></li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-success btn-sm rounded-pill px-3 ms-2" onclick="saveContent()">Save</button>
                 </div>
             </div>
 
-            <!-- Formatting -->
-            <div class="bg-white border-bottom p-2 sticky-top d-flex gap-2">
-                <button class="btn btn-sm btn-light" onclick="execCmd('bold')"><b>B</b></button>
-                <button class="btn btn-sm btn-light" onclick="execCmd('italic')"><i>I</i></button>
+            <!-- FORMATTING TOOLBAR -->
+            <div class="floating-toolbar p-2 d-flex justify-content-center gap-2">
+                <button class="btn btn-sm btn-light" onclick="execCmd('bold')" title="Bold"><i class="fas fa-bold"></i></button>
+                <button class="btn btn-sm btn-light" onclick="execCmd('italic')" title="Italic"><i class="fas fa-italic"></i></button>
                 <button class="btn btn-sm btn-light" onclick="execCmd('formatBlock', 'H2')">H2</button>
                 <button class="btn btn-sm btn-light" onclick="execCmd('formatBlock', 'H3')">H3</button>
-                <button class="btn btn-sm btn-light" onclick="execCmd('insertUnorderedList')"><i class="fas fa-list"></i></button>
-                <button class="btn btn-sm btn-light" onclick="execCmd('createLink', prompt('Enter URL:', 'http://'))"><i class="fas fa-link"></i></button>
+                <button class="btn btn-sm btn-light" onclick="execCmd('insertUnorderedList')"><i class="fas fa-list-ul"></i></button>
+                <button class="btn btn-sm btn-light" onclick="execCmd('createLink', prompt('URL:'))"><i class="fas fa-link"></i></button>
             </div>
 
-            <!-- Canvas -->
-            <div id="editor" contenteditable="true" class="flex-grow-1 p-5" 
-                 style="outline: none; overflow-y: auto; font-size: 18px; line-height: 1.8; max-width: 900px; margin: 0 auto; font-family: 'Georgia', serif; color: #333;">
+            <!-- WRITING AREA -->
+            <div id="editor" contenteditable="true" class="flex-grow-1 p-5 editor-container" 
+                 placeholder="Start writing your masterpiece..."
+                 style="outline: none; overflow-y: auto; font-size: 1.1rem; line-height: 1.8;">
                 {% if content and content.html_content %}
                     {{ content.html_content | safe }}
-                {% else %}
-                    <p>Start writing here...</p>
                 {% endif %}
             </div>
         </div>
 
-        <!-- SIDEBAR -->
-        <div class="col-lg-3 col-md-4 h-100 bg-light p-0 overflow-auto border-start">
+        <!-- SEO SIDEBAR COLUMN -->
+        <div class="col-lg-3 col-md-4 h-100 bg-light border-start sidebar-col overflow-auto">
             <div class="p-4">
-                <h6 class="fw-bold text-uppercase text-muted small mb-3">SEO Score</h6>
-                <div class="d-flex justify-content-center mb-4">
-                    <div class="position-relative d-flex align-items-center justify-content-center shadow-sm bg-white" 
-                         id="scoreCircle" style="width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(red 0%, #ddd 0%); transition: 0.5s;">
-                        <span class="h1 fw-bold mb-0" id="scoreValue">0</span>
+                <!-- SCORE CARD -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body text-center">
+                        <h6 class="text-uppercase text-muted small fw-bold mb-3">SEO Health</h6>
+                        <div class="position-relative d-inline-block">
+                            <div id="scoreCircle" style="width: 80px; height: 80px; border-radius: 50%; background: #eee; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; transition: 0.5s;">
+                                <span id="scoreValue">0</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- KEYWORD INPUT -->
                 <div class="mb-4">
-                    <label class="form-label small fw-bold">Focus Keyword</label>
-                    <input type="text" id="targetKeyword" class="form-control" value="{{ content.keyword if content else '' }}">
+                    <label class="form-label small fw-bold text-muted">Target Keyword</label>
+                    <input type="text" id="targetKeyword" class="form-control" placeholder="e.g. keto diet" value="{{ content.keyword if content else '' }}">
                 </div>
-                <h6 class="fw-bold text-uppercase text-muted small mb-2">Checklist</h6>
-                <ul class="list-group list-group-flush rounded shadow-sm">
-                    <li class="list-group-item d-flex justify-content-between align-items-center small">
-                        <span>Word Count (>800)</span><span id="checkWords" class="badge bg-secondary">0</span>
+
+                <!-- CHECKLIST -->
+                <h6 class="fw-bold small text-muted mb-3">Optimization Goals</h6>
+                <div class="d-flex justify-content-between align-items-center mb-2 small">
+                    <span>Word Count (Goal: 1000)</span>
+                    <span id="checkWords" class="fw-bold">0</span>
+                </div>
+                <div class="progress mb-3" style="height: 6px;">
+                    <div id="wordProgress" class="progress-bar bg-primary" style="width: 0%"></div>
+                </div>
+
+                <ul class="list-group list-group-flush rounded shadow-sm small">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Keyword in Title</span> <i id="checkTitle" class="fas fa-times text-danger"></i>
                     </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center small">
-                        <span>Title Keyword</span><span id="checkTitle" class="badge bg-danger">No</span>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Keyword in Intro</span> <i id="checkIntro" class="fas fa-times text-danger"></i>
                     </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center small">
-                        <span>Headings</span><span id="checkHeadings" class="badge bg-secondary">0</span>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Headings (H2/H3)</span> <span id="checkHeadings" class="badge bg-secondary">0</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Keyword Density</span> <span id="checkDensity">0%</span>
                     </li>
                 </ul>
             </div>
@@ -82,45 +112,37 @@
 
 <!-- AI Modal -->
 <div class="modal fade" id="aiModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header"><h5>AI Writer</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header border-0"><h5 class="fw-bold">AI Writing Assistant</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <input type="text" id="aiKeyword" class="form-control mb-3" placeholder="Topic...">
-                <select id="aiMode" class="form-select mb-3"><option value="standard">Standard</option><option value="human">Human-Like</option></select>
-                <button class="btn btn-primary w-100" onclick="generateAI()">Generate</button>
-                <div id="aiLoading" class="mt-2 text-center" style="display:none;">Generating...</div>
+                <input type="text" id="aiKeyword" class="form-control mb-3" placeholder="What do you want to write about?">
+                <div class="d-flex gap-2 mb-3">
+                    <select id="aiMode" class="form-select">
+                        <option value="standard">SEO Optimized</option>
+                        <option value="human">Human / Opinionated</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary w-100" onclick="generateAI()"><i class="fas fa-pen-nib me-2"></i> Generate Draft</button>
+                <div id="aiLoading" class="mt-3 text-center text-muted small" style="display:none;">
+                    <div class="spinner-border spinner-border-sm me-1"></div> Thinking...
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- WORDPRESS MODAL -->
+<!-- WP Modal -->
 <div class="modal fade" id="wpModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title"><i class="fab fa-wordpress"></i> Publish to WordPress</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
+            <div class="modal-header bg-dark text-white"><h5 class="modal-title">Publish to WordPress</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <p class="small text-muted">Requires an "Application Password" from WP Admin > Users > Profile.</p>
-                <div class="mb-3">
-                    <label>Website URL</label>
-                    <input type="url" id="wpUrl" class="form-control" placeholder="https://yourblog.com">
-                </div>
-                <div class="mb-3">
-                    <label>Username</label>
-                    <input type="text" id="wpUser" class="form-control">
-                </div>
-                <div class="mb-3">
-                    <label>Application Password</label>
-                    <input type="password" id="wpPass" class="form-control" placeholder="xxxx xxxx xxxx xxxx">
-                </div>
-                <div id="wpMsg" class="alert alert-info" style="display:none;"></div>
-            </div>
-            <div class="modal-footer">
+                <input type="url" id="wpUrl" class="form-control mb-2" placeholder="https://yoursite.com">
+                <input type="text" id="wpUser" class="form-control mb-2" placeholder="Username">
+                <input type="password" id="wpPass" class="form-control mb-2" placeholder="Application Password">
                 <button class="btn btn-dark w-100" onclick="publishToWP()">Publish Draft</button>
+                <div id="wpMsg" class="mt-2"></div>
             </div>
         </div>
     </div>
@@ -132,6 +154,7 @@ const editor = document.getElementById('editor');
 const titleInput = document.getElementById('docTitle');
 const keywordInput = document.getElementById('targetKeyword');
 
+function toggleZen() { document.body.classList.toggle('zen-mode'); }
 function execCmd(c, v=null) { document.execCommand(c, false, v); updateSeoScore(); }
 
 function updateSeoScore() {
@@ -141,25 +164,35 @@ function updateSeoScore() {
     const title = titleInput.value.toLowerCase().trim();
     let score = 0;
     
-    // Words
+    // Word Count & Progress
     const wc = text.trim().split(/\s+/).length;
     document.getElementById('checkWords').innerText = wc;
-    if(wc > 800) { score += 30; document.getElementById('checkWords').className = "badge bg-success"; }
-    else { document.getElementById('checkWords').className = "badge bg-warning text-dark"; }
+    const progress = Math.min((wc / 1000) * 100, 100);
+    document.getElementById('wordProgress').style.width = progress + "%";
+    if(wc > 800) score += 30;
 
-    // Keyword in Title
-    if(kw && title.includes(kw)) { score += 20; document.getElementById('checkTitle').className="badge bg-success"; document.getElementById('checkTitle').innerText="Yes"; }
-    else { document.getElementById('checkTitle').className="badge bg-danger"; document.getElementById('checkTitle').innerText="No"; }
+    // Keyword Checks
+    if(kw) {
+        if(title.includes(kw)) { score += 20; document.getElementById('checkTitle').className="fas fa-check text-success"; }
+        else { document.getElementById('checkTitle').className="fas fa-times text-danger"; }
+        
+        if(text.substring(0, 200).toLowerCase().includes(kw)) { score += 20; document.getElementById('checkIntro').className="fas fa-check text-success"; }
+        else { document.getElementById('checkIntro').className="fas fa-times text-danger"; }
 
-    // Headings
+        const density = (( (text.match(new RegExp(kw, "gi")) || []).length / (wc || 1) ) * 100).toFixed(1);
+        document.getElementById('checkDensity').innerText = density + "%";
+        if(density >= 0.5 && density <= 2.5) score += 20;
+    }
+
     const hc = (html.match(/<h[23]/g) || []).length;
     document.getElementById('checkHeadings').innerText = hc;
     if(hc > 2) score += 10;
 
-    // Visuals
-    score = Math.min(score + (wc > 100 ? 10 : 0), 100);
+    score = Math.min(score, 100);
     document.getElementById('scoreValue').innerText = score;
-    document.getElementById('scoreCircle').style.background = `conic-gradient(${score < 50 ? 'red' : '#198754'} ${score}%, #e9ecef ${score}% 100%)`;
+    let color = score < 50 ? '#dc3545' : (score < 80 ? '#ffc107' : '#198754');
+    document.getElementById('scoreCircle').style.background = `conic-gradient(${color} ${score}%, #eee ${score}% 100%)`;
+    document.getElementById('scoreCircle').style.color = color;
 }
 
 editor.addEventListener('keyup', updateSeoScore);
@@ -177,17 +210,15 @@ async function generateAI() {
         document.getElementById('aiLoading').style.display = 'none';
         if(d.success) {
             editor.innerHTML = d.html_content;
-            titleInput.value = `${k}`;
-            keywordInput.value = k;
+            titleInput.value = k; keywordInput.value = k;
             bootstrap.Modal.getInstance(document.getElementById('aiModal')).hide();
-            updateSeoScore();
-            saveContent();
+            updateSeoScore(); saveContent();
         } else { alert(d.error); }
     } catch(e) { alert("Error"); }
 }
 
 async function saveContent() {
-    document.getElementById('saveStatus').innerText = "Saving...";
+    document.getElementById('saveStatus').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     try {
         const r = await fetch('/api/save-content', {
             method: 'POST', headers: {'Content-Type':'application/json'},
@@ -195,42 +226,29 @@ async function saveContent() {
         });
         const d = await r.json();
         if(d.success) {
-            document.getElementById('saveStatus').innerText = "Saved";
+            document.getElementById('saveStatus').innerHTML = '<i class="fas fa-check-circle"></i> Saved';
             if(d.id) { contentId = d.id; window.history.pushState({}, "", `/editor?id=${contentId}`); }
-        } else { alert("Save Failed"); }
-    } catch(e) { alert("Save Error"); }
+        }
+    } catch(e) { alert("Save failed"); }
 }
 
 async function publishToWP() {
-    const url = document.getElementById('wpUrl').value;
-    const user = document.getElementById('wpUser').value;
-    const pass = document.getElementById('wpPass').value;
-    
-    if(!url || !user || !pass) return alert("Fill all details");
-    
+    const u = document.getElementById('wpUrl').value;
+    const n = document.getElementById('wpUser').value;
+    const p = document.getElementById('wpPass').value;
     const msg = document.getElementById('wpMsg');
-    msg.style.display = 'block';
-    msg.innerText = "Publishing to WordPress...";
-    
+    msg.innerText = "Publishing...";
     try {
-        const res = await fetch('/api/publish-wordpress', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                url: url, username: user, password: pass,
-                title: titleInput.value, content: editor.innerHTML
-            })
-        });
-        const data = await res.json();
-        if(data.success) {
-            msg.className = "alert alert-success";
-            msg.innerHTML = `Published! <a href="${data.link}" target="_blank">View Post</a>`;
-        } else {
-            msg.className = "alert alert-danger";
-            msg.innerText = data.error;
-        }
-    } catch(e) {
-        msg.innerText = "Network Error";
-    }
+        const r = await fetch('/api/publish-wordpress', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({url:u, username:n, password:p, title:titleInput.value, content:editor.innerHTML})});
+        const d = await r.json();
+        if(d.success) msg.innerHTML = `<span class="text-success">Success! <a href="${d.link}" target="_blank">View</a></span>`;
+        else msg.innerText = "Error: " + d.error;
+    } catch(e) { msg.innerText = "Network Error"; }
+}
+
+function exportDoc(fmt) {
+    if(!contentId) return alert("Save first");
+    window.location.href = `/api/export/${contentId}/${fmt}`;
 }
 
 window.onload = updateSeoScore;
