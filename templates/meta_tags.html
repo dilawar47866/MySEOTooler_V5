@@ -1,65 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fas fa-tags mr-2 text-indigo-600"></i> Meta Tag Generator</h2>
-        
-        <div class="mb-6">
-            <label class="block text-sm font-bold mb-2 text-slate-700">Content Title:</label>
-            <input type="text" id="title" class="w-full p-3 border rounded-lg mb-4" placeholder="Article Title">
-            
-            <label class="block text-sm font-bold mb-2 text-slate-700">Description/Snippet:</label>
-            <textarea id="desc" rows="3" class="w-full p-3 border rounded-lg" placeholder="Paste a paragraph of your content here..."></textarea>
-        </div>
-        
-        <button onclick="generateMeta()" id="btn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition w-full">
-            <i class="fas fa-code mr-2"></i> Generate Tags
-        </button>
-
-        <div id="result" class="hidden mt-8">
-            <h3 class="font-bold mb-2">Copy/Paste to &lt;head&gt;:</h3>
-            <textarea id="output" readonly class="w-full h-48 p-4 bg-slate-900 text-green-400 font-mono text-sm rounded-lg"></textarea>
-        </div>
-    </div>
+<div class="container mt-5">
+    <h2><i class="fas fa-tags text-info"></i> Meta Tag Generator</h2>
+    <input type="text" id="title" class="form-control mb-2" placeholder="Page Title">
+    <textarea id="desc" class="form-control mb-3" placeholder="Page Content/Summary..."></textarea>
+    <button class="btn btn-info text-white w-100" onclick="genMeta()">Generate Tags</button>
+    <textarea id="output" class="form-control mt-3 bg-dark text-success" rows="5" readonly></textarea>
 </div>
-
 <script>
-async function generateMeta() {
-    const btn = document.getElementById('btn');
-    const title = document.getElementById('title').value;
-    const desc = document.getElementById('desc').value;
-    
-    if(!title) return alert("Enter a title");
-    
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI Working...';
-    btn.disabled = true;
-    
-    try {
-        const res = await fetch('/api/generate-meta-tags', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({title: title, content: desc}) // using content param for context
-        });
-        const data = await res.json();
-        
-        if(data.error) throw new Error(data.error);
-        
-        // Construct full HTML block
-        let html = `<!-- Primary Meta Tags -->\n`;
-        html += `<title>${data.meta_tags.title}</title>\n`;
-        html += `<meta name="description" content="${data.meta_tags.description}">\n\n`;
-        html += `<!-- Open Graph / Facebook -->\n`;
-        html += `<meta property="og:title" content="${data.meta_tags.title}">\n`;
-        html += `<meta property="og:description" content="${data.meta_tags.description}">\n`;
-        
-        document.getElementById('output').value = html;
-        document.getElementById('result').classList.remove('hidden');
-    } catch(e) {
-        alert(e.message);
-    } finally {
-        btn.innerHTML = '<i class="fas fa-code"></i> Generate Tags';
-        btn.disabled = false;
-    }
+async function genMeta() {
+    const t = document.getElementById('title').value;
+    const c = document.getElementById('desc').value;
+    const res = await fetch('/api/generate-content', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keyword: `Write a Meta Title (max 60 chars) and Meta Description (max 160 chars) for: Title: ${t}, Content: ${c}. Output as HTML meta tags.`, mode:'standard'})});
+    const d = await res.json();
+    document.getElementById('output').value = d.content;
 }
 </script>
 {% endblock %}
