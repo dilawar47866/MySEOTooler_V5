@@ -1,37 +1,60 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fas fa-robot mr-2 text-gray-600"></i> Robots.txt Generator</h2>
-        
-        <div class="mb-6">
-            <label class="block text-sm font-bold mb-2 text-slate-700">Sitemap URL (Optional):</label>
-            <input type="text" id="sitemap" class="w-full p-3 border rounded-lg" placeholder="https://yourwebsite.com/sitemap.xml">
+<div class="container mt-4">
+    <h2>Robots.txt Generator</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card p-4">
+                <div class="mb-3">
+                    <label>User Agent (Default: *)</label>
+                    <input type="text" id="userAgent" class="form-control" value="*">
+                </div>
+                <div class="mb-3">
+                    <label>Disallow (e.g. /admin)</label>
+                    <input type="text" id="disallowPath" class="form-control" placeholder="/private">
+                </div>
+                <div class="mb-3">
+                    <label>Allow (e.g. /public)</label>
+                    <input type="text" id="allowPath" class="form-control" placeholder="/public">
+                </div>
+                <div class="mb-3">
+                    <label>Sitemap URL</label>
+                    <input type="url" id="sitemapUrl" class="form-control" placeholder="https://example.com/sitemap.xml">
+                </div>
+                <button class="btn btn-success w-100" onclick="generateRobots()">Generate File</button>
+            </div>
         </div>
-        
-        <button onclick="generateRobots()" class="bg-gray-800 text-white px-6 py-3 rounded-lg font-bold hover:bg-gray-900 transition w-full">
-            Generate File
-        </button>
-
-        <div id="result" class="hidden mt-8">
-            <textarea id="output" readonly class="w-full h-48 p-4 bg-slate-100 font-mono text-sm rounded-lg border"></textarea>
+        <div class="col-md-6">
+            <div class="card p-4 h-100">
+                <label>Output:</label>
+                <textarea id="robotsOutput" class="form-control h-100" style="min-height: 300px; font-family: monospace;"></textarea>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
 async function generateRobots() {
-    const sitemap = document.getElementById('sitemap').value;
-    
-    const res = await fetch('/api/generate-robots', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({sitemap_url: sitemap})
-    });
-    const data = await res.json();
-    
-    document.getElementById('output').value = data.robots_txt;
-    document.getElementById('result').classList.remove('hidden');
+    const data = {
+        userAgent: document.getElementById('userAgent').value,
+        disallow: document.getElementById('disallowPath').value,
+        allow: document.getElementById('allowPath').value,
+        sitemap: document.getElementById('sitemapUrl').value
+    };
+
+    try {
+        const res = await fetch('/api/generate-robots', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        
+        if(result.success) {
+            document.getElementById('robotsOutput').value = result.content;
+        } else {
+            alert("Error: " + result.error);
+        }
+    } catch (e) {
+        alert("Network Error");
+    }
 }
 </script>
-{% endblock %}
