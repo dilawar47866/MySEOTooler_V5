@@ -1,71 +1,88 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fas fa-search mr-2 text-blue-600"></i> Keyword Research</h2>
-        
-        <div class="flex gap-4 mb-6">
-            <input type="text" id="keyword" class="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Enter seed keyword (e.g. vegan diet)">
-            <button onclick="getKeywords()" id="btn" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition">
-                Search
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-project-diagram text-warning"></i> Keyword Cluster Strategist</h2>
+            <p class="text-muted">Don't just find keywords. Build a content authority map.</p>
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="card shadow-sm p-4 mb-4 border-0">
+        <div class="input-group input-group-lg">
+            <input type="text" id="seedKeyword" class="form-control" placeholder="Enter main topic (e.g. Keto Diet)">
+            <button class="btn btn-warning text-dark fw-bold" onclick="generateClusters()">
+                <i class="fas fa-magic"></i> Generate Strategy
             </button>
         </div>
+    </div>
 
-        <div id="result" class="hidden mt-8">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-100">
-                        <th class="p-4 border-b font-bold text-slate-700">Keyword Idea</th>
-                        <th class="p-4 border-b font-bold text-slate-700 w-32">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="keywordList"></tbody>
-            </table>
-        </div>
+    <!-- Loading -->
+    <div id="loading" class="text-center py-5" style="display:none;">
+        <div class="spinner-border text-warning" style="width: 3rem; height: 3rem;"></div>
+        <h4 class="mt-3">Designing Content Strategy...</h4>
+        <p class="text-muted">Grouping keywords by search intent.</p>
+    </div>
+
+    <!-- Results Grid -->
+    <div id="resultsArea" class="row g-4" style="display:none;">
+        <!-- Clusters will be injected here via JS -->
     </div>
 </div>
 
 <script>
-async function getKeywords() {
-    const btn = document.getElementById('btn');
-    const keyword = document.getElementById('keyword').value;
-    
-    if(!keyword) return alert("Enter a keyword");
-    
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    btn.disabled = true;
-    
+async function generateClusters() {
+    const kw = document.getElementById('seedKeyword').value;
+    if(!kw) return alert("Enter a topic");
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('resultsArea').style.display = 'none';
+    document.getElementById('resultsArea').innerHTML = '';
+
     try {
-        const res = await fetch('/api/generate-keywords', {
+        const res = await fetch('/api/generate-clusters', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({keyword: keyword})
+            body: JSON.stringify({ keyword: kw })
         });
         const data = await res.json();
-        
-        if(data.error) throw new Error(data.error);
-        
-        const tbody = document.getElementById('keywordList');
-        tbody.innerHTML = '';
-        
-        data.keywords.forEach(kw => {
-            tbody.innerHTML += `
-                <tr class="hover:bg-slate-50">
-                    <td class="p-4 border-b text-slate-700">${kw}</td>
-                    <td class="p-4 border-b">
-                        <a href="/content-generator?topic=${encodeURIComponent(kw)}" class="text-xs bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200">Write This</a>
-                    </td>
-                </tr>
-            `;
-        });
-        
-        document.getElementById('result').classList.remove('hidden');
+        document.getElementById('loading').style.display = 'none';
+
+        if(data.success) {
+            document.getElementById('resultsArea').style.display = 'flex';
+            
+            data.clusters.forEach((cluster, index) => {
+                let keywordsHtml = cluster.keywords.map(k => `<li class="list-group-item"><i class="fas fa-search text-muted me-2 small"></i>${k}</li>`).join('');
+                
+                let html = `
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-white fw-bold text-uppercase text-primary">
+                            <i class="fas fa-bullseye me-2"></i> ${cluster.name}
+                        </div>
+                        <ul class="list-group list-group-flush">
+                            ${keywordsHtml}
+                        </ul>
+                        <div class="card-footer bg-white">
+                            <button class="btn btn-sm btn-outline-primary w-100" onclick="copyToClipboard('${cluster.keywords.join(', ')}')">Copy Keywords</button>
+                        </div>
+                    </div>
+                </div>`;
+                document.getElementById('resultsArea').innerHTML += html;
+            });
+        } else {
+            alert("Error: " + data.error);
+        }
     } catch(e) {
-        alert(e.message);
-    } finally {
-        btn.innerHTML = 'Search';
-        btn.disabled = false;
+        alert("AI Error. Try again.");
+        document.getElementById('loading').style.display = 'none';
     }
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text);
+    alert("Keywords copied!");
 }
 </script>
 {% endblock %}
