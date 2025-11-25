@@ -1,107 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Plagiarism Checker - My SEO King Tool V5{% endblock %}
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <h1><i class="fas fa-copy"></i> Plagiarism Checker</h1>
-            <p class="text-muted mb-4">Check content originality against your content library</p>
-
-            <!-- Input Card -->
-            <div class="card p-4 mb-4">
-                <div class="form-group">
-                    <label><strong>Content to Check</strong></label>
-                    <textarea id="contentInput" class="form-control" rows="12" 
-                              placeholder="Paste the content you want to check for plagiarism..."></textarea>
-                    <small class="text-muted">Minimum 50 words required</small>
-                </div>
-                
-                <button onclick="checkPlagiarism()" class="btn btn-primary btn-lg btn-block">
-                    <i class="fas fa-search"></i> Check for Plagiarism
-                </button>
-            </div>
-
-            <!-- Loading -->
-            <div id="loading" class="alert alert-info text-center" style="display:none;">
-                <i class="fas fa-spinner fa-spin"></i> Analyzing content for similarities...
-            </div>
-
-            <!-- Results -->
-            <div id="results" style="display:none;">
-                <!-- Score Card -->
-                <div class="card p-4 mb-4">
-                    <div class="row text-center">
-                        <div class="col-md-4">
-                            <h1 id="similarityScore" class="display-3 mb-0"></h1>
-                            <p class="text-muted mb-0">Similarity</p>
-                        </div>
-                        <div class="col-md-4">
-                            <h2 id="verdict" class="mb-0"></h2>
-                            <p class="text-muted mb-0">Verdict</p>
-                        </div>
-                        <div class="col-md-4">
-                            <h2 id="matchCount" class="mb-0"></h2>
-                            <p class="text-muted mb-0">Matches Found</p>
-                        </div>
-                    </div>
-
-                    <hr class="my-4">
-
-                    <div class="row text-center">
-                        <div class="col-md-6">
-                            <strong>Total Sentences:</strong>
-                            <p id="totalSentences" class="mb-0"></p>
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Matched Sentences:</strong>
-                            <p id="matchedSentences" class="mb-0"></p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Matches Details -->
-                <div id="matchesSection" class="card p-4" style="display:none;">
-                    <h4 class="mb-3">⚠️ Similar Content Found</h4>
-                    <div id="matchesList"></div>
-                </div>
-
-                <!-- No Matches -->
-                <div id="noMatchesSection" class="alert alert-success" style="display:none;">
-                    <i class="fas fa-check-circle"></i> <strong>Great news!</strong> No significant similarities found. Your content appears to be original.
-                </div>
-            </div>
-
-            <!-- Info -->
-            <div class="card p-4 mt-4">
-                <h5><i class="fas fa-info-circle"></i> How It Works</h5>
-                <ul class="mb-0">
-                    <li><strong>Scope:</strong> Checks against your own content library (not the entire web)</li>
-                    <li><strong>Algorithm:</strong> Compares sentence-level similarities</li>
-                    <li><strong>Threshold:</strong> Flags matches with 70%+ similarity</li>
-                    <li><strong>Use Case:</strong> Avoid self-plagiarism and duplicate content issues</li>
-                    <li><strong>Recommendation:</strong> Keep similarity below 30% for best SEO</li>
-                </ul>
-            </div>
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fas fa-check-double mr-2 text-orange-500"></i> Internal Plagiarism Checker</h2>
+        <p class="text-sm text-slate-500 mb-4">Checks if this content duplicates other articles in your library.</p>
+        
+        <div class="mb-6">
+            <textarea id="content" rows="8" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500" placeholder="Paste content to check..."></textarea>
         </div>
+        
+        <button onclick="checkPlagiarism()" id="btn" class="bg-orange-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-orange-600 transition w-full">
+            <i class="fas fa-search mr-2"></i> Check Content
+        </button>
+
+        <div id="result" class="hidden mt-8 p-6 rounded-lg border"></div>
     </div>
 </div>
 
 <script>
 async function checkPlagiarism() {
-    const content = document.getElementById('contentInput').value.trim();
+    const btn = document.getElementById('btn');
+    const content = document.getElementById('content').value;
     
-    if (!content) {
-        alert('⚠️ Please enter content to check');
-        return;
-    }
+    if(!content) return alert("Please enter content");
     
-    if (content.split(' ').length < 50) {
-        alert('⚠️ Content must be at least 50 words');
-        return;
-    }
-    
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+    btn.disabled = true;
     
     try {
         const res = await fetch('/api/check-plagiarism', {
@@ -109,66 +33,31 @@ async function checkPlagiarism() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({content: content})
         });
-        
         const data = await res.json();
+        if(data.error) throw new Error(data.error);
         
-        if (!res.ok) throw new Error(data.error || 'Check failed');
-        
-        // Display results
-        document.getElementById('similarityScore').textContent = data.similarity_percentage + '%';
-        document.getElementById('similarityScore').className = 'display-3 mb-0 text-' + data.verdict_color;
-        
-        document.getElementById('verdict').textContent = data.verdict;
-        document.getElementById('verdict').className = 'mb-0 text-' + data.verdict_color;
-        
-        document.getElementById('matchCount').textContent = data.total_matches;
-        document.getElementById('totalSentences').textContent = data.total_sentences;
-        document.getElementById('matchedSentences').textContent = data.matched_sentences;
-        
-        // Show matches or no matches message
-        if (data.matches.length > 0) {
-            const matchesList = document.getElementById('matchesList');
-            matchesList.innerHTML = '';
+        const resultDiv = document.getElementById('result');
+        resultDiv.className = data.verdict === 'Original' 
+            ? "mt-8 p-6 rounded-lg border bg-green-50 border-green-200 text-green-800" 
+            : "mt-8 p-6 rounded-lg border bg-red-50 border-red-200 text-red-800";
             
-            data.matches.forEach((match, index) => {
-                const card = document.createElement('div');
-                card.className = 'card p-3 mb-3 border-warning';
-                card.innerHTML = `
-                    <div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <strong>Match #${index + 1}</strong>
-                            <span class="badge badge-warning">${match.similarity}% Similar</span>
-                        </div>
-                        <p class="mb-2">
-                            <strong>Your Content:</strong><br>
-                            <em>"${match.original_sentence}"</em>
-                        </p>
-                        <p class="mb-2">
-                            <strong>Matched Content:</strong><br>
-                            <em>"${match.matched_sentence}"</em>
-                        </p>
-                        <p class="mb-0 text-muted">
-                            <small><strong>Source:</strong> ${match.source_title}</small>
-                        </p>
-                    </div>
-                `;
-                matchesList.appendChild(card);
-            });
-            
-            document.getElementById('matchesSection').style.display = 'block';
-            document.getElementById('noMatchesSection').style.display = 'none';
+        let html = `<h3 class="text-xl font-bold mb-2">Verdict: ${data.verdict}</h3>`;
+        
+        if(data.matches && data.matches.length > 0) {
+            html += `<p class="mb-2">Matches found in:</p><ul class="list-disc pl-5">`;
+            data.matches.forEach(m => html += `<li>${m.source_title} (${m.count} sentences)</li>`);
+            html += `</ul>`;
         } else {
-            document.getElementById('matchesSection').style.display = 'none';
-            document.getElementById('noMatchesSection').style.display = 'block';
+            html += `<p>No duplicate content found in your library.</p>`;
         }
         
-        document.getElementById('results').style.display = 'block';
-        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
-        
-    } catch (err) {
-        alert('❌ ' + err.message);
+        resultDiv.innerHTML = html;
+        resultDiv.classList.remove('hidden');
+    } catch(e) {
+        alert(e.message);
     } finally {
-        document.getElementById('loading').style.display = 'none';
+        btn.innerHTML = '<i class="fas fa-search"></i> Check Content';
+        btn.disabled = false;
     }
 }
 </script>
