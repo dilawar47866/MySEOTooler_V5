@@ -1,97 +1,258 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Welcome Section -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<style>
+    .dashboard-header {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
+    }
+    .stat-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        transition: transform 0.2s;
+        height: 100%;
+    }
+    .stat-card:hover { transform: translateY(-5px); }
+    .icon-box {
+        width: 48px; height: 48px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+        margin-right: 1rem;
+    }
+    .tool-card {
+        border: 1px solid #eee;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        color: #333;
+        display: block;
+        height: 100%;
+        background: white;
+    }
+    .tool-card:hover {
+        border-color: #6366f1;
+        box-shadow: 0 5px 15px rgba(99, 102, 241, 0.15);
+        transform: translateY(-3px);
+        color: #4f46e5;
+    }
+    .tool-icon {
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+        color: #6366f1;
+    }
+    .category-badge {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: bold;
+        color: #888;
+        margin-bottom: 1rem;
+        display: block;
+    }
+</style>
+
+<div class="container mt-4 pb-5">
+    <!-- 1. HERO SECTION -->
+    <div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap">
         <div>
-            <h1 class="h3">Dashboard</h1>
-            <p class="text-muted">Welcome back, {{ current_user.username }}! You have <strong>{{ limits['ai_requests_per_month'] - current_user.ai_requests_this_month }}</strong> AI credits remaining.</p>
+            <h1 class="h3 fw-bold mb-1">Welcome back, {{ current_user.username }}! 👋</h1>
+            <p class="mb-0 opacity-75">You have <strong>{{ limits['ai_requests_per_month'] - current_user.ai_requests_this_month }}</strong> AI credits remaining this month.</p>
         </div>
-        <a href="/editor" class="btn btn-primary"><i class="fas fa-plus"></i> New Article</a>
-    </div>
-
-    <!-- Statistics -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 bg-primary text-white h-100">
-                <div class="card-body">
-                    <h5>Total Content</h5>
-                    <h2 class="fw-bold">{{ total_content }}</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <h5 class="text-muted">Total Words</h5>
-                    <h2 class="fw-bold">{{ total_words }}</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <h5 class="text-muted">Avg SEO Score</h5>
-                    <h2 class="fw-bold text-success">{{ avg_score }}</h2>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <h5 class="text-muted">Current Plan</h5>
-                    <h2 class="fw-bold text-uppercase">{{ current_user.tier }}</h2>
-                </div>
-            </div>
+        <div class="mt-3 mt-md-0">
+            <a href="/editor" class="btn btn-light text-primary fw-bold shadow-sm px-4 py-2">
+                <i class="fas fa-pen-nib me-2"></i> Write New Article
+            </a>
         </div>
     </div>
 
-    <!-- TOOLS GRID -->
-    <h4 class="mb-3 text-muted">SEO Tools Suite</h4>
-    <div class="row g-4">
-        <!-- Content Tools -->
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm hover-card">
-                <div class="card-header bg-white fw-bold"><i class="fas fa-pen-nib text-primary"></i> Content Creation</div>
-                <div class="list-group list-group-flush">
-                    <a href="/editor" class="list-group-item list-group-item-action">AI SEO Editor</a>
-                    <a href="/content-outline" class="list-group-item list-group-item-action">Outline Generator</a>
-                    <a href="/content-brief" class="list-group-item list-group-item-action">Content Brief Generator</a>
-                    <a href="/content-library" class="list-group-item list-group-item-action">My Content Library</a>
+    <!-- 2. STATS ROW -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card bg-white p-3 d-flex align-items-center">
+                <div class="icon-box bg-light text-primary"><i class="fas fa-file-alt"></i></div>
+                <div>
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Total Content</small>
+                    <h3 class="fw-bold mb-0">{{ total_content }}</h3>
                 </div>
             </div>
         </div>
-
-        <!-- Technical SEO -->
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm hover-card">
-                <div class="card-header bg-white fw-bold"><i class="fas fa-cogs text-success"></i> Technical SEO</div>
-                <div class="list-group list-group-flush">
-                    <a href="/competitor-analyzer" class="list-group-item list-group-item-action">Competitor Analysis</a>
-                    <a href="/robots-generator" class="list-group-item list-group-item-action">Robots.txt Generator</a>
-                    <a href="/sitemap-generator" class="list-group-item list-group-item-action">Sitemap Generator</a>
-                    <a href="/schema-generator" class="list-group-item list-group-item-action">Schema Markup</a>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card bg-white p-3 d-flex align-items-center">
+                <div class="icon-box bg-light text-success"><i class="fas fa-keyboard"></i></div>
+                <div>
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Total Words</small>
+                    <h3 class="fw-bold mb-0">{{ total_words }}</h3>
                 </div>
             </div>
         </div>
-
-        <!-- Image & Social -->
-        <div class="col-md-4">
-            <div class="card h-100 shadow-sm hover-card">
-                <div class="card-header bg-white fw-bold"><i class="fas fa-images text-warning"></i> Images & Social</div>
-                <div class="list-group list-group-flush">
-                    <a href="/alt-text-generator" class="list-group-item list-group-item-action">Alt Text Generator</a>
-                    <a href="/image-seo" class="list-group-item list-group-item-action">Bulk Image SEO Check</a>
-                    <a href="/social-posts" class="list-group-item list-group-item-action">Social Media Posts</a>
-                    <a href="/youtube-script" class="list-group-item list-group-item-action">YouTube Script Writer</a>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card bg-white p-3 d-flex align-items-center">
+                <div class="icon-box bg-light text-warning"><i class="fas fa-trophy"></i></div>
+                <div>
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Avg Score</small>
+                    <h3 class="fw-bold mb-0">{{ avg_score }}</h3>
                 </div>
             </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card bg-white p-3 d-flex align-items-center">
+                <div class="icon-box bg-light text-info"><i class="fas fa-crown"></i></div>
+                <div>
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Current Plan</small>
+                    <h3 class="fw-bold mb-0 text-capitalize">{{ current_user.tier }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. RECENT PROJECTS (Quick Resume) -->
+    {% if recent_content %}
+    <div class="mb-5">
+        <div class="d-flex justify-content-between align-items-end mb-3">
+            <h5 class="fw-bold m-0">Recent Projects</h5>
+            <a href="/content-library" class="text-decoration-none small">View All <i class="fas fa-arrow-right"></i></a>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">Title</th>
+                            <th>Score</th>
+                            <th>Words</th>
+                            <th>Last Edited</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in recent_content %}
+                        <tr>
+                            <td class="ps-4 fw-bold text-dark">{{ c.title }}</td>
+                            <td>
+                                <span class="badge {% if c.seo_score > 70 %}bg-success{% elif c.seo_score > 40 %}bg-warning{% else %}bg-danger{% endif %} rounded-pill">
+                                    {{ c.seo_score }}
+                                </span>
+                            </td>
+                            <td class="text-muted">{{ c.word_count }}</td>
+                            <td class="text-muted small">{{ c.updated_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <a href="/editor?id={{ c.id }}" class="btn btn-sm btn-outline-primary rounded-pill">Edit</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. THE TOOL SUITE -->
+    <h5 class="fw-bold mb-4">SEO Tools Suite</h5>
+    
+    <!-- Category: Content Creation -->
+    <span class="category-badge">Step 1: Create</span>
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <a href="/editor" class="tool-card p-4 text-center">
+                <i class="fas fa-robot tool-icon"></i>
+                <h6 class="fw-bold">AI SEO Editor</h6>
+                <p class="small text-muted mb-0">Write and optimize articles with AI assistance.</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="/content-outline" class="tool-card p-4 text-center">
+                <i class="fas fa-list-ol tool-icon text-success"></i>
+                <h6 class="fw-bold">Outline Generator</h6>
+                <p class="small text-muted mb-0">Plan your article structure instantly.</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="/content-brief" class="tool-card p-4 text-center">
+                <i class="fas fa-briefcase tool-icon text-info"></i>
+                <h6 class="fw-bold">Content Brief</h6>
+                <p class="small text-muted mb-0">Generate guidelines for writers.</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="/headline-analyzer" class="tool-card p-4 text-center">
+                <i class="fas fa-heading tool-icon text-danger"></i>
+                <h6 class="fw-bold">Headline Analyzer</h6>
+                <p class="small text-muted mb-0">Score your titles for clicks.</p>
+            </a>
+        </div>
+    </div>
+
+    <!-- Category: Optimization & Research -->
+    <span class="category-badge">Step 2: Optimize</span>
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <a href="/keyword-research" class="tool-card p-4 text-center">
+                <i class="fas fa-search tool-icon text-warning"></i>
+                <h6 class="fw-bold">Keyword Research</h6>
+                <p class="small text-muted mb-0">Find low competition keywords.</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="/lsi-keywords" class="tool-card p-4 text-center">
+                <i class="fas fa-layer-group tool-icon text-secondary"></i>
+                <h6 class="fw-bold">LSI Generator</h6>
+                <p class="small text-muted mb-0">Find semantic keywords to include.</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="/readability-checker" class="tool-card p-4 text-center">
+                <i class="fas fa-book-reader tool-icon text-primary"></i>
+                <h6 class="fw-bold">Readability Check</h6>
+                <p class="small text-muted mb-0">Flesch-Kincaid scoring.</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="/internal-linking" class="tool-card p-4 text-center">
+                <i class="fas fa-link tool-icon text-dark"></i>
+                <h6 class="fw-bold">Link Suggestions</h6>
+                <p class="small text-muted mb-0">Find internal linking opportunities.</p>
+            </a>
+        </div>
+    </div>
+
+    <!-- Category: Technical & Images -->
+    <span class="category-badge">Step 3: Technical & Media</span>
+    <div class="row g-3 mb-5">
+        <div class="col-md-3">
+            <a href="/competitor-analyzer" class="tool-card p-4 text-center">
+                <i class="fas fa-chart-pie tool-icon text-danger"></i>
+                <h6 class="fw-bold">Competitor Spy</h6>
+                <p class="small text-muted mb-0">Analyze top ranking pages.</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="/image-seo" class="tool-card p-4 text-center">
+                <i class="fas fa-images tool-icon text-success"></i>
+                <h6 class="fw-bold">Image SEO Audit</h6>
+                <p class="small text-muted mb-0">Bulk check Alt Text.</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="/sitemap-generator" class="tool-card p-4 text-center">
+                <i class="fas fa-sitemap tool-icon text-warning"></i>
+                <h6 class="fw-bold">Sitemap Gen</h6>
+                <p class="small text-muted mb-0">Create XML sitemaps.</p>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="/schema-generator" class="tool-card p-4 text-center">
+                <i class="fas fa-code tool-icon text-info"></i>
+                <h6 class="fw-bold">Schema Markup</h6>
+                <p class="small text-muted mb-0">JSON-LD for Articles & FAQ.</p>
+            </a>
         </div>
     </div>
 </div>
-
-<style>
-.hover-card:hover { transform: translateY(-5px); transition: 0.3s ease; }
-</style>
 {% endblock %}
