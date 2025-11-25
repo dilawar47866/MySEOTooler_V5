@@ -1,55 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fas fa-share-alt mr-2 text-blue-500"></i> Social Media Post Generator</h2>
-        
-        <div class="mb-6">
-            <label class="block text-sm font-bold mb-2 text-slate-700">Paste your Article or Content:</label>
-            <textarea id="inputContent" rows="6" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Paste content here..."></textarea>
-        </div>
-        
-        <button onclick="generate()" id="btn" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition w-full">
-            <i class="fas fa-magic mr-2"></i> Generate Posts
-        </button>
-
-        <div id="result" class="hidden mt-8 space-y-6"></div>
+<div class="container mt-5">
+    <h2><i class="fas fa-share-alt text-primary"></i> Social Media Post Generator</h2>
+    <div class="card p-4 shadow-sm">
+        <textarea id="content" class="form-control mb-3" rows="4" placeholder="Paste your article or topic here..."></textarea>
+        <button class="btn btn-primary w-100" onclick="genSocial()">Generate Posts (LinkedIn, Twitter, FB)</button>
     </div>
+    <div id="output" class="mt-4 card p-4 bg-light d-none" style="white-space: pre-wrap;"></div>
 </div>
-
 <script>
-async function generate() {
-    const btn = document.getElementById('btn');
-    const content = document.getElementById('inputContent').value;
-    const resDiv = document.getElementById('result');
-    
-    if(!content) return alert("Please enter content");
-    
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-    btn.disabled = true;
-    
-    try {
-        const res = await fetch('/api/generate-social-posts', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({content: content})
-        });
-        const data = await res.json();
-        
-        if(data.error) throw new Error(data.error);
-        
-        let html = '';
-        // The API returns text, usually separated by platform
-        html += `<div class="bg-gray-50 p-6 rounded-lg border border-gray-200 whitespace-pre-wrap">${data.posts.generated}</div>`;
-        
-        resDiv.innerHTML = html;
-        resDiv.classList.remove('hidden');
-    } catch(e) {
-        alert(e.message);
-    } finally {
-        btn.innerHTML = '<i class="fas fa-magic"></i> Generate Posts';
-        btn.disabled = false;
-    }
+async function genSocial() {
+    const c = document.getElementById('content').value;
+    if(!c) return;
+    document.getElementById('output').classList.remove('d-none');
+    document.getElementById('output').innerText = "Generating...";
+    const res = await fetch('/api/generate-content', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keyword: `Write a LinkedIn post, a Twitter thread (3 tweets), and a Facebook post for this content: "${c}"`, mode:'standard'})});
+    const d = await res.json();
+    document.getElementById('output').innerText = d.content;
 }
 </script>
 {% endblock %}
