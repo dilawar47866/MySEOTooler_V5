@@ -91,8 +91,7 @@ def landing():
         return redirect(url_for('dashboard'))
     return render_template('landing.html')
 
-# FAIL-SAFE: Register aliases for the homepage
-# This ensures url_for('home') AND url_for('index') AND url_for('landing') all work
+# FAIL-SAFE 1: Register aliases for the homepage
 app.add_url_rule('/', endpoint='home', view_func=landing)
 app.add_url_rule('/', endpoint='index', view_func=landing)
 
@@ -116,6 +115,10 @@ def dashboard():
 def editor():
     c = Content.query.filter_by(id=request.args.get('id'), user_id=current_user.id).first() if request.args.get('id') else None
     return render_template('editor.html', content=c)
+
+# FAIL-SAFE 2: CRITICAL FIX FOR YOUR ERROR
+# This tells Flask: if HTML asks for 'content_generator', use the 'editor' function
+app.add_url_rule('/editor', endpoint='content_generator', view_func=editor)
 
 @app.route('/content-library')
 @login_required
@@ -250,13 +253,8 @@ tool_list = [
 ]
 
 for t in tool_list:
-    # FAIL-SAFE: Register BOTH hyphenated and underscored versions
-    # This ensures url_for('competitor-analyzer') AND url_for('competitor_analyzer') both work
-    
-    # 1. Register exact name (hyphens)
+    # FAIL-SAFE 3: Register BOTH hyphenated and underscored versions
     app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
-    
-    # 2. Register underscore name (if different)
     if '-' in t:
         app.add_url_rule(f'/{t}', endpoint=t.replace('-', '_'), view_func=lambda t=t: tool_view(t))
 
