@@ -1,61 +1,55 @@
 {% extends "base.html" %}
+
+{% block title %}My Profile - MySEO King{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
+<div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white p-4 border-bottom-0">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 64px; height: 64px; font-size: 24px;">
-                            {{ current_user.username[0].upper() }}
-                        </div>
-                        <div class="ms-3">
-                            <h2 class="mb-0 fw-bold">{{ current_user.username }}</h2>
-                            <p class="text-muted mb-0">{{ current_user.email }}</p>
-                        </div>
-                        
-                        {% if current_user.is_admin %}
-                        <div class="ms-auto">
-                            <a href="/admin" class="btn btn-dark"><i class="fas fa-user-shield"></i> Admin Panel</a>
-                        </div>
-                        {% endif %}
+            
+            <h2 class="h3 fw-bold mb-4">Account Settings</h2>
+
+            <!-- Profile Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-4" style="width: 80px; height: 80px; font-size: 2rem;">
+                        {{ current_user.username[0].upper() }}
                     </div>
-                </div>
-                
-                <div class="card-body p-4">
-                    <h5 class="fw-bold text-uppercase text-muted small mb-3">Account Details</h5>
-                    
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <div class="p-3 border rounded bg-light">
-                                <small class="d-block text-muted">Current Plan</small>
-                                <strong class="text-uppercase text-primary">{{ current_user.tier }}</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="p-3 border rounded bg-light">
-                                <small class="d-block text-muted">AI Usage (This Month)</small>
-                                <strong>{{ current_user.ai_requests_this_month }} Requests</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="p-3 border rounded bg-light">
-                                <small class="d-block text-muted">Total Articles</small>
-                                <strong>{{ current_user.content_count }}</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="p-3 border rounded bg-light">
-                                <small class="d-block text-muted">Member Since</small>
-                                <strong>2024</strong>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="d-grid">
-                        <a href="/pricing" class="btn btn-primary">Upgrade Plan</a>
+                    <div>
+                        <h4 class="fw-bold mb-1">{{ current_user.username }}</h4>
+                        <p class="text-muted mb-0">{{ current_user.email }}</p>
+                        <span class="badge bg-info text-dark mt-2 text-uppercase">{{ current_user.tier }} Plan</span>
                     </div>
                 </div>
             </div>
+
+            <!-- Usage Stats -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white fw-bold">Monthly Usage</div>
+                <div class="card-body p-4">
+                    {% set limits = current_user.get_limits() %}
+                    {% set percent = (current_user.ai_requests_this_month / limits['ai_requests_per_month']) * 100 %}
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>AI Credits Used</span>
+                        <span class="fw-bold">{{ current_user.ai_requests_this_month }} / {{ limits['ai_requests_per_month'] }}</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 10px;">
+                        <div class="progress-bar {% if percent > 90 %}bg-danger{% else %}bg-success{% endif %}" role="progressbar" style="width: {{ percent }}%"></div>
+                    </div>
+                    <p class="small text-muted">Credits reset on the 1st of every month.</p>
+                </div>
+            </div>
+
+            <!-- Account Actions -->
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white fw-bold">Danger Zone</div>
+                <div class="card-body">
+                    <p class="text-muted">Once you delete your account, there is no going back. Please be certain.</p>
+                    <button class="btn btn-outline-danger" onclick="alert('Contact support to delete account.')">Delete Account</button>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
