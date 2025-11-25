@@ -1,46 +1,79 @@
-<div class="container mt-4">
-    <h2>Competitor Analysis</h2>
-    <div class="card p-4">
-        <div class="input-group mb-3">
-            <input type="url" id="compUrl" class="form-control" placeholder="Enter Competitor URL (e.g. https://example.com)">
-            <button class="btn btn-primary" onclick="analyzeCompetitor()">Analyze</button>
-        </div>
-        
-        <div id="loading" class="text-center" style="display:none;">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p>Scanning website... (This may take 10 seconds)</p>
-        </div>
+{% extends "base.html" %}
 
-        <div id="results" style="display:none;">
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card bg-light p-3 text-center">
-                        <h5>Word Count</h5>
-                        <h3 id="wordCount">0</h3>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-light p-3 text-center">
-                        <h5>Images Found</h5>
-                        <h3 id="imageCount">0</h3>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card bg-light p-3 text-center">
-                        <h5>Title Status</h5>
-                        <span id="titleStatus" class="badge bg-success">OK</span>
-                    </div>
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-chart-line"></i> Competitor Analysis</h2>
+    </div>
+
+    <!-- Input Section -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-4">
+            <label class="form-label fw-bold">Competitor URL</label>
+            <div class="input-group">
+                <input type="url" id="compUrl" class="form-control" placeholder="https://example.com" required>
+                <button class="btn btn-primary" onclick="analyzeCompetitor()">
+                    <i class="fas fa-search"></i> Analyze
+                </button>
+            </div>
+            <small class="text-muted">Scrapes title, H1 tags, word count, and images.</small>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading" class="text-center py-5" style="display:none;">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+        <p class="mt-3 text-muted">Scanning website... This may take up to 10 seconds.</p>
+    </div>
+
+    <!-- Results Section -->
+    <div id="results" style="display:none;">
+        <!-- Stats Row -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-primary text-white text-center p-3 h-100">
+                    <h5>Word Count</h5>
+                    <h2 id="wordCount" class="fw-bold">0</h2>
                 </div>
             </div>
+            <div class="col-md-4">
+                <div class="card bg-success text-white text-center p-3 h-100">
+                    <h5>Images Found</h5>
+                    <h2 id="imageCount" class="fw-bold">0</h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-info text-white text-center p-3 h-100">
+                    <h5>Status</h5>
+                    <h2 class="fw-bold">200 OK</h2>
+                </div>
+            </div>
+        </div>
 
-            <h4>Page Title</h4>
-            <p id="pageTitle" class="p-2 bg-white border rounded"></p>
+        <!-- Title -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light fw-bold">Page Title</div>
+            <div class="card-body">
+                <p id="pageTitle" class="mb-0 lead"></p>
+            </div>
+        </div>
 
-            <h4>H1 Tags</h4>
-            <ul id="h1List" class="list-group mb-4"></ul>
+        <!-- H1 Tags -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light fw-bold">H1 Tags</div>
+            <ul id="h1List" class="list-group list-group-flush">
+                <!-- H1s will appear here -->
+            </ul>
+        </div>
 
-            <h4>Images & Alt Text</h4>
-            <div id="imageList" class="list-group" style="max-height: 300px; overflow-y: auto;"></div>
+        <!-- Images -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light fw-bold">Images & Alt Text Analysis</div>
+            <div class="card-body">
+                <div id="imageList" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Images will appear here -->
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -48,8 +81,9 @@
 <script>
 async function analyzeCompetitor() {
     const url = document.getElementById('compUrl').value;
-    if(!url) return alert("Please enter a URL");
+    if(!url) return alert("Please enter a valid URL");
 
+    // UI Reset
     document.getElementById('loading').style.display = 'block';
     document.getElementById('results').style.display = 'none';
 
@@ -68,50 +102,21 @@ async function analyzeCompetitor() {
             return;
         }
 
-        const analysis = data.analysis;
+        // Show Results
         document.getElementById('results').style.display = 'block';
-        
-        // Populate Data
+        const analysis = data.analysis;
+
+        // 1. Basic Stats
         document.getElementById('wordCount').innerText = analysis.word_count;
         document.getElementById('imageCount').innerText = analysis.total_images;
         document.getElementById('pageTitle').innerText = analysis.title;
-        
-        // H1 List
+
+        // 2. H1 Tags
         const h1Container = document.getElementById('h1List');
         h1Container.innerHTML = '';
-        if(analysis.h1_tags.length === 0) {
-            h1Container.innerHTML = '<li class="list-group-item text-danger">No H1 Tags Found!</li>';
-        } else {
+        if(analysis.h1_tags && analysis.h1_tags.length > 0) {
             analysis.h1_tags.forEach(tag => {
                 h1Container.innerHTML += `<li class="list-group-item">${tag}</li>`;
             });
-        }
-
-        // Image List (Fixes "Undefined")
-        const imgContainer = document.getElementById('imageList');
-        imgContainer.innerHTML = '';
-        if(analysis.images && analysis.images.length > 0) {
-            analysis.images.forEach(img => {
-                const altStatus = img.alt ? `<span class="text-success">Alt: ${img.alt}</span>` : `<span class="text-danger">Missing Alt Text</span>`;
-                imgContainer.innerHTML += `
-                <div class="list-group-item">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div style="max-width: 80%;">
-                            <small class="text-muted d-block text-truncate">${img.src}</small>
-                            ${altStatus}
-                        </div>
-                        <a href="${img.src}" target="_blank" class="btn btn-sm btn-outline-secondary">View</a>
-                    </div>
-                </div>`;
-            });
         } else {
-            imgContainer.innerHTML = '<p>No images found on page.</p>';
-        }
-
-    } catch (err) {
-        console.error(err);
-        alert("Failed to analyze. Please check the console.");
-        document.getElementById('loading').style.display = 'none';
-    }
-}
-</script>
+            h1Container.innerHTML = '<li class="list-group-item text-danger">No H1 
