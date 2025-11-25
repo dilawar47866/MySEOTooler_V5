@@ -1,59 +1,31 @@
 {% extends "base.html" %}
-{% block title %}LSI Keyword Generator - My SEO King Tool V5{% endblock %}
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <h1><i class="fas fa-project-diagram"></i> LSI Keyword Generator</h1>
-            <p class="text-muted mb-4">Generate semantically related keywords to boost your SEO</p>
-
-            <!-- Input Card -->
-            <div class="card p-4 mb-4">
-                <div class="form-group">
-                    <label><strong>Main Keyword</strong></label>
-                    <input type="text" id="keywordInput" class="form-control form-control-lg" 
-                           placeholder="e.g., digital marketing">
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h3 class="mb-0"><i class="fas fa-layer-group text-primary"></i> LSI Keyword Generator</h3>
                 </div>
-                
-                <button onclick="generateLSI()" class="btn btn-primary btn-lg btn-block">
-                    <i class="fas fa-magic"></i> Generate LSI Keywords
-                </button>
-            </div>
-
-            <!-- Loading -->
-            <div id="loading" class="alert alert-info text-center" style="display:none;">
-                <i class="fas fa-spinner fa-spin"></i> Generating semantic keywords...
-            </div>
-
-            <!-- Results -->
-            <div id="results" style="display:none;">
-                <div class="card p-4 mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="mb-0">📋 LSI Keywords for: "<span id="mainKeyword"></span>"</h4>
-                        <button onclick="copyAll()" class="btn btn-success">
-                            <i class="fas fa-copy"></i> Copy All
-                        </button>
-                    </div>
+                <div class="card-body p-4">
+                    <p class="text-muted">Find Latent Semantic Indexing (LSI) keywords to boost your content relevance.</p>
                     
-                    <div id="keywordList" class="row"></div>
-                </div>
+                    <div class="input-group mb-3">
+                        <input type="text" id="seedKeyword" class="form-control form-control-lg" placeholder="Enter main keyword (e.g. Coffee Beans)">
+                        <button class="btn btn-primary" onclick="generateLSI()">Generate</button>
+                    </div>
 
-                <div class="card p-4">
-                    <h4 class="mb-3">📊 Categorized Keywords</h4>
-                    <pre id="categorized" style="background: #f8f9fa; padding: 20px; border-radius: 8px; white-space: pre-wrap;"></pre>
-                </div>
-            </div>
+                    <div id="loading" class="text-center my-4" style="display:none;">
+                        <div class="spinner-border text-primary"></div>
+                        <p>Analyzing semantic relationships...</p>
+                    </div>
 
-            <!-- Info -->
-            <div class="card p-4 mt-4">
-                <h5><i class="fas fa-info-circle"></i> What are LSI Keywords?</h5>
-                <p><strong>LSI (Latent Semantic Indexing)</strong> keywords are terms and phrases semantically related to your main keyword.</p>
-                <ul class="mb-0">
-                    <li><strong>Context:</strong> Help search engines understand your content's context</li>
-                    <li><strong>Rankings:</strong> Improve rankings for related searches</li>
-                    <li><strong>Natural:</strong> Make content sound more natural and comprehensive</li>
-                    <li><strong>Avoid:</strong> Prevents keyword stuffing while maintaining relevance</li>
-                </ul>
+                    <div id="resultsArea" style="display:none;">
+                        <label class="fw-bold">Related Keywords:</label>
+                        <textarea id="lsiOutput" class="form-control bg-light" rows="10" readonly></textarea>
+                        <button class="btn btn-outline-secondary mt-2" onclick="copyLSI()">Copy to Clipboard</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -61,81 +33,32 @@
 
 <script>
 async function generateLSI() {
-    const keyword = document.getElementById('keywordInput').value.trim();
-    
-    if (!keyword) {
-        alert('⚠️ Please enter a keyword');
-        return;
-    }
-    
+    const kw = document.getElementById('seedKeyword').value;
+    if(!kw) return alert("Enter a keyword");
+
     document.getElementById('loading').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
-    
+    document.getElementById('resultsArea').style.display = 'none';
+
+    const prompt = `Generate 20 high-quality LSI (Latent Semantic Indexing) keywords and related search terms for: "${kw}". List them as a simple comma-separated list.`;
+
     try {
-        const res = await fetch('/api/generate-lsi-keywords', {
+        const res = await fetch('/api/generate-content', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({keyword: keyword})
+            body: JSON.stringify({ keyword: prompt, mode: "standard" })
         });
-        
         const data = await res.json();
         
-        if (!res.ok) throw new Error(data.error || 'Generation failed');
-        
-        // Display main keyword
-        document.getElementById('mainKeyword').textContent = data.main_keyword;
-        
-        // Display keywords as badges
-        const keywordList = document.getElementById('keywordList');
-        keywordList.innerHTML = '';
-        
-        data.keywords.forEach(kw => {
-            const col = document.createElement('div');
-            col.className = 'col-md-6 mb-2';
-            col.innerHTML = `
-                <div class="card p-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span>${kw}</span>
-                        <button onclick="copyKeyword('${kw.replace(/'/g, "\\'")}', this)" class="btn btn-sm btn-outline-primary">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-            keywordList.appendChild(col);
-        });
-        
-        // Display categorized
-        document.getElementById('categorized').textContent = data.categorized;
-        
-        document.getElementById('results').style.display = 'block';
-        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
-        
-    } catch (err) {
-        alert('❌ ' + err.message);
-    } finally {
         document.getElementById('loading').style.display = 'none';
-    }
+        document.getElementById('resultsArea').style.display = 'block';
+        document.getElementById('lsiOutput').value = data.content;
+    } catch(e) { alert("Error generating keywords"); }
 }
 
-function copyKeyword(keyword, button) {
-    navigator.clipboard.writeText(keyword).then(() => {
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check"></i>';
-        setTimeout(() => {
-            button.innerHTML = originalHTML;
-        }, 1000);
-    });
-}
-
-function copyAll() {
-    const keywords = Array.from(document.querySelectorAll('#keywordList span'))
-        .map(span => span.textContent)
-        .join('\n');
-    
-    navigator.clipboard.writeText(keywords).then(() => {
-        alert('✅ All keywords copied to clipboard!');
-    });
+function copyLSI() {
+    document.getElementById('lsiOutput').select();
+    document.execCommand('copy');
+    alert("Copied!");
 }
 </script>
 {% endblock %}
