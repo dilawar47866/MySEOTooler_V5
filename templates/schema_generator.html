@@ -1,126 +1,146 @@
 {% extends "base.html" %}
+
+{% block title %}Schema Generator - MySEO King{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-    <h2><i class="fas fa-code text-dark"></i> Schema Markup Generator</h2>
-    <p class="text-muted">Generate JSON-LD structured data for Google Rich Snippets.</p>
-
-    <div class="row">
-        <!-- Form Side -->
-        <div class="col-md-6">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-white">
-                    <select id="schemaType" class="form-select fw-bold" onchange="toggleForm()">
-                        <option value="Article">Article / Blog Post</option>
-                        <option value="Organization">Organization</option>
-                        <option value="LocalBusiness">Local Business</option>
-                    </select>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Schema Generator</h2>
+                    <p class="text-muted">Create JSON-LD markup for Article and FAQ rich snippets.</p>
                 </div>
-                <div class="card-body">
-                    
-                    <!-- Common Fields -->
-                    <div class="mb-3">
-                        <label>URL</label>
-                        <input type="url" id="url" class="form-control" placeholder="https://example.com/page">
-                    </div>
-
-                    <!-- Article Form -->
-                    <div id="formArticle">
-                        <div class="mb-3">
-                            <label>Headline</label>
-                            <input type="text" id="headline" class="form-control" placeholder="Article Title">
-                        </div>
-                        <div class="mb-3">
-                            <label>Image URL</label>
-                            <input type="url" id="image" class="form-control" placeholder="https://example.com/image.jpg">
-                        </div>
-                        <div class="mb-3">
-                            <label>Author Name</label>
-                            <input type="text" id="author" class="form-control" placeholder="John Doe">
-                        </div>
-                        <div class="mb-3">
-                            <label>Publisher (Org Name)</label>
-                            <input type="text" id="publisher" class="form-control" placeholder="My Company">
-                        </div>
-                    </div>
-
-                    <!-- Organization/Business Form -->
-                    <div id="formOrg" style="display:none;">
-                        <div class="mb-3">
-                            <label>Name</label>
-                            <input type="text" id="orgName" class="form-control" placeholder="Company Name">
-                        </div>
-                        <div class="mb-3">
-                            <label>Logo URL</label>
-                            <input type="url" id="orgLogo" class="form-control" placeholder="https://example.com/logo.png">
-                        </div>
-                        <div class="mb-3">
-                            <label>SameAs (Social Profiles)</label>
-                            <input type="text" id="orgSocial" class="form-control" placeholder="https://facebook.com/mybrand">
-                            <small class="text-muted">Comma separated</small>
-                        </div>
-                    </div>
-
-                    <button class="btn btn-primary w-100 mt-3" onclick="generateSchema()">Generate Code</button>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-code fa-2x text-primary"></i>
                 </div>
             </div>
-        </div>
 
-        <!-- Output Side -->
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-dark text-white">JSON-LD Output</div>
-                <div class="card-body bg-light p-0">
-                    <textarea id="output" class="form-control h-100 border-0 bg-dark text-success" style="font-family: monospace; min-height: 400px; resize: none;" readonly></textarea>
+            <div class="row">
+                <!-- Form Column -->
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <ul class="nav nav-tabs card-header-tabs" id="schemaTabs" role="tablist">
+                                <li class="nav-item">
+                                    <button class="nav-link active" data-type="article" onclick="setSchema('article')">Article</button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-type="faq" onclick="setSchema('faq')">FAQ Page</button>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-body p-4">
+                            
+                            <!-- Article Form -->
+                            <div id="form-article">
+                                <div class="mb-3">
+                                    <label class="form-label">Headline</label>
+                                    <input type="text" id="artHeadline" class="form-control" placeholder="My Great Article">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Author Name</label>
+                                    <input type="text" id="artAuthor" class="form-control" value="{{ current_user.username }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Image URL</label>
+                                    <input type="text" id="artImage" class="form-control" placeholder="https://example.com/image.jpg">
+                                </div>
+                            </div>
+
+                            <!-- FAQ Form -->
+                            <div id="form-faq" class="d-none">
+                                <div class="mb-3">
+                                    <label class="form-label">Questions & Answers</label>
+                                    <div class="form-text mb-2">Format: Question on one line, Answer on the next. Separate pairs with a blank line.</div>
+                                    <textarea id="faqContent" class="form-control" rows="8" placeholder="What is SEO?
+SEO stands for Search Engine Optimization.
+
+Is SEO free?
+Yes, organic traffic is free."></textarea>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary w-100 mt-3" onclick="generateSchema()">
+                                <i class="fas fa-bolt me-2"></i> Generate Code
+                            </button>
+
+                        </div>
+                    </div>
                 </div>
-                <div class="card-footer bg-white">
-                    <button class="btn btn-outline-dark btn-sm" onclick="copyCode()">Copy to Clipboard</button>
+
+                <!-- Code Output Column -->
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100 bg-dark text-white">
+                        <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-light">JSON-LD Output</span>
+                            <button class="btn btn-sm btn-outline-light" onclick="copyCode()">Copy</button>
+                        </div>
+                        <div class="card-body p-0">
+                            <textarea id="codeOutput" class="form-control bg-dark text-success border-0 h-100 font-monospace p-3" readonly style="resize: none;">
+<!-- Generated Schema will appear here -->
+                            </textarea>
+                        </div>
+                    </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
 
 <script>
-function toggleForm() {
-    const type = document.getElementById('schemaType').value;
-    document.getElementById('formArticle').style.display = (type === 'Article') ? 'block' : 'none';
-    document.getElementById('formOrg').style.display = (type !== 'Article') ? 'block' : 'none';
+let currentType = 'article';
+
+function setSchema(type) {
+    currentType = type;
+    
+    // Toggle Tabs
+    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+    document.querySelector(`button[data-type="${type}"]`).classList.add('active');
+
+    // Toggle Forms
+    if(type === 'article') {
+        document.getElementById('form-article').classList.remove('d-none');
+        document.getElementById('form-faq').classList.add('d-none');
+    } else {
+        document.getElementById('form-article').classList.add('d-none');
+        document.getElementById('form-faq').classList.remove('d-none');
+    }
 }
 
-function generateSchema() {
-    const type = document.getElementById('schemaType').value;
-    const url = document.getElementById('url').value;
-    let schema = {};
-
-    if(type === 'Article') {
-        schema = {
-            "@context": "https://schema.org",
-            "@type": "Article",
-            "mainEntityOfPage": { "@type": "WebPage", "@id": url },
-            "headline": document.getElementById('headline').value,
-            "image": document.getElementById('image').value,
-            "author": { "@type": "Person", "name": document.getElementById('author').value },
-            "publisher": { "@type": "Organization", "name": document.getElementById('publisher').value }
-        };
+async function generateSchema() {
+    const payload = { type: currentType };
+    
+    if(currentType === 'article') {
+        payload.headline = document.getElementById('artHeadline').value;
+        payload.author = document.getElementById('artAuthor').value;
+        payload.image = document.getElementById('artImage').value;
     } else {
-        const social = document.getElementById('orgSocial').value.split(',').map(s => s.trim());
-        schema = {
-            "@context": "https://schema.org",
-            "@type": type,
-            "url": url,
-            "name": document.getElementById('orgName').value,
-            "logo": document.getElementById('orgLogo').value,
-            "sameAs": social
-        };
+        payload.faq_content = document.getElementById('faqContent').value;
     }
 
-    document.getElementById('output').value = `<script type="application/ld+json">\n${JSON.stringify(schema, null, 2)}\n<\/script>`;
+    try {
+        const res = await fetch('/api/generate-schema', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            document.getElementById('codeOutput').value = `<script type="application/ld+json">\n${data.json}\n<\/script>`;
+        }
+    } catch(e) { console.error(e); }
 }
 
 function copyCode() {
-    document.getElementById('output').select();
+    const el = document.getElementById('codeOutput');
+    el.select();
     document.execCommand('copy');
-    alert("Copied!");
+    alert("Code copied to clipboard!");
 }
 </script>
 {% endblock %}
