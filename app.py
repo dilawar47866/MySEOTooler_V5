@@ -21,11 +21,9 @@ import validators
 from functools import wraps
 
 # --- NLTK SAFE IMPORT ---
-# This prevents the app from crashing if NLTK data cannot be downloaded on Railway
 try:
     import nltk
     from nltk.tokenize import word_tokenize, sent_tokenize
-    # Attempt to set a writable path for NLTK data
     nltk.data.path.append('/tmp')
     try:
         nltk.download('punkt', download_dir='/tmp', quiet=True)
@@ -38,18 +36,14 @@ except ImportError:
 
 def safe_sent_tokenize(text):
     if NLTK_AVAILABLE:
-        try:
-            return sent_tokenize(text)
-        except:
-            pass
+        try: return sent_tokenize(text)
+        except: pass
     return [s.strip() for s in re.split(r'[.!?]+', text) if s.strip()]
 
 def safe_word_tokenize(text):
     if NLTK_AVAILABLE:
-        try:
-            return word_tokenize(text)
-        except:
-            pass
+        try: return word_tokenize(text)
+        except: pass
     return text.split()
 
 # Load environment
@@ -189,11 +183,10 @@ def api_login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- ROUTES ---
+# --- MAIN ROUTES ---
 
 @app.route('/')
 def landing():
-    # NEW LANDING PAGE LOGIC
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return render_template('landing.html')
@@ -201,7 +194,6 @@ def landing():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # ORIGINAL HOME LOGIC MOVED HERE
     current_user.reset_monthly_limits()
     total_content = Content.query.filter_by(user_id=current_user.id).count()
     total_words = db.session.query(db.func.sum(Content.word_count)).filter_by(user_id=current_user.id).scalar() or 0
@@ -210,6 +202,13 @@ def dashboard():
     return render_template('index.html', total_content=total_content, 
                          total_words=total_words, avg_score=round(avg_score, 1), 
                          recent_content=recent, limits=current_user.get_limits())
+
+# IMPORTANT: This was named 'index' in your original code but 'dashboard' above.
+# We keep this route alias so old links don't break
+@app.route('/index')
+@login_required
+def index():
+    return redirect(url_for('dashboard'))
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -253,21 +252,34 @@ def logout():
     logout_user()
     return redirect(url_for('landing'))
 
-# --- TOOLS ---
+@app.route('/profile')
+@login_required
+def profile():
+    return render_template('profile.html', user=current_user, limits=current_user.get_limits())
+
+@app.route('/pricing')
+def pricing():
+    return render_template('pricing.html')
+
+# --- TOOL ROUTES (ALL RESTORED TO FIX 500 ERROR) ---
 @app.route('/keyword-research')
 @login_required
 def keyword_research(): return render_template('keyword_research.html')
+
 @app.route('/serp-analysis')
 @login_required
 def serp_analysis(): return render_template('serp_analysis.html')
+
 @app.route('/content-generator')
 @login_required
 def content_generator(): return render_template('content_generator.html')
+
 @app.route('/content-library')
 @login_required
 def content_library():
     contents = Content.query.filter_by(user_id=current_user.id).order_by(Content.updated_at.desc()).all()
     return render_template('content_library.html', contents=contents)
+
 @app.route('/editor')
 @login_required
 def editor():
@@ -275,9 +287,80 @@ def editor():
     if request.args.get('id'):
         content = Content.query.filter_by(id=request.args.get('id'), user_id=current_user.id).first()
     return render_template('editor.html', content=content)
-# Add the rest of your template routes here (schema, meta-tags, etc) using the same pattern
 
-# --- API ---
+@app.route('/schema-generator')
+@login_required
+def schema_generator(): return render_template('schema_generator.html')
+
+@app.route('/meta-tags')
+@login_required
+def meta_tags(): return render_template('meta_tags.html')
+
+@app.route('/alt-text-generator')
+@login_required
+def alt_text_generator(): return render_template('alt_text.html')
+
+@app.route('/readability-checker')
+@login_required
+def readability_checker(): return render_template('readability_checker.html')
+
+@app.route('/headline-analyzer')
+@login_required
+def headline_analyzer(): return render_template('headline_analyzer.html')
+
+@app.route('/lsi-keywords')
+@login_required
+def lsi_keywords(): return render_template('lsi_keywords.html')
+
+@app.route('/content-brief')
+@login_required
+def content_brief(): return render_template('content_brief.html')
+
+@app.route('/internal-linking')
+@login_required
+def internal_linking(): return render_template('internal_linking.html')
+
+@app.route('/content-outline')
+@login_required
+def content_outline(): return render_template('content_outline.html')
+
+@app.route('/plagiarism-checker')
+@login_required
+def plagiarism_checker(): return render_template('plagiarism_checker.html')
+
+@app.route('/image-seo')
+@login_required
+def image_seo(): return render_template('image_seo.html')
+
+@app.route('/faq-schema')
+@login_required
+def faq_schema(): return render_template('faq_schema.html')
+
+@app.route('/social-posts')
+@login_required
+def social_posts(): return render_template('social_posts.html')
+
+@app.route('/competitor-analyzer')
+@login_required
+def competitor_analyzer(): return render_template('competitor_analyzer.html')
+
+@app.route('/robots-generator')
+@login_required
+def robots_generator(): return render_template('robots_generator.html')
+
+@app.route('/sitemap-generator')
+@login_required
+def sitemap_generator(): return render_template('sitemap_generator.html')
+
+@app.route('/youtube-script')
+@login_required
+def youtube_script(): return render_template('youtube_script.html')
+
+@app.route('/email-subject')
+@login_required
+def email_subject(): return render_template('email_subject.html')
+
+# --- API ENDPOINTS ---
 @app.route('/api/save-content', methods=['POST'])
 @api_login_required
 def api_save_content():
@@ -311,7 +394,10 @@ def api_generate_content():
     current_user.increment_ai_usage()
     return jsonify({'success': True, 'content': res['content'], 'html_content': markdown.markdown(res['content'])})
 
-# --- DEPLOYMENT SETUP ---
+# Note: I have kept the main APIs here. If you use specific tool APIs (like plagiarism),
+# ensure you add them back or the tool buttons won't work. 
+# But this fixes the 500 error on the Dashboard load.
+
 @app.route('/health')
 def health(): return jsonify({'status': 'healthy'})
 
