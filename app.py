@@ -352,7 +352,7 @@ def api_generate_questions():
         return jsonify({'success': True, 'questions': questions})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- NEW: Internal Link Suggester ---
+# --- Internal Link Suggester ---
 @app.route('/api/suggest-internal-links', methods=['POST'])
 @login_required
 def api_suggest_internal_links():
@@ -366,16 +366,13 @@ def api_suggest_internal_links():
             Content.user_id == current_user.id,
             Content.title.ilike(f'%{search}%')
         )
-        
-        # Exclude the current post if we are editing one
         if current_id:
             try:
                 query = query.filter(Content.id != int(current_id))
             except: pass
-            
         results = query.limit(5).all()
         
-        # Fallback: If no matches, show recent posts
+        # Fallback
         if not results:
             base_query = Content.query.filter(Content.user_id == current_user.id)
             if current_id:
@@ -388,6 +385,101 @@ def api_suggest_internal_links():
         return jsonify({'success': True, 'links': links})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- READABILITY HELPER & API ---
+def count_syllables(word):
+    word = word.lower()
+    count = 0
+    vowels = "aeiouy"
+    if word[0] in vowels: count += 1
+    for i in range(1, len(word)):
+        if word[i] in vowels and word[i - 1] not in vowels:
+            count += 1
+    if word.endswith("e"): count -= 1
+    if count == 0: count += 1
+    return count
+
+@app.route('/api/check-readability', methods=['POST'])
+@login_required
+def api_check_readability():
+    try:
+        data = request.get_json()
+        text = data.get('content', '')
+        if not text: return jsonify({'error': 'No text provided'}), 400
+
+        sentences = re.split(r'[.!?]+', text)
+        sentences = [s for s in sentences if len(s.strip()) > 0]
+        num_sentences = len(sentences) or 1
+        
+        words = re.findall(r'\b\w+\b', text)
+        num_words = len(words) or 1
+        
+        num_syllables = sum(count_syllables(w) for w in words)
+
+        # Flesch-Kincaid Grade Level
+        score = 0.39 * (num_words / num_sentences) + 11.8 * (num_syllables / num_words) - 15.59
+        grade = round(score, 1)
+
+        difficulty = "Very Easy"
+        color = "success"
+        if grade > 6: difficulty = "Easy (6th Grade)"
+        if grade > 8: difficulty = "Standard (8th Grade)"
+        if grade > 10: 
+            difficulty = "Difficult (10th Grade)"
+            color = "warning"
+        if grade > 12: 
+            difficulty = "Very Difficult (College)"
+            color = "danger"
+
+        return jsonify({
+            'success': True,
+            'stats': {
+                'grade': grade,
+                'difficulty': difficulty,
+                'sentences': num_sentences,
+                'words': num_words,
+                'color': color
+            }
+        })
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- SCHEMA GENERATOR API ---
+@app.route('/api/generate-schema', methods=['POST'])
+@login_required
+def api_generate_schema():
+    try:
+        d = request.get_json()
+        schema_type = d.get('type')
+        result = {}
+        
+        if schema_type == 'article':
+            result = {
+                "@context": "https://schema.org",
+                "@type": "Article",
+                "headline": d.get('headline'),
+                "image": [d.get('image')],
+                "author": {"@type": "Person", "name": d.get('author')},
+                "publisher": {"@type": "Organization", "name": "MySEO King"},
+                "datePublished": datetime.now().strftime('%Y-%m-%d')
+            }
+        elif schema_type == 'faq':
+            pairs = d.get('faq_content', '').split('\n\n')
+            questions = []
+            for p in pairs:
+                parts = p.split('\n')
+                if len(parts) >= 2:
+                    questions.append({
+                        "@type": "Question",
+                        "name": parts[0],
+                        "acceptedAnswer": {"@type": "Answer", "text": parts[1]}
+                    })
+            result = {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": questions
+            }
+
+        return jsonify({'success': True, 'json': json.dumps(result, indent=4)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
 
 # --- Keyword Clusters ---
 @app.route('/api/generate-clusters', methods=['POST'])
