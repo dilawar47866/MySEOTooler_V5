@@ -4,42 +4,68 @@
     <h1 class="fw-bold mb-3">Simple, Transparent Pricing</h1>
     <p class="text-muted mb-5">Choose the plan that fits your content needs.</p>
 
-    <div class="row justify-content-center">
+    <div class="row justify-content-center g-4">
+        
         <!-- FREE PLAN -->
         <div class="col-md-4">
-            <div class="card p-4 h-100 border-0 shadow-sm">
-                <h4 class="fw-bold">Starter</h4>
+            <div class="card p-4 h-100 border-0 shadow-sm hover-effect">
+                <h4 class="fw-bold text-secondary">Starter</h4>
                 <h2 class="my-3">$0 <small class="text-muted fs-6">/mo</small></h2>
+                <hr>
                 <ul class="list-unstyled text-start mb-4">
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Requests</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Requests/mo</li>
                     <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Basic SEO Tools</li>
                     <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Standard Support</li>
+                    <li class="mb-2 text-muted"><i class="fas fa-times me-2"></i> Competitor Analysis</li>
                 </ul>
-                <button class="btn btn-outline-primary w-100 disabled">Current Plan</button>
+                <button class="btn btn-outline-secondary w-100 mt-auto disabled">Current Plan</button>
             </div>
         </div>
 
-        <!-- PRO PLAN (The Upsell) -->
+        <!-- PRO PLAN -->
         <div class="col-md-4">
-            <div class="card p-4 h-100 border-primary shadow" style="border-top: 5px solid #4f46e5;">
+            <div class="card p-4 h-100 border-primary shadow hover-effect" style="border-top: 5px solid #4f46e5; transform: scale(1.02);">
                 <div class="badge bg-primary position-absolute top-0 end-0 m-3">POPULAR</div>
                 <h4 class="fw-bold text-primary">Pro King</h4>
                 <h2 class="my-3">$29 <small class="text-muted fs-6">/mo</small></h2>
+                <hr>
                 <ul class="list-unstyled text-start mb-4">
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Requests</strong></li>
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Access to Competitor Spy</li>
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Bulk Image SEO</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Requests/mo</strong></li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Competitor Spy</strong></li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Bulk Image SEO Audit</li>
                     <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Priority Email Support</li>
                 </ul>
-                
-                <!-- DIRECT EMAIL LINK -->
-                <a href="mailto:support@myseokingtool.com?subject=Upgrade%20Request&body=Hello%2C%20I%20would%20like%20to%20upgrade%20to%20the%20Pro%20Plan.%20My%20username%20is%3A%20{{ current_user.username }}" 
-                   class="btn btn-primary w-100 btn-lg">
-                   <i class="fas fa-envelope me-2"></i> Contact to Upgrade
+                <a href="mailto:support@myseokingtool.com?subject=Upgrade%20to%20Pro&body=I%20want%20to%20upgrade%20to%20PRO.%20Username:%20{{ current_user.username }}" 
+                   class="btn btn-primary w-100 btn-lg mt-auto">
+                   Upgrade Now
                 </a>
-                <small class="text-muted d-block mt-2">Manual activation (response &lt; 24h)</small>
             </div>
         </div>
+
+        <!-- ENTERPRISE PLAN (Added Back) -->
+        <div class="col-md-4">
+            <div class="card p-4 h-100 border-0 shadow-sm hover-effect">
+                <h4 class="fw-bold text-dark">Enterprise</h4>
+                <h2 class="my-3">$99 <small class="text-muted fs-6">/mo</small></h2>
+                <hr>
+                <ul class="list-unstyled text-start mb-4">
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Unlimited AI*</strong></li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> All Pro Features</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Dedicated Account Manager</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> API Access</li>
+                </ul>
+                <a href="mailto:support@myseokingtool.com?subject=Enterprise%20Inquiry&body=I%20am%20interested%20in%20Enterprise.%20Username:%20{{ current_user.username }}" 
+                   class="btn btn-outline-dark w-100 mt-auto">
+                   Contact Sales
+                </a>
+            </div>
+        </div>
+
     </div>
 </div>
+
+<style>
+    .hover-effect { transition: transform 0.3s ease; }
+    .hover-effect:hover { transform: translateY(-5px); }
+</style>
 {% endblock %}
