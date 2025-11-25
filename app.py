@@ -546,22 +546,39 @@ def api_generate_youtube_script():
 @api_login_required
 def api_save_content():
     d = request.get_json()
-    if d.get('id'):
-        c = Content.query.get(d.get('id'))
+    content_id = d.get('id')
+    
+    # 1. UPDATE EXISTING CONTENT
+    if content_id:
+        c = Content.query.get(content_id)
         if c and c.user_id == current_user.id:
-            c.content = d.get('content'); c.html_content = markdown.markdown(d.get('content'))
+            c.title = d.get('title')
+            c.keyword = d.get('keyword')
+            c.content = d.get('content') # Plain text
+            c.html_content = d.get('html_content') # Full HTML
+            c.word_count = len(d.get('content', '').split())
+            # Simple score recalc
+            c.updated_at = datetime.utcnow()
             db.session.commit()
-            return jsonify({'success': True})
-    return jsonify({'error': 'ID required'}), 400
-
-@app.route('/api/export/<int:id>/<fmt>')
-@api_login_required
-def api_export(id, fmt):
-    c = Content.query.get_or_404(id)
-    if c.user_id != current_user.id: return jsonify({'error': 'Auth'}), 403
-    if fmt == 'txt': return send_file(BytesIO(c.content.encode()), download_name=f"{c.title}.txt", as_attachment=True)
-    return jsonify({'error': 'Format not supported'}), 400
-
+            return jsonify({'success': True, 'id': c.id})
+    
+    # 2. CREATE NEW CONTENT (If ID is missing)
+    try:
+        new_c = Content(
+            user_id=current_user.id,
+            title=d.get('title', 'Untitled Draft'),
+            keyword=d.get('keyword', ''),
+            content=d.get('content', ''),
+            html_content=d.get('html_content', ''),
+            word_count=len(d.get('content', '').split()),
+            seo_score=0
+        )
+        db.session.add(new_c)
+        current_user.content_count += 1
+        db.session.commit()
+        return jsonify({'success': True, 'id': new_c.id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 # ============================================================================
 # 8. INIT & RUN
 # ============================================================================
