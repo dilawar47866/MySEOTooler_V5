@@ -54,7 +54,7 @@
                         <label class="small text-muted fw-bold">Target Keyword</label>
                         <div class="input-group input-group-sm">
                             <input type="text" id="targetKeyword" class="form-control" value="{{ content.keyword if content else '' }}" placeholder="e.g. best coffee maker">
-                            <button class="btn btn-primary" onclick="fetchSeoTerms()"><i class="fas fa-sync"></i></button>
+                            <button class="btn btn-primary" onclick="runAllSeoChecks()"><i class="fas fa-sync"></i></button>
                         </div>
                     </div>
 
@@ -76,8 +76,17 @@
 
                     <!-- Must Use Terms -->
                     <h6 class="small fw-bold mb-2">Must-Use Terms</h6>
-                    <div id="termsList" class="d-flex flex-wrap gap-1">
-                        <span class="text-muted small fst-italic">Enter a keyword and click refresh to generate suggested terms.</span>
+                    <div id="termsList" class="d-flex flex-wrap gap-1 mb-4">
+                        <span class="text-muted small fst-italic">Enter a keyword and click refresh...</span>
+                    </div>
+                    
+                    <hr>
+
+                    <!-- NEW: Questions (PAA) -->
+                    <h6 class="small fw-bold mb-2">People Also Ask</h6>
+                    <p class="small text-muted fst-italic mb-2" style="font-size: 0.75rem;">Click to add as H2</p>
+                    <div id="questionsList" class="d-flex flex-column gap-2">
+                        <span class="text-muted small fst-italic">Waiting for keyword...</span>
                     </div>
 
                 </div>
@@ -112,14 +121,21 @@
 // Global list of required terms
 let requiredTerms = []; 
 
-// 1. FETCH SEO TERMS
-async function fetchSeoTerms() {
+// MASTER FUNCTION
+function runAllSeoChecks() {
     const keyword = document.getElementById('targetKeyword').value;
     if(!keyword) return alert("Enter a keyword first");
     
     const btn = document.querySelector('.input-group button');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     
+    Promise.all([fetchSeoTerms(keyword), fetchQuestions(keyword)]).then(() => {
+        btn.innerHTML = '<i class="fas fa-sync"></i>';
+    });
+}
+
+// 1. FETCH SEO TERMS
+async function fetchSeoTerms(keyword) {
     try {
         const res = await fetch('/api/generate-seo-terms', {
             method: 'POST',
@@ -130,13 +146,49 @@ async function fetchSeoTerms() {
         if(data.success) {
             requiredTerms = data.terms;
             renderTerms();
-            checkSeoTerms(); // Re-check text
+            checkSeoTerms(); 
         }
     } catch(e) { console.error(e); }
-    btn.innerHTML = '<i class="fas fa-sync"></i>';
 }
 
-// 2. RENDER TERMS LIST
+// 2. NEW: FETCH QUESTIONS
+async function fetchQuestions(keyword) {
+    try {
+        const res = await fetch('/api/generate-questions', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: keyword})
+        });
+        const data = await res.json();
+        const container = document.getElementById('questionsList');
+        container.innerHTML = '';
+        
+        if(data.success && data.questions.length > 0) {
+            data.questions.forEach(q => {
+                // Create a clickable card for each question
+                const div = document.createElement('div');
+                div.className = 'p-2 border rounded bg-light small cursor-pointer';
+                div.style.cursor = 'pointer';
+                div.innerHTML = `<i class="fas fa-plus-circle text-primary me-1"></i> ${q}`;
+                div.onclick = () => insertHeading(q);
+                container.appendChild(div);
+            });
+        } else {
+            container.innerHTML = '<span class="small text-muted">No questions found.</span>';
+        }
+    } catch(e) { console.error(e); }
+}
+
+// Helper: Insert Question as H2
+function insertHeading(text) {
+    const editor = document.getElementById('editor');
+    editor.focus();
+    const html = `<h2>${text}</h2><p>Answer here...</p>`;
+    document.execCommand('insertHTML', false, html);
+    checkSeoTerms(); // Re-score
+}
+
+// 3. RENDER TERMS LIST
 function renderTerms() {
     const container = document.getElementById('termsList');
     container.innerHTML = '';
@@ -149,7 +201,7 @@ function renderTerms() {
     });
 }
 
-// 3. CHECK TEXT AGAINST TERMS (Real-time Scoring)
+// 4. CHECK TEXT AGAINST TERMS (Real-time Scoring)
 function checkSeoTerms() {
     const text = document.getElementById('editor').innerText.toLowerCase();
     const badges = document.querySelectorAll('.term-badge');
@@ -188,7 +240,7 @@ function checkSeoTerms() {
     circle.className = `d-inline-flex align-items-center justify-content-center rounded-circle border border-4 ${score > 70 ? 'border-success text-success' : 'border-primary'}`;
 }
 
-// 4. SAVE FUNCTION
+// 5. SAVE FUNCTION
 async function saveContent() {
     const content = {
         id: "{{ content.id if content else '' }}", // Flask injects ID if exists
@@ -206,7 +258,7 @@ async function saveContent() {
     alert("Saved!");
 }
 
-// 5. AI GENERATE FUNCTION
+// 6. AI GENERATE FUNCTION
 async function generateAiContent() {
     const prompt = document.getElementById('aiPrompt').value;
     const mode = document.getElementById('humanMode').checked ? 'human' : 'ai';
