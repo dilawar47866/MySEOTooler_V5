@@ -1,101 +1,111 @@
 {% extends "base.html" %}
+
+{% block title %}Readability Checker - MySEO King{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
+<div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-md-10">
-            <h2><i class="fas fa-book-reader text-info"></i> Readability Checker</h2>
-            <p class="text-muted">Analyze your text to see how easy it is to read (Flesch-Kincaid Score).</p>
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Content Readability</h2>
+                    <p class="text-muted">Google prefers content written at an 8th-grade level. Check yours now.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-book-reader fa-2x text-primary"></i>
+                </div>
+            </div>
 
             <div class="row">
                 <!-- Input Area -->
-                <div class="col-md-7">
-                    <div class="card shadow-sm p-3 h-100">
-                        <textarea id="textInput" class="form-control border-0" rows="15" placeholder="Paste your content here to analyze..." style="resize: none; font-size: 16px;"></textarea>
-                        <div class="d-grid mt-3">
-                            <button class="btn btn-primary" onclick="analyzeText()">Check Readability</button>
+                <div class="col-md-8">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <label class="fw-bold mb-2">Paste Content</label>
+                            <textarea id="checkContent" class="form-control p-3" style="height: 400px; font-size: 1.1rem;" placeholder="Paste your article here..."></textarea>
+                            <button class="btn btn-primary mt-3 w-100 py-2" onclick="checkReadability()">
+                                <i class="fas fa-calculator me-2"></i> Calculate Score
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Results Area -->
-                <div class="col-md-5">
+                <div class="col-md-4">
                     <div class="card shadow-sm h-100">
-                        <div class="card-header bg-light fw-bold">Analysis Results</div>
-                        <div class="card-body">
-                            <div class="text-center mb-4">
-                                <h5 class="text-muted">Reading Ease Score</h5>
-                                <h1 id="scoreDisplay" class="display-4 fw-bold text-secondary">--</h1>
-                                <span id="difficultyLabel" class="badge bg-secondary">Waiting for text...</span>
+                        <div class="card-header bg-white fw-bold">Analysis Result</div>
+                        <div class="card-body text-center d-flex flex-column justify-content-center">
+                            
+                            <div id="placeholder" class="text-muted">
+                                <i class="fas fa-arrow-left me-2"></i> Enter text to analyze
                             </div>
 
-                            <ul class="list-group list-group-flush">
-                                <li class="list-group-item d-flex justify-content-between">
-                                    <span>Words</span>
-                                    <span id="wordCount" class="fw-bold">0</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between">
-                                    <span>Sentences</span>
-                                    <span id="sentenceCount" class="fw-bold">0</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between">
-                                    <span>Syllables (Est.)</span>
-                                    <span id="syllableCount" class="fw-bold">0</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between">
-                                    <span>Speaking Time</span>
-                                    <span id="readTime" class="fw-bold">0 min</span>
-                                </li>
-                            </ul>
+                            <div id="results" class="d-none">
+                                <h6 class="text-uppercase text-muted small fw-bold">Flesch-Kincaid Grade</h6>
+                                <div class="display-1 fw-bold mb-2" id="resGrade">0.0</div>
+                                <span class="badge bg-secondary mb-4 p-2 px-3 fs-6" id="resBadge">...</span>
+
+                                <hr>
+
+                                <div class="row mt-4 text-start">
+                                    <div class="col-6 mb-3">
+                                        <small class="text-muted d-block">Sentences</small>
+                                        <strong class="fs-5" id="resSentences">0</strong>
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <small class="text-muted d-block">Words</small>
+                                        <strong class="fs-5" id="resWords">0</strong>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info mt-3 text-start small">
+                                    <i class="fas fa-info-circle me-1"></i> 
+                                    Aim for a score between <b>6 and 8</b> for best SEO results.
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
 
 <script>
-function analyzeText() {
-    const text = document.getElementById('textInput').value;
-    if(!text.trim()) return alert("Please paste some text.");
+async function checkReadability() {
+    const text = document.getElementById('checkContent').value;
+    if(text.length < 10) return alert("Enter more text.");
 
-    // 1. Statistics
-    const words = text.trim().split(/\s+/).length;
-    const sentences = text.split(/[.!?]+/).filter(Boolean).length || 1;
-    const syllables = countSyllables(text);
+    try {
+        const res = await fetch('/api/check-readability', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content: text})
+        });
+        const data = await res.json();
 
-    // 2. Flesch Reading Ease Formula
-    // 206.835 - (1.015 x ASL) - (84.6 x ASW)
-    const asl = words / sentences; // Average Sentence Length
-    const asw = syllables / words; // Average Syllables per Word
-    let score = 206.835 - (1.015 * asl) - (84.6 * asw);
-    score = Math.round(score);
-    if(score > 100) score = 100;
-    if(score < 0) score = 0;
+        if(data.success) {
+            document.getElementById('placeholder').classList.add('d-none');
+            document.getElementById('results').classList.remove('d-none');
 
-    // 3. Update UI
-    document.getElementById('wordCount').innerText = words;
-    document.getElementById('sentenceCount').innerText = sentences;
-    document.getElementById('syllableCount').innerText = syllables;
-    document.getElementById('readTime').innerText = Math.ceil(words / 200) + " min";
-    
-    const scoreEl = document.getElementById('scoreDisplay');
-    const labelEl = document.getElementById('difficultyLabel');
-    scoreEl.innerText = score;
+            const s = data.stats;
+            const gradeEl = document.getElementById('resGrade');
+            const badgeEl = document.getElementById('resBadge');
 
-    if(score > 80) { scoreEl.className = "display-4 fw-bold text-success"; labelEl.className = "badge bg-success"; labelEl.innerText = "Very Easy (5th Grade)"; }
-    else if(score > 60) { scoreEl.className = "display-4 fw-bold text-primary"; labelEl.className = "badge bg-primary"; labelEl.innerText = "Standard (8th Grade)"; }
-    else if(score > 40) { scoreEl.className = "display-4 fw-bold text-warning"; labelEl.className = "badge bg-warning text-dark"; labelEl.innerText = "Fairly Difficult (College)"; }
-    else { scoreEl.className = "display-4 fw-bold text-danger"; labelEl.className = "badge bg-danger"; labelEl.innerText = "Very Difficult (Graduate)"; }
-}
+            gradeEl.innerText = s.grade;
+            // Add appropriate color class based on backend result
+            gradeEl.className = `display-1 fw-bold mb-2 text-${s.color}`;
+            
+            badgeEl.innerText = s.difficulty;
+            badgeEl.className = `badge bg-${s.color} mb-4 p-2 px-3 fs-6`;
 
-function countSyllables(text) {
-    return text.toLowerCase().split(/\s+/).reduce((acc, word) => {
-        word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '')
-                   .replace(/^y/, '');
-        const res = word.match(/[aeiouy]{1,2}/g);
-        return acc + (res ? res.length : 1);
-    }, 0);
+            document.getElementById('resSentences').innerText = s.sentences;
+            document.getElementById('resWords').innerText = s.words;
+        }
+    } catch(e) { console.error(e); }
 }
 </script>
 {% endblock %}
