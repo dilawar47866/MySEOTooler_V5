@@ -1,9 +1,11 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="max-w-6xl mx-auto">
     <div class="flex justify-between items-center mb-8">
         <h2 class="text-3xl font-bold text-slate-800">Content Library</h2>
-        <a href="{{ url_for('content_generator') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-bold">
+        <!-- FIXED: Changed 'content_generator' to 'editor' to match app.py -->
+        <a href="{{ url_for('editor') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-bold">
             <i class="fas fa-plus mr-2"></i> New Article
         </a>
     </div>
@@ -15,12 +17,15 @@
             <div class="text-xs font-bold text-blue-500 mb-2 uppercase tracking-wide">Article</div>
             <h3 class="font-bold text-lg text-slate-800 mb-2 truncate">{{ content.title }}</h3>
             <p class="text-sm text-slate-500 mb-4">
-                <i class="far fa-calendar mr-1"></i> {{ content.created_at.strftime('%Y-%m-%d') }} 
+                <i class="far fa-calendar mr-1"></i> 
+                <!-- FIXED: Changed 'created_at' to 'updated_at' because created_at does not exist in your DB model -->
+                {{ content.updated_at.strftime('%Y-%m-%d') }} 
                 <span class="mx-2">•</span> 
                 <i class="fas fa-align-left mr-1"></i> {{ content.word_count }} words
             </p>
             <div class="flex space-x-2">
-                <a href="/editor?id={{ content.id }}" class="flex-1 bg-slate-100 text-slate-700 text-center py-2 rounded-lg hover:bg-slate-200 text-sm font-medium">
+                <!-- FIXED: Used url_for instead of hardcoded link -->
+                <a href="{{ url_for('editor', id=content.id) }}" class="flex-1 bg-slate-100 text-slate-700 text-center py-2 rounded-lg hover:bg-slate-200 text-sm font-medium">
                     Edit / View
                 </a>
                 <!-- Simple export trigger -->
@@ -36,7 +41,8 @@
         <div class="text-slate-400 mb-4"><i class="fas fa-folder-open text-4xl"></i></div>
         <h3 class="text-xl font-bold text-slate-700 mb-2">Library is Empty</h3>
         <p class="text-slate-500 mb-6">You haven't generated any content yet.</p>
-        <a href="{{ url_for('content_generator') }}" class="text-blue-600 font-bold hover:underline">Start Writing Now &rarr;</a>
+        <!-- FIXED: Changed 'content_generator' to 'editor' -->
+        <a href="{{ url_for('editor') }}" class="text-blue-600 font-bold hover:underline">Start Writing Now &rarr;</a>
     </div>
     {% endif %}
 </div>
