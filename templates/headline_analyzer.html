@@ -1,251 +1,77 @@
 {% extends "base.html" %}
-{% block title %}Headline Analyzer - My SEO King Tool V5{% endblock %}
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <h1><i class="fas fa-newspaper"></i> Headline Analyzer</h1>
-            <p class="text-muted mb-4">Optimize your headlines for maximum clicks and engagement</p>
-
-            <!-- Input Card -->
-            <div class="card p-4 mb-4">
-                <div class="form-group">
-                    <label><strong>Enter Your Headline</strong></label>
-                    <input type="text" id="headlineInput" class="form-control form-control-lg" 
-                           placeholder="7 Proven Ways to Boost Your SEO Rankings in 2024"
-                           maxlength="100">
-                    <div class="d-flex justify-content-between mt-2">
-                        <small class="text-muted">Optimal: 50-60 characters</small>
-                        <small id="charCounter" class="text-muted">0 characters</small>
-                    </div>
-                </div>
-                
-                <button onclick="analyzeHeadline()" class="btn btn-primary btn-lg btn-block">
-                    <i class="fas fa-chart-bar"></i> Analyze Headline
-                </button>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2><i class="fas fa-heading text-success"></i> Headline Analyzer</h2>
+            <div class="input-group mb-4">
+                <input type="text" id="headline" class="form-control form-control-lg" placeholder="Enter your headline...">
+                <button class="btn btn-success" onclick="analyzeHeadline()">Analyze</button>
             </div>
 
-            <!-- Results -->
-            <div id="results" style="display:none;">
-                <!-- Score Cards -->
-                <div class="row mb-4">
+            <div id="scoreCard" style="display:none;">
+                <div class="row text-center mb-4">
                     <div class="col-md-4">
-                        <div class="card p-4 text-center">
-                            <h1 id="overallScore" class="display-3 mb-0"></h1>
-                            <p class="text-muted mb-0">Overall Score</p>
-                            <span id="grade" class="badge mt-2" style="font-size: 1.2rem;"></span>
+                        <div class="card bg-light p-3">
+                            <h3>Score</h3>
+                            <h1 id="score" class="fw-bold text-primary">0</h1>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card p-4 text-center">
-                            <h1 id="seoScore" class="display-3 mb-0"></h1>
-                            <p class="text-muted mb-0">SEO Score</p>
-                            <small id="seoFeedback" class="text-muted"></small>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card p-4 text-center">
-                            <h1 id="clickScore" class="display-3 mb-0"></h1>
-                            <p class="text-muted mb-0">Click Score</p>
-                            <small class="text-muted">Engagement potential</small>
+                    <div class="col-md-8">
+                        <div class="card p-3 text-start">
+                            <h5>Feedback:</h5>
+                            <ul id="feedbackList" class="mb-0"></ul>
                         </div>
                     </div>
                 </div>
 
-                <!-- Analysis Details -->
-                <div class="card p-4 mb-4">
-                    <h4 class="mb-3">📊 Headline Analysis</h4>
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <strong>Type:</strong>
-                            <p id="headlineType" class="mb-0"></p>
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Characters:</strong>
-                            <p id="charCount" class="mb-0"></p>
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Words:</strong>
-                            <p id="wordCount" class="mb-0"></p>
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Power Words:</strong>
-                            <p id="powerWordCount" class="mb-0"></p>
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    <h5>Word Balance</h5>
-                    <div class="row">
-                        <div class="col-md-3">
-                            <small class="text-muted">Common Words</small>
-                            <div class="progress" style="height: 25px;">
-                                <div id="commonBar" class="progress-bar bg-secondary" role="progressbar"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <small class="text-muted">Uncommon Words</small>
-                            <div class="progress" style="height: 25px;">
-                                <div id="uncommonBar" class="progress-bar bg-primary" role="progressbar"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <small class="text-muted">Emotional Words</small>
-                            <div class="progress" style="height: 25px;">
-                                <div id="emotionalBar" class="progress-bar bg-warning" role="progressbar"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <small class="text-muted">Power Words</small>
-                            <div class="progress" style="height: 25px;">
-                                <div id="powerBar" class="progress-bar bg-success" role="progressbar"></div>
-                            </div>
-                        </div>
+                <div class="card">
+                    <div class="card-header fw-bold bg-warning text-dark">AI Suggestions</div>
+                    <div class="card-body" id="aiSuggestions">
+                        <div class="spinner-border spinner-border-sm"></div> Loading better variations...
                     </div>
                 </div>
-
-                <!-- Found Words -->
-                <div id="foundWordsSection" class="card p-4 mb-4" style="display:none;">
-                    <h5>💪 Power & Emotional Words Found</h5>
-                    <div id="foundWords"></div>
-                </div>
-
-                <!-- Suggestions -->
-                <div class="card p-4">
-                    <h4><i class="fas fa-lightbulb"></i> Improvement Suggestions</h4>
-                    <ul id="suggestionsList" class="mb-0"></ul>
-                </div>
-            </div>
-
-            <!-- Tips -->
-            <div class="card p-4 mt-4">
-                <h5><i class="fas fa-graduation-cap"></i> Headline Best Practices</h5>
-                <ul class="mb-0">
-                    <li><strong>Length:</strong> 50-60 characters for optimal SEO display</li>
-                    <li><strong>Numbers:</strong> Headlines with numbers get 36% more clicks</li>
-                    <li><strong>Power Words:</strong> Use emotional triggers like "proven", "essential"</li>
-                    <li><strong>Type:</strong> How-to and list headlines perform best</li>
-                    <li><strong>Clarity:</strong> Be specific about the benefit</li>
-                </ul>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// Character counter
-document.getElementById('headlineInput').addEventListener('input', function() {
-    const count = this.value.length;
-    document.getElementById('charCounter').textContent = count + ' characters';
-    
-    if (count >= 50 && count <= 60) {
-        document.getElementById('charCounter').className = 'text-success';
-    } else if (count > 60 && count <= 70) {
-        document.getElementById('charCounter').className = 'text-warning';
-    } else if (count > 70) {
-        document.getElementById('charCounter').className = 'text-danger';
-    } else {
-        document.getElementById('charCounter').className = 'text-muted';
-    }
-});
-
 async function analyzeHeadline() {
-    const headline = document.getElementById('headlineInput').value.trim();
+    const h = document.getElementById('headline').value;
+    if(!h) return;
+
+    document.getElementById('scoreCard').style.display = 'block';
     
-    if (!headline) {
-        alert('⚠️ Please enter a headline');
-        return;
-    }
+    // 1. Simple JS Scoring
+    let score = 60;
+    let feedback = [];
     
+    if(h.length > 20 && h.length < 70) { score += 10; feedback.push("✅ Good length"); } 
+    else { feedback.push("⚠️ Length optimized (aim for 30-60 chars)"); }
+
+    const powerWords = ['best', 'ultimate', 'guide', 'secret', 'review', 'free', 'easy', 'fast'];
+    if(powerWords.some(w => h.toLowerCase().includes(w))) { score += 15; feedback.push("✅ Contains Power Words"); }
+    
+    if(h.includes('?')) { score += 5; feedback.push("✅ Question format engages users"); }
+    if(/\d/.test(h)) { score += 10; feedback.push("✅ Numbers increase CTR"); }
+
+    document.getElementById('score').innerText = Math.min(score, 100);
+    document.getElementById('feedbackList').innerHTML = feedback.map(f => `<li>${f}</li>`).join('');
+
+    // 2. Get AI Suggestions
     try {
-        const res = await fetch('/api/analyze-headline', {
+        const prompt = `Rewrite this headline to be more click-worthy and SEO friendly: "${h}". Provide 5 variations.`;
+        const res = await fetch('/api/generate-content', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({headline: headline})
+            body: JSON.stringify({ keyword: prompt, mode: "standard" })
         });
-        
         const data = await res.json();
-        
-        if (!res.ok) throw new Error(data.error || 'Analysis failed');
-        
-        // Display scores
-        document.getElementById('overallScore').textContent = data.overall_score;
-        document.getElementById('seoScore').textContent = data.seo_score;
-        document.getElementById('clickScore').textContent = data.click_score;
-        document.getElementById('seoFeedback').textContent = data.seo_feedback;
-        
-        // Grade badge
-        const gradeBadge = document.getElementById('grade');
-        gradeBadge.textContent = 'Grade ' + data.grade;
-        gradeBadge.className = 'badge badge-' + data.grade_color + ' mt-2';
-        
-        // Details
-        document.getElementById('headlineType').textContent = data.headline_type;
-        document.getElementById('charCount').textContent = data.char_count;
-        document.getElementById('wordCount').textContent = data.word_count;
-        document.getElementById('powerWordCount').textContent = data.power_word_count;
-        
-        // Word balance bars
-        document.getElementById('commonBar').style.width = data.word_balance.common + '%';
-        document.getElementById('commonBar').textContent = data.word_balance.common + '%';
-        
-        document.getElementById('uncommonBar').style.width = data.word_balance.uncommon + '%';
-        document.getElementById('uncommonBar').textContent = data.word_balance.uncommon + '%';
-        
-        document.getElementById('emotionalBar').style.width = data.word_balance.emotional + '%';
-        document.getElementById('emotionalBar').textContent = data.word_balance.emotional + '%';
-        
-        document.getElementById('powerBar').style.width = data.word_balance.power + '%';
-        document.getElementById('powerBar').textContent = data.word_balance.power + '%';
-        
-        // Found words
-        if (data.power_words.length > 0 || data.emotional_words.length > 0) {
-            let html = '';
-            if (data.power_words.length > 0) {
-                html += '<p><strong>Power Words:</strong> ';
-                data.power_words.forEach(word => {
-                    html += `<span class="badge badge-success mr-1">${word}</span>`;
-                });
-                html += '</p>';
-            }
-            if (data.emotional_words.length > 0) {
-                html += '<p><strong>Emotional Words:</strong> ';
-                data.emotional_words.forEach(word => {
-                    html += `<span class="badge badge-warning mr-1">${word}</span>`;
-                });
-                html += '</p>';
-            }
-            document.getElementById('foundWords').innerHTML = html;
-            document.getElementById('foundWordsSection').style.display = 'block';
-        } else {
-            document.getElementById('foundWordsSection').style.display = 'none';
-        }
-        
-        // Suggestions
-        const suggestionsList = document.getElementById('suggestionsList');
-        suggestionsList.innerHTML = '';
-        data.suggestions.forEach(suggestion => {
-            const li = document.createElement('li');
-            li.textContent = suggestion;
-            li.style.marginBottom = '10px';
-            suggestionsList.appendChild(li);
-        });
-        
-        document.getElementById('results').style.display = 'block';
-        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
-        
-    } catch (err) {
-        alert('❌ ' + err.message);
+        document.getElementById('aiSuggestions').innerHTML = `<pre style="white-space: pre-wrap;">${data.content}</pre>`;
+    } catch(e) {
+        document.getElementById('aiSuggestions').innerText = "Could not load AI suggestions.";
     }
 }
-
-// Allow Enter key to analyze
-document.getElementById('headlineInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        analyzeHeadline();
-    }
-});
 </script>
 {% endblock %}
