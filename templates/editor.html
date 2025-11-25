@@ -32,6 +32,7 @@
                         <button class="btn btn-sm btn-light" onclick="document.execCommand('italic')"><i>I</i></button>
                         <button class="btn btn-sm btn-light" onclick="document.execCommand('formatBlock', false, 'h2')">H2</button>
                         <button class="btn btn-sm btn-light" onclick="document.execCommand('formatBlock', false, 'h3')">H3</button>
+                        <button class="btn btn-sm btn-light" onclick="document.execCommand('createLink', false, prompt('Enter URL'))"><i class="fas fa-link"></i></button>
                     </div>
                     <!-- Editable Content Area -->
                     <div id="editor" contenteditable="true" class="p-4 flex-grow-1" style="outline: none; overflow-y: auto; min-height: 60vh;" onkeyup="checkSeoTerms()">
@@ -82,10 +83,19 @@
                     
                     <hr>
 
-                    <!-- NEW: Questions (PAA) -->
+                    <!-- Questions (PAA) -->
                     <h6 class="small fw-bold mb-2">People Also Ask</h6>
                     <p class="small text-muted fst-italic mb-2" style="font-size: 0.75rem;">Click to add as H2</p>
-                    <div id="questionsList" class="d-flex flex-column gap-2">
+                    <div id="questionsList" class="d-flex flex-column gap-2 mb-4">
+                        <span class="text-muted small fst-italic">Waiting for keyword...</span>
+                    </div>
+
+                    <hr>
+
+                    <!-- NEW: Internal Links -->
+                    <h6 class="small fw-bold mb-2">Internal Link Suggestions</h6>
+                    <p class="small text-muted fst-italic mb-2" style="font-size: 0.75rem;">Click to insert link</p>
+                    <div id="linksList" class="d-flex flex-column gap-2">
                         <span class="text-muted small fst-italic">Waiting for keyword...</span>
                     </div>
 
@@ -129,7 +139,12 @@ function runAllSeoChecks() {
     const btn = document.querySelector('.input-group button');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     
-    Promise.all([fetchSeoTerms(keyword), fetchQuestions(keyword)]).then(() => {
+    // Run all 3 checks: Terms, Questions, and Links
+    Promise.all([
+        fetchSeoTerms(keyword), 
+        fetchQuestions(keyword),
+        fetchInternalLinks(keyword)
+    ]).then(() => {
         btn.innerHTML = '<i class="fas fa-sync"></i>';
     });
 }
@@ -151,7 +166,7 @@ async function fetchSeoTerms(keyword) {
     } catch(e) { console.error(e); }
 }
 
-// 2. NEW: FETCH QUESTIONS
+// 2. FETCH QUESTIONS
 async function fetchQuestions(keyword) {
     try {
         const res = await fetch('/api/generate-questions', {
@@ -165,7 +180,6 @@ async function fetchQuestions(keyword) {
         
         if(data.success && data.questions.length > 0) {
             data.questions.forEach(q => {
-                // Create a clickable card for each question
                 const div = document.createElement('div');
                 div.className = 'p-2 border rounded bg-light small cursor-pointer';
                 div.style.cursor = 'pointer';
@@ -179,16 +193,57 @@ async function fetchQuestions(keyword) {
     } catch(e) { console.error(e); }
 }
 
+// 3. NEW: FETCH INTERNAL LINKS
+async function fetchInternalLinks(keyword) {
+    try {
+        // We pass the current content ID so we don't link to ourselves
+        const currentId = "{{ content.id if content else '' }}";
+        
+        const res = await fetch('/api/suggest-internal-links', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: keyword, current_id: currentId})
+        });
+        const data = await res.json();
+        const container = document.getElementById('linksList');
+        container.innerHTML = '';
+        
+        if(data.success && data.links.length > 0) {
+            data.links.forEach(link => {
+                const div = document.createElement('div');
+                div.className = 'p-2 border rounded bg-light small cursor-pointer hover-bg-light';
+                div.style.cursor = 'pointer';
+                div.innerHTML = `<i class="fas fa-link text-success me-1"></i> ${link.title}`;
+                // When clicked, insert an anchor tag
+                div.onclick = () => insertInternalLink(link.title, link.id);
+                container.appendChild(div);
+            });
+        } else {
+            container.innerHTML = '<span class="small text-muted">No relevant articles found.</span>';
+        }
+    } catch(e) { console.error(e); }
+}
+
+// Helper: Insert Internal Link
+function insertInternalLink(title, id) {
+    const editor = document.getElementById('editor');
+    editor.focus();
+    // Create a link to the editor route for that ID
+    const url = `/editor?id=${id}`;
+    const html = `<a href="${url}" title="${title}">${title}</a>`;
+    document.execCommand('insertHTML', false, html);
+}
+
 // Helper: Insert Question as H2
 function insertHeading(text) {
     const editor = document.getElementById('editor');
     editor.focus();
     const html = `<h2>${text}</h2><p>Answer here...</p>`;
     document.execCommand('insertHTML', false, html);
-    checkSeoTerms(); // Re-score
+    checkSeoTerms();
 }
 
-// 3. RENDER TERMS LIST
+// 4. RENDER TERMS LIST
 function renderTerms() {
     const container = document.getElementById('termsList');
     container.innerHTML = '';
@@ -201,7 +256,7 @@ function renderTerms() {
     });
 }
 
-// 4. CHECK TEXT AGAINST TERMS (Real-time Scoring)
+// 5. CHECK TEXT AGAINST TERMS (Real-time Scoring)
 function checkSeoTerms() {
     const text = document.getElementById('editor').innerText.toLowerCase();
     const badges = document.querySelectorAll('.term-badge');
@@ -240,7 +295,7 @@ function checkSeoTerms() {
     circle.className = `d-inline-flex align-items-center justify-content-center rounded-circle border border-4 ${score > 70 ? 'border-success text-success' : 'border-primary'}`;
 }
 
-// 5. SAVE FUNCTION
+// 6. SAVE FUNCTION
 async function saveContent() {
     const content = {
         id: "{{ content.id if content else '' }}", // Flask injects ID if exists
@@ -258,7 +313,7 @@ async function saveContent() {
     alert("Saved!");
 }
 
-// 6. AI GENERATE FUNCTION
+// 7. AI GENERATE FUNCTION
 async function generateAiContent() {
     const prompt = document.getElementById('aiPrompt').value;
     const mode = document.getElementById('humanMode').checked ? 'human' : 'ai';
