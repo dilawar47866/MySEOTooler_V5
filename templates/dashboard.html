@@ -1,0 +1,220 @@
+<!-- templates/dashboard.html -->
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - MySEOKingTool{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="bi bi-speedometer2"></i> Welcome, {{ current_user.username }}!</h2>
+            <p class="text-muted">
+                Plan: <span class="badge bg-{{ 'success' if current_user.tier == 'pro' else 'warning' if current_user.tier == 'enterprise' else 'secondary' }}">{{ current_user.tier|upper }}</span>
+                | AI Usage Today: <strong>{{ current_user.ai_requests_today }}</strong> / {{ current_user.get_daily_limit() }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Total Content</h6>
+                            <h2 class="mb-0">{{ content_count|default(0) }}</h2>
+                        </div>
+                        <i class="bi bi-file-text" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">AI Requests Left</h6>
+                            <h2 class="mb-0">{{ current_user.get_daily_limit() - current_user.ai_requests_today }}</h2>
+                        </div>
+                        <i class="bi bi-robot" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Tools Available</h6>
+                            <h2 class="mb-0">15+</h2>
+                        </div>
+                        <i class="bi bi-tools" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Avg SEO Score</h6>
+                            <h2 class="mb-0">{{ avg_seo_score|default(0) }}%</h2>
+                        </div>
+                        <i class="bi bi-graph-up" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <a href="{{ url_for('content_editor') }}" class="btn btn-primary w-100 py-3">
+                                <i class="bi bi-plus-circle"></i><br>New Content
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('tools') }}#content-generator" class="btn btn-success w-100 py-3">
+                                <i class="bi bi-robot"></i><br>AI Generator
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('tools') }}#seo-analyzer" class="btn btn-info w-100 py-3">
+                                <i class="bi bi-search"></i><br>SEO Analysis
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('tools') }}#schema-generator" class="btn btn-warning w-100 py-3">
+                                <i class="bi bi-code-slash"></i><br>Schema Generator
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Content -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Content</h5>
+                    <a href="{{ url_for('content_list') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_content %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Keyword</th>
+                                    <th>SEO Score</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for content in recent_content %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('content_editor', id=content.id) }}">
+                                            {{ content.title[:40] }}{% if content.title|length > 40 %}...{% endif %}
+                                        </a>
+                                    </td>
+                                    <td><span class="badge bg-secondary">{{ content.keyword or 'N/A' }}</span></td>
+                                    <td>
+                                        {% set score = content.seo_score|default(0) %}
+                                        <span class="badge bg-{{ 'success' if score >= 70 else 'warning' if score >= 50 else 'danger' }}">
+                                            {{ score }}%
+                                        </span>
+                                    </td>
+                                    <td>{{ content.created_at.strftime('%b %d') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('content_editor', id=content.id) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-file-earmark-plus display-1 text-muted"></i>
+                        <p class="text-muted mt-3">No content yet. Create your first piece!</p>
+                        <a href="{{ url_for('content_editor') }}" class="btn btn-primary">
+                            <i class="bi bi-plus"></i> Create Content
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <!-- Usage Stats -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Today's Usage</h5>
+                </div>
+                <div class="card-body">
+                    {% set usage_percent = (current_user.ai_requests_today / current_user.get_daily_limit() * 100)|int %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>AI Requests</span>
+                            <span>{{ current_user.ai_requests_today }}/{{ current_user.get_daily_limit() }}</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-{{ 'danger' if usage_percent > 90 else 'warning' if usage_percent > 70 else 'success' }}" 
+                                 style="width: {{ usage_percent }}%"></div>
+                        </div>
+                    </div>
+                    {% if current_user.tier == 'free' %}
+                    <a href="#" class="btn btn-sm btn-outline-primary w-100">
+                        <i class="bi bi-arrow-up-circle"></i> Upgrade for More
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Quick Tips -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightbulb"></i> SEO Tips</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle text-success"></i> Use keywords in first 100 words
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle text-success"></i> Keep titles under 60 characters
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle text-success"></i> Add internal links
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle text-success"></i> Use H2 headings (3-5 per post)
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
