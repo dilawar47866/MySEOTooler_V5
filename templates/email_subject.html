@@ -1,53 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <h2><i class="fas fa-envelope-open-text text-warning"></i> Email Subject Line Generator</h2>
-            <div class="card shadow-sm p-4">
-                <label class="fw-bold">What is your email about?</label>
-                <textarea id="emailContent" class="form-control mb-3" rows="3" placeholder="e.g. We are launching a 50% off summer sale for our sneakers..."></textarea>
-                
-                <label class="fw-bold">Tone</label>
-                <select id="tone" class="form-select mb-3">
-                    <option value="Urgent">Urgent / FOMO</option>
-                    <option value="Professional">Professional</option>
-                    <option value="Funny">Funny / Witty</option>
-                    <option value="Curiosity">Curiosity Inducing</option>
-                </select>
-
-                <button class="btn btn-primary w-100" onclick="genSubjects()">Generate Subject Lines</button>
-            </div>
-
-            <div id="output" class="mt-4 list-group"></div>
-        </div>
-    </div>
+    <h2><i class="fas fa-envelope text-warning"></i> Email Subject Line Generator</h2>
+    <textarea id="emailBody" class="form-control mb-3" placeholder="Paste your email body here..."></textarea>
+    <button class="btn btn-warning w-100" onclick="genSub()">Generate 10 Subject Lines</button>
+    <div id="output" class="mt-4 list-group"></div>
 </div>
-
 <script>
-async function genSubjects() {
-    const content = document.getElementById('emailContent').value;
-    const tone = document.getElementById('tone').value;
-    if(!content) return alert("Enter email content");
-
-    document.getElementById('output').innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
-
-    const prompt = `Write 10 catchy email subject lines for this topic: "${content}". Tone: ${tone}. Output as a numbered list.`;
-
-    const res = await fetch('/api/generate-content', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ keyword: prompt, mode: "standard" })
-    });
-    const data = await res.json();
-    
-    // Formatting output
-    const lines = data.content.split('\n').filter(line => line.length > 5);
-    let html = '';
-    lines.forEach(line => {
-        html += `<div class="list-group-item list-group-item-action">${line}</div>`;
-    });
-    document.getElementById('output').innerHTML = html;
+async function genSub() {
+    const b = document.getElementById('emailBody').value;
+    if(!b) return;
+    const res = await fetch('/api/generate-content', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keyword: `Generate 10 high-converting email subject lines for: "${b}"`, mode:'standard'})});
+    const d = await res.json();
+    document.getElementById('output').innerHTML = `<pre>${d.content}</pre>`;
 }
 </script>
 {% endblock %}
