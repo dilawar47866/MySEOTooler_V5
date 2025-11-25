@@ -13,21 +13,28 @@ from openai import OpenAI
 import markdown
 from io import BytesIO
 
-# --- CONFIG ---
+# ==========================================
+# 1. CONFIGURATION
+# ==========================================
 load_dotenv()
 app = Flask(__name__)
+
+# Database Config (Handles Railway PostgreSQL or Local SQLite)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///myseotoolver5.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# OpenAI Client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- MODELS ---
+# ==========================================
+# 2. DATABASE MODELS
+# ==========================================
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -37,10 +44,12 @@ class User(UserMixin, db.Model):
     content_count = db.Column(db.Integer, default=0)
     ai_requests_this_month = db.Column(db.Integer, default=0)
     last_reset_date = db.Column(db.DateTime, default=datetime.utcnow)
-    # FIXED: Added Admin Field back
     is_admin = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
     
-    def check_password(self, password): return bcrypt.check_password_hash(self.password_hash, password)
+    def check_password(self, password): 
+        return bcrypt.check_password_hash(self.password_hash, password)
+    
     def get_limits(self):
         limits = {'free': 50, 'pro': 500, 'enterprise': 9999}
         return {'ai_requests_per_month': limits.get(self.tier, 50)}
@@ -57,80 +66,118 @@ class Content(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 @login_manager.user_loader
-def load_user(user_id): return User.query.get(int(user_id))
+def load_user(user_id): 
+    return User.query.get(int(user_id))
 
-# --- CORE ROUTES ---
+# ==========================================
+# 3. CORE PAGE ROUTES
+# ==========================================
 @app.route('/')
 def landing(): 
-    return redirect(url_for('dashboard')) if current_user.is_authenticated else render_template('landing.html')
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return render_template('landing.html')
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    # Dashboard Logic
     recent = Content.query.filter_by(user_id=current_user.id).order_by(Content.updated_at.desc()).limit(5).all()
     total = Content.query.filter_by(user_id=current_user.id).count()
     words = db.session.query(db.func.sum(Content.word_count)).filter_by(user_id=current_user.id).scalar() or 0
-    return render_template('index.html', recent_content=recent, total_content=total, total_words=words, limits=current_user.get_limits())
+    
+    # Recalculate Avg Score
+    avg_score = 0
+    scores = [c.seo_score for c in Content.query.filter_by(user_id=current_user.id).all()]
+    if scores:
+        avg_score = sum(scores) / len(scores)
+
+    return render_template('index.html', recent_content=recent, total_content=total, 
+                         total_words=words, avg_score=round(avg_score, 1), 
+                         limits=current_user.get_limits())
 
 @app.route('/editor')
 @login_required
 def editor():
-    c = Content.query.filter_by(id=request.args.get('id'), user_id=current_user.id).first() if request.args.get('id') else None
-    return render_template('editor.html', content=c)
+    content = None
+    if request.args.get('id'): 
+        content = Content.query.filter_by(id=request.args.get('id'), user_id=current_user.id).first()
+    return render_template('editor.html', content=content)
+
+@app.route('/content-library')
+@login_required
+def content_library():
+    # Fetch user's articles
+    contents = Content.query.filter_by(user_id=current_user.id).order_by(Content.updated_at.desc()).all()
+    return render_template('content_library.html', contents=contents)
 
 @app.route('/pricing')
-def pricing(): return render_template('pricing.html')
+def pricing(): 
+    return render_template('pricing.html')
 
 @app.route('/profile')
 @login_required
 def profile():
     return render_template('profile.html')
 
-# --- AUTH ROUTES ---
+# ==========================================
+# 4. AUTHENTICATION ROUTES
+# ==========================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         data = request.get_json() if request.is_json else request.form
         user = User.query.filter_by(email=data.get('email').lower()).first()
+        
         if user and user.check_password(data.get('password')):
+            if not user.is_active:
+                return jsonify({'error': 'Account is banned. Contact support.'}), 403
             login_user(user)
             return jsonify({'success': True, 'redirect': '/dashboard'})
+            
         return jsonify({'error': 'Invalid credentials'}), 401
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if current_user.is_authenticated: return redirect('/dashboard')
+    
     if request.method == 'POST':
         try:
             data = request.get_json() if request.is_json else request.form
-            if User.query.filter_by(email=data.get('email').lower()).first(): return jsonify({'error': 'Email taken'}), 400
+            if User.query.filter_by(email=data.get('email').lower()).first(): 
+                return jsonify({'error': 'Email already exists'}), 400
             
             hashed = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
             user = User(username=data.get('username'), email=data.get('email').lower(), password_hash=hashed)
             
-            # First user becomes admin automatically
-            if User.query.count() == 0: user.is_admin = True
+            # First user created becomes Admin
+            if User.query.count() == 0: 
+                user.is_admin = True
             
             db.session.add(user)
             db.session.commit()
             login_user(user)
             return jsonify({'success': True, 'redirect': '/dashboard'})
-        except Exception as e: return jsonify({'error': str(e)}), 500
+        except Exception as e: 
+            return jsonify({'error': str(e)}), 500
+            
     return render_template('signup.html')
 
 @app.route('/logout')
 @login_required
-def logout(): logout_user(); return redirect('/')
+def logout(): 
+    logout_user() 
+    return redirect('/')
 
-# --- ADMIN ROUTES ---
+# ==========================================
+# 5. ADMIN ROUTES
+# ==========================================
 @app.route('/admin')
 @login_required
 def admin():
     if not getattr(current_user, 'is_admin', False): 
         return redirect('/dashboard')
-    
-    # Sort by ID desc
     users = User.query.order_by(User.id.desc()).all()
     total_content = Content.query.count()
     return render_template('admin.html', users=users, total_content=total_content)
@@ -138,25 +185,12 @@ def admin():
 @app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
 @login_required
 def admin_toggle_user(user_id):
-    # Security: Only admins can do this
-    if not getattr(current_user, 'is_admin', False): 
-        return jsonify({'error': 'Unauthorized'}), 403
-    
+    if not getattr(current_user, 'is_admin', False): return jsonify({'error': 'Unauthorized'}), 403
     user = User.query.get_or_404(user_id)
+    if user.id == current_user.id: return jsonify({'error': 'Cannot ban yourself'}), 400
     
-    # Prevent banning yourself
-    if user.id == current_user.id: 
-        return jsonify({'error': 'Cannot ban yourself'}), 400
-        
-    # Toggle status (Ban/Unban)
-    # Note: You might need to add 'is_active' to your DB if it's missing, 
-    # but the User model I gave you earlier included 'is_active'.
-    if not hasattr(user, 'is_active'):
-        user.is_active = True
-        
     user.is_active = not user.is_active
     db.session.commit()
-    
     return jsonify({'success': True, 'status': user.is_active})
 
 @app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
@@ -170,17 +204,10 @@ def admin_delete_user(user_id):
     db.session.commit()
     return jsonify({'success': True})
 
-# --- TOOL ROUTES ---
-
-# 1. Specific Route for Content Library (Fixes 500 Error)
-@app.route('/content-library')
-@login_required
-def content_library():
-    # Fetch the user's articles from the DB
-    contents = Content.query.filter_by(user_id=current_user.id).order_by(Content.updated_at.desc()).all()
-    return render_template('content_library.html', contents=contents)
-
-# 2. Generic Tools (REMOVED 'content-library' from this list)
+# ==========================================
+# 6. TOOL ROUTES (Generic Loader)
+# ==========================================
+# Note: 'content-library' is removed from here because it has a specific route above
 tools = ['competitor-analyzer', 'keyword-research', 'sitemap-generator', 
          'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
          'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
@@ -188,42 +215,63 @@ tools = ['competitor-analyzer', 'keyword-research', 'sitemap-generator',
          'faq-schema', 'youtube-script']
 
 for tool in tools:
+    # Ensure underscores are used for file names
     app.add_url_rule(f'/{tool}', tool.replace('-', '_'), lambda tool=tool: render_template(f'{tool.replace("-", "_")}.html'))
 
-# --- API ENDPOINTS ---
+# ==========================================
+# 7. API ENDPOINTS
+# ==========================================
+
+# --- Save Content ---
 @app.route('/api/save-content', methods=['POST'])
 @login_required
 def api_save_content():
     d = request.get_json()
     try:
+        # Update Existing
         if d.get('id'):
             c = Content.query.get(d.get('id'))
             if c and c.user_id == current_user.id:
-                c.title = d.get('title'); c.content = d.get('content'); c.html_content = d.get('html_content')
-                c.keyword = d.get('keyword'); c.word_count = len(d.get('content', '').split())
+                c.title = d.get('title')
+                c.content = d.get('content')
+                c.html_content = d.get('html_content')
+                c.keyword = d.get('keyword')
+                c.word_count = len(d.get('content', '').split())
+                
+                # Basic Score Calc
                 score = 0
                 if c.word_count > 800: score += 40
                 if c.keyword and c.keyword.lower() in c.title.lower(): score += 30
                 c.seo_score = min(score + 30, 100)
+                
                 db.session.commit()
                 return jsonify({'success': True, 'id': c.id})
         
-        new_c = Content(user_id=current_user.id, title=d.get('title', 'Untitled'), 
-                        keyword=d.get('keyword'), content=d.get('content'), 
-                        html_content=d.get('html_content'), word_count=len(d.get('content', '').split()))
+        # Create New
+        new_c = Content(
+            user_id=current_user.id, 
+            title=d.get('title', 'Untitled'), 
+            keyword=d.get('keyword'), 
+            content=d.get('content'), 
+            html_content=d.get('html_content'), 
+            word_count=len(d.get('content', '').split())
+        )
         db.session.add(new_c)
         current_user.content_count += 1
         db.session.commit()
         return jsonify({'success': True, 'id': new_c.id})
-    except Exception as e: return jsonify({'error': str(e)}), 500
+    except Exception as e: 
+        return jsonify({'error': str(e)}), 500
 
+# --- Generate AI Content ---
 @app.route('/api/generate-content', methods=['POST'])
 @login_required
 def api_generate_content():
     try:
         data = request.get_json()
         sys_prompt = "You are a helpful SEO expert writer."
-        if data.get('mode') == 'human': sys_prompt = "You are an opinionated human writer. Use burstiness."
+        if data.get('mode') == 'human': 
+            sys_prompt = "You are an opinionated human writer. Write at an 8th-grade level. Avoid buzzwords like 'delve', 'unleash', 'landscape'."
         
         res = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -231,18 +279,56 @@ def api_generate_content():
             max_tokens=1500
         )
         text = res.choices[0].message.content
+        
+        # Deduct credit
         current_user.ai_requests_this_month += 1
         db.session.commit()
+        
         return jsonify({'success': True, 'content': text, 'html_content': markdown.markdown(text)})
-    except Exception as e: return jsonify({'error': str(e)}), 500
+    except Exception as e: 
+        return jsonify({'error': str(e)}), 500
 
+# --- Keyword Clusters (Strategy) ---
+@app.route('/api/generate-clusters', methods=['POST'])
+@login_required
+def api_generate_clusters():
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword')
+        prompt = (
+            f"Act as an SEO Strategist. Generate a keyword cluster strategy for: '{keyword}'. "
+            "Create 4 clusters. For each, provide 'name' and 5 'keywords'. "
+            "Output strictly valid JSON: [{'name': '...', 'keywords': ['...']}]"
+        )
+
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": "You are a JSON generator."}, {"role": "user", "content": prompt}],
+            max_tokens=1000
+        )
+        
+        content = res.choices[0].message.content.replace('```json', '').replace('```', '').strip()
+        clusters = json.loads(content)
+        
+        current_user.ai_requests_this_month += 1
+        db.session.commit()
+        
+        return jsonify({'success': True, 'clusters': clusters})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --- Competitor Analysis ---
 @app.route('/api/analyze-competitor', methods=['POST'])
 @login_required
 def api_analyze_competitor():
     try:
         url = request.get_json().get('url')
         if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        }
         r = requests.get(url, headers=headers, timeout=10)
         if r.status_code == 406: return jsonify({'error': 'Blocked by WAF'}), 406
         
@@ -258,6 +344,25 @@ def api_analyze_competitor():
         }})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- WordPress Publisher ---
+@app.route('/api/publish-wordpress', methods=['POST'])
+@login_required
+def api_publish_wordpress():
+    data = request.get_json()
+    wp_url = data.get('url').rstrip('/')
+    creds = f"{data.get('username')}:{data.get('password')}"
+    token = base64.b64encode(creds.encode()).decode('utf-8')
+    
+    headers = {'Authorization': f'Basic {token}', 'Content-Type': 'application/json'}
+    payload = {'title': data.get('title'), 'content': data.get('content'), 'status': 'draft'}
+
+    try:
+        r = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=payload)
+        if r.status_code == 201: return jsonify({'success': True, 'link': r.json().get('link')})
+        return jsonify({'error': f"WP Error: {r.text}"}), 400
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- Delete Content ---
 @app.route('/api/delete-content/<int:id>', methods=['POST'])
 @login_required
 def api_delete(id):
@@ -268,15 +373,20 @@ def api_delete(id):
         return jsonify({'success': True})
     return jsonify({'error': 'Auth'}), 403
 
+# --- Export Content ---
 @app.route('/api/export/<int:id>/<fmt>')
 @login_required
 def api_export(id, fmt):
     c = Content.query.get_or_404(id)
     if c.user_id != current_user.id: return "Auth Error", 403
+    
     data = c.content if fmt == 'txt' else c.html_content
     mime = 'text/plain' if fmt == 'txt' else 'text/html'
-    return send_file(BytesIO(data.encode()), mimetype=mime, as_attachment=True, download_name=f"{c.title}.{fmt}")
+    filename = re.sub(r'[\\/*?:"<>|]', "", c.title) or "document"
+    
+    return send_file(BytesIO(data.encode()), mimetype=mime, as_attachment=True, download_name=f"{filename}.{fmt}")
 
+# --- Sitemap Generator ---
 @app.route('/api/generate-sitemap', methods=['POST'])
 @login_required
 def api_generate_sitemap():
@@ -300,6 +410,7 @@ def api_generate_sitemap():
         return jsonify({'success': True, 'sitemap': xml})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- Robots Generator ---
 @app.route('/api/generate-robots', methods=['POST'])
 @login_required
 def api_generate_robots():
@@ -310,7 +421,9 @@ def api_generate_robots():
     if d.get('sitemap'): c += f"\nSitemap: {d.get('sitemap')}"
     return jsonify({'success': True, 'content': c})
 
-# --- INIT ---
+# ==========================================
+# 8. INITIALIZATION
+# ==========================================
 with app.app_context():
     try: db.create_all()
     except: pass
