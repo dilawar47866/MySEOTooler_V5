@@ -32,7 +32,7 @@ login_manager.login_view = 'login'
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # ==========================================
-# 2. DATABASE MODELS
+# 2. DATABASE MODELS (Fixed for Deletion)
 # ==========================================
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -46,6 +46,9 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     
+    # FIXED: Added cascade delete so deleting user deletes their content
+    contents = db.relationship('Content', backref='author', lazy=True, cascade="all, delete-orphan")
+    
     def check_password(self, password): 
         return bcrypt.check_password_hash(self.password_hash, password)
     
@@ -55,7 +58,7 @@ class User(UserMixin, db.Model):
 
 class Content(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     keyword = db.Column(db.String(100))
     content = db.Column(db.Text, nullable=False)
@@ -69,7 +72,23 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # ==========================================
-# 3. CORE PAGE ROUTES
+# 3. PERMISSION SETTINGS
+# ==========================================
+# List of tools that are strictly PRO only
+PRO_TOOLS = [
+    'competitor-analyzer', 
+    'image-seo', 
+    'sitemap-generator', 
+    'robots-generator', 
+    'schema-generator', 
+    'social-posts', 
+    'youtube-script',
+    'faq-schema',
+    'alt-text-generator'
+]
+
+# ==========================================
+# 4. CORE PAGE ROUTES
 # ==========================================
 @app.route('/')
 def landing(): 
@@ -95,10 +114,8 @@ def dashboard():
 @app.route('/editor')
 @login_required
 def editor():
-    content = None
-    if request.args.get('id'): 
-        content = Content.query.filter_by(id=request.args.get('id'), user_id=current_user.id).first()
-    return render_template('editor.html', content=content)
+    c = Content.query.filter_by(id=request.args.get('id'), user_id=current_user.id).first() if request.args.get('id') else None
+    return render_template('editor.html', content=c)
 
 @app.route('/content-library')
 @login_required
@@ -106,7 +123,6 @@ def content_library():
     contents = Content.query.filter_by(user_id=current_user.id).order_by(Content.updated_at.desc()).all()
     return render_template('content_library.html', contents=contents)
 
-# FIXED PRICING ROUTE
 @app.route('/pricing')
 def pricing(): 
     return render_template('pricing.html')
@@ -117,71 +133,51 @@ def profile():
     return render_template('profile.html')
 
 # ==========================================
-# 4. AUTHENTICATION ROUTES
+# 5. AUTHENTICATION ROUTES
 # ==========================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         data = request.get_json() if request.is_json else request.form
         user = User.query.filter_by(email=data.get('email').lower()).first()
-        
         if user and user.check_password(data.get('password')):
-            if not user.is_active:
-                return jsonify({'error': 'Account is banned. Contact support.'}), 403
+            if not user.is_active: return jsonify({'error': 'Account is banned.'}), 403
             login_user(user)
             return jsonify({'success': True, 'redirect': '/dashboard'})
-            
         return jsonify({'error': 'Invalid credentials'}), 401
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if current_user.is_authenticated: return redirect('/dashboard')
-    
     if request.method == 'POST':
         try:
             data = request.get_json() if request.is_json else request.form
-            
-            # 1. STRICT USERNAME VALIDATION
-            username = data.get('username')
-            if not username or len(username.strip()) < 3:
-                return jsonify({'error': 'Username is required (min 3 characters)'}), 400
-            
-            # 2. CHECK IF USERNAME OR EMAIL EXISTS
-            if User.query.filter_by(username=username).first():
-                return jsonify({'error': 'Username already taken. Choose another.'}), 400
-            
-            if User.query.filter_by(email=data.get('email').lower()).first(): 
-                return jsonify({'error': 'Email already registered'}), 400
+            if not data.get('username') or len(data.get('username')) < 3: return jsonify({'error': 'Username required'}), 400
+            if User.query.filter_by(email=data.get('email').lower()).first(): return jsonify({'error': 'Email exists'}), 400
+            if User.query.filter_by(username=data.get('username')).first(): return jsonify({'error': 'Username taken'}), 400
             
             hashed = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
-            user = User(username=username, email=data.get('email').lower(), password_hash=hashed)
-            
+            user = User(username=data.get('username'), email=data.get('email').lower(), password_hash=hashed)
             if User.query.count() == 0: user.is_admin = True
-            
             db.session.add(user)
             db.session.commit()
             login_user(user)
             return jsonify({'success': True, 'redirect': '/dashboard'})
-        except Exception as e: 
-            return jsonify({'error': str(e)}), 500
-            
+        except Exception as e: return jsonify({'error': str(e)}), 500
     return render_template('signup.html')
 
 @app.route('/logout')
 @login_required
-def logout(): 
-    logout_user() 
-    return redirect('/')
+def logout(): logout_user(); return redirect('/')
 
 # ==========================================
-# 5. ADMIN ROUTES
+# 6. ADMIN ROUTES (Fixes Delete Error)
 # ==========================================
 @app.route('/admin')
 @login_required
 def admin():
-    if not getattr(current_user, 'is_admin', False): 
-        return redirect('/dashboard')
+    if not getattr(current_user, 'is_admin', False): return redirect('/dashboard')
     users = User.query.order_by(User.id.desc()).all()
     total_content = Content.query.count()
     return render_template('admin.html', users=users, total_content=total_content)
@@ -202,24 +198,45 @@ def admin_delete_user(user_id):
     if not getattr(current_user, 'is_admin', False): return jsonify({'error': 'Unauthorized'}), 403
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id: return jsonify({'error': 'Cannot delete yourself'}), 400
+    
+    # SQLAlchemy cascade will now handle content deletion automatically
     db.session.delete(user)
     db.session.commit()
     return jsonify({'success': True})
 
 # ==========================================
-# 6. TOOL ROUTES
+# 7. TOOL ROUTES (With Limit Enforcement)
 # ==========================================
-tools = ['competitor-analyzer', 'keyword-research', 'sitemap-generator', 
-         'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
-         'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
-         'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
-         'faq-schema', 'youtube-script']
+@app.route('/tool/<tool_name>')
+@login_required
+def tool_view(tool_name):
+    # Define available tools
+    allowed_tools = [
+        'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
+        'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
+        'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
+        'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
+        'faq-schema', 'youtube-script'
+    ]
+    
+    if tool_name not in allowed_tools:
+        return "Tool not found", 404
 
-for tool in tools:
-    app.add_url_rule(f'/{tool}', tool.replace('-', '_'), lambda tool=tool: render_template(f'{tool.replace("-", "_")}.html'))
+    # CHECK PERMISSIONS
+    if tool_name in PRO_TOOLS and current_user.tier == 'free':
+        flash("Upgrade to Pro to access this tool!", "warning")
+        return redirect('/pricing')
+        
+    # Render template
+    return render_template(f'{tool_name.replace("-", "_")}.html')
+
+# Map old routes to new secured route logic
+for t in PRO_TOOLS + ['keyword-research', 'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 'headline-analyzer', 'internal-linking', 'readability-checker']:
+    app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
+
 
 # ==========================================
-# 7. API ENDPOINTS
+# 8. API ENDPOINTS
 # ==========================================
 @app.route('/api/save-content', methods=['POST'])
 @login_required
@@ -237,7 +254,6 @@ def api_save_content():
                 c.seo_score = min(score + 30, 100)
                 db.session.commit()
                 return jsonify({'success': True, 'id': c.id})
-        
         new_c = Content(
             user_id=current_user.id, title=d.get('title', 'Untitled'), 
             keyword=d.get('keyword'), content=d.get('content'), 
@@ -252,10 +268,15 @@ def api_save_content():
 @app.route('/api/generate-content', methods=['POST'])
 @login_required
 def api_generate_content():
+    # LIMIT CHECK
+    limits = current_user.get_limits()
+    if current_user.ai_requests_this_month >= limits['ai_requests_per_month']:
+        return jsonify({'error': 'Monthly AI Limit Reached. Upgrade to Pro.'}), 403
+
     try:
         data = request.get_json()
         sys_prompt = "You are a helpful SEO expert writer."
-        if data.get('mode') == 'human': sys_prompt = "You are an opinionated human writer."
+        if data.get('mode') == 'human': sys_prompt = "Opinionated human writer."
         
         res = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -271,6 +292,9 @@ def api_generate_content():
 @app.route('/api/generate-clusters', methods=['POST'])
 @login_required
 def api_generate_clusters():
+    # LIMIT CHECK
+    if current_user.tier == 'free': return jsonify({'error': 'Keyword Clusters is a PRO feature.'}), 403
+
     try:
         data = request.get_json()
         keyword = data.get('keyword')
@@ -291,6 +315,8 @@ def api_generate_clusters():
 @app.route('/api/analyze-competitor', methods=['POST'])
 @login_required
 def api_analyze_competitor():
+    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro to use Competitor Spy.'}), 403
+
     try:
         url = request.get_json().get('url')
         if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
@@ -346,6 +372,9 @@ def api_export(id, fmt):
 @app.route('/api/generate-sitemap', methods=['POST'])
 @login_required
 def api_generate_sitemap():
+    # PRO Only
+    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro to use Sitemap Generator.'}), 403
+
     try:
         url = request.get_json().get('url')
         if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
@@ -368,6 +397,7 @@ def api_generate_sitemap():
 @app.route('/api/generate-robots', methods=['POST'])
 @login_required
 def api_generate_robots():
+    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro.'}), 403
     d = request.get_json()
     c = f"User-agent: {d.get('userAgent', '*')}\n"
     if d.get('allow'): c += f"Allow: {d.get('allow')}\n"
