@@ -1,67 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-10">
-            <h2><i class="fas fa-code text-dark"></i> FAQ Schema Generator</h2>
-            <p class="text-muted">Add Questions and Answers to generate valid JSON-LD Schema.</p>
-
-            <div id="faqContainer">
-                <!-- Dynamic inputs go here -->
-            </div>
-
-            <button class="btn btn-outline-primary mt-2" onclick="addPair()">+ Add Question</button>
-            <button class="btn btn-success mt-2 float-end" onclick="generateSchema()">Generate Code</button>
-
-            <div class="mt-4">
-                <label class="fw-bold">JSON-LD Output:</label>
-                <textarea id="schemaOutput" class="form-control bg-dark text-white" style="font-family: monospace;" rows="10"></textarea>
-            </div>
-        </div>
-    </div>
+    <h2>FAQ Schema Generator</h2>
+    <div id="faqBox"></div>
+    <button class="btn btn-sm btn-outline-primary mb-3" onclick="addFaq()">+ Add Question</button>
+    <button class="btn btn-success w-100" onclick="genSchema()">Generate JSON-LD</button>
+    <textarea id="output" class="form-control mt-3 bg-dark text-white" rows="6"></textarea>
 </div>
-
 <script>
-function addPair() {
-    const div = document.createElement('div');
-    div.className = 'card p-3 mb-3 faq-item shadow-sm';
-    div.innerHTML = `
-        <input type="text" class="form-control mb-2 q-input" placeholder="Question (e.g. What is SEO?)">
-        <textarea class="form-control a-input" placeholder="Answer..."></textarea>
-        <button class="btn btn-sm btn-danger mt-2" onclick="this.parentElement.remove()">Remove</button>
-    `;
-    document.getElementById('faqContainer').appendChild(div);
+function addFaq() {
+    document.getElementById('faqBox').innerHTML += `<div class="mb-2"><input class="form-control mb-1 q" placeholder="Question"><input class="form-control a" placeholder="Answer"></div>`;
 }
-
-// Add one default item
-window.onload = addPair;
-
-function generateSchema() {
-    const items = document.querySelectorAll('.faq-item');
-    const faqList = [];
-
-    items.forEach(item => {
-        const q = item.querySelector('.q-input').value;
-        const a = item.querySelector('.a-input').value;
-        if(q && a) {
-            faqList.push({
-                "@type": "Question",
-                "name": q,
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": a
-                }
-            });
-        }
-    });
-
-    const schema = {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": faqList
-    };
-
-    document.getElementById('schemaOutput').value = JSON.stringify(schema, null, 2);
+addFaq();
+function genSchema() {
+    let qs = document.querySelectorAll('.q'), as = document.querySelectorAll('.a'), arr = [];
+    qs.forEach((q, i) => arr.push({"@type":"Question","name":q.value,"acceptedAnswer":{"@type":"Answer","text":as[i].value}}));
+    document.getElementById('output').value = JSON.stringify({"@context":"https://schema.org","@type":"FAQPage","mainEntity":arr}, null, 2);
 }
 </script>
 {% endblock %}
