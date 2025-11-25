@@ -29,10 +29,11 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# OpenAI Client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # ==========================================
-# 2. DATABASE MODELS (Fixed for Deletion)
+# 2. DATABASE MODELS
 # ==========================================
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -46,7 +47,7 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     
-    # FIXED: Added cascade delete so deleting user deletes their content
+    # Cascade Delete: If user is deleted, delete their content too
     contents = db.relationship('Content', backref='author', lazy=True, cascade="all, delete-orphan")
     
     def check_password(self, password): 
@@ -72,19 +73,13 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # ==========================================
-# 3. PERMISSION SETTINGS
+# 3. PERMISSION SETTINGS (Feature Gating)
 # ==========================================
-# List of tools that are strictly PRO only
 PRO_TOOLS = [
-    'competitor-analyzer', 
-    'image-seo', 
-    'sitemap-generator', 
-    'robots-generator', 
-    'schema-generator', 
-    'social-posts', 
-    'youtube-script',
-    'faq-schema',
-    'alt-text-generator'
+    'competitor-analyzer', 'image-seo', 'sitemap-generator', 
+    'robots-generator', 'schema-generator', 'social-posts', 
+    'youtube-script', 'faq-schema', 'alt-text-generator',
+    'serp-analysis', 'plagiarism-checker', 'meta-tags'
 ]
 
 # ==========================================
@@ -140,44 +135,61 @@ def login():
     if request.method == 'POST':
         data = request.get_json() if request.is_json else request.form
         user = User.query.filter_by(email=data.get('email').lower()).first()
+        
         if user and user.check_password(data.get('password')):
-            if not user.is_active: return jsonify({'error': 'Account is banned.'}), 403
+            if not user.is_active:
+                return jsonify({'error': 'Account is banned. Contact support.'}), 403
             login_user(user)
             return jsonify({'success': True, 'redirect': '/dashboard'})
+            
         return jsonify({'error': 'Invalid credentials'}), 401
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if current_user.is_authenticated: return redirect('/dashboard')
+    
     if request.method == 'POST':
         try:
             data = request.get_json() if request.is_json else request.form
-            if not data.get('username') or len(data.get('username')) < 3: return jsonify({'error': 'Username required'}), 400
-            if User.query.filter_by(email=data.get('email').lower()).first(): return jsonify({'error': 'Email exists'}), 400
-            if User.query.filter_by(username=data.get('username')).first(): return jsonify({'error': 'Username taken'}), 400
+            
+            # Validations
+            if not data.get('username') or len(data.get('username')) < 3:
+                return jsonify({'error': 'Username required (min 3 chars)'}), 400
+            if User.query.filter_by(username=data.get('username')).first():
+                return jsonify({'error': 'Username taken'}), 400
+            if User.query.filter_by(email=data.get('email').lower()).first(): 
+                return jsonify({'error': 'Email already exists'}), 400
             
             hashed = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
             user = User(username=data.get('username'), email=data.get('email').lower(), password_hash=hashed)
+            
+            # First user becomes Admin
             if User.query.count() == 0: user.is_admin = True
+            
             db.session.add(user)
             db.session.commit()
             login_user(user)
             return jsonify({'success': True, 'redirect': '/dashboard'})
-        except Exception as e: return jsonify({'error': str(e)}), 500
+        except Exception as e: 
+            return jsonify({'error': str(e)}), 500
+            
     return render_template('signup.html')
 
 @app.route('/logout')
 @login_required
-def logout(): logout_user(); return redirect('/')
+def logout(): 
+    logout_user() 
+    return redirect('/')
 
 # ==========================================
-# 6. ADMIN ROUTES (Fixes Delete Error)
+# 6. ADMIN ROUTES
 # ==========================================
 @app.route('/admin')
 @login_required
 def admin():
-    if not getattr(current_user, 'is_admin', False): return redirect('/dashboard')
+    if not getattr(current_user, 'is_admin', False): 
+        return redirect('/dashboard')
     users = User.query.order_by(User.id.desc()).all()
     total_content = Content.query.count()
     return render_template('admin.html', users=users, total_content=total_content)
@@ -199,45 +211,48 @@ def admin_delete_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id: return jsonify({'error': 'Cannot delete yourself'}), 400
     
-    # SQLAlchemy cascade will now handle content deletion automatically
+    # DB Cascade handles content deletion
     db.session.delete(user)
     db.session.commit()
     return jsonify({'success': True})
 
 # ==========================================
-# 7. TOOL ROUTES (With Limit Enforcement)
+# 7. TOOL ROUTES (With Security)
 # ==========================================
 @app.route('/tool/<tool_name>')
 @login_required
 def tool_view(tool_name):
-    # Define available tools
-    allowed_tools = [
-        'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
-        'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
-        'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
-        'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
-        'faq-schema', 'youtube-script'
-    ]
+    all_tools = PRO_TOOLS + ['keyword-research', 'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 'headline-analyzer', 'internal-linking', 'readability-checker']
     
-    if tool_name not in allowed_tools:
+    if tool_name not in all_tools:
         return "Tool not found", 404
 
-    # CHECK PERMISSIONS
+    # ENFORCE PRO LIMITS
     if tool_name in PRO_TOOLS and current_user.tier == 'free':
-        flash("Upgrade to Pro to access this tool!", "warning")
+        flash("Upgrade to Pro to use this tool!", "warning")
         return redirect('/pricing')
         
-    # Render template
+    # File naming convention: tool-name -> tool_name.html
     return render_template(f'{tool_name.replace("-", "_")}.html')
 
-# Map old routes to new secured route logic
-for t in PRO_TOOLS + ['keyword-research', 'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 'headline-analyzer', 'internal-linking', 'readability-checker']:
+# Register URL rules for all tools
+tool_list = [
+    'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
+    'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
+    'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
+    'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
+    'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis'
+]
+
+for t in tool_list:
     app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
 
 
 # ==========================================
 # 8. API ENDPOINTS
 # ==========================================
+
+# --- Save Content ---
 @app.route('/api/save-content', methods=['POST'])
 @login_required
 def api_save_content():
@@ -248,12 +263,15 @@ def api_save_content():
             if c and c.user_id == current_user.id:
                 c.title = d.get('title'); c.content = d.get('content'); c.html_content = d.get('html_content')
                 c.keyword = d.get('keyword'); c.word_count = len(d.get('content', '').split())
+                
                 score = 0
                 if c.word_count > 800: score += 40
                 if c.keyword and c.keyword.lower() in c.title.lower(): score += 30
                 c.seo_score = min(score + 30, 100)
+                
                 db.session.commit()
                 return jsonify({'success': True, 'id': c.id})
+        
         new_c = Content(
             user_id=current_user.id, title=d.get('title', 'Untitled'), 
             keyword=d.get('keyword'), content=d.get('content'), 
@@ -265,18 +283,19 @@ def api_save_content():
         return jsonify({'success': True, 'id': new_c.id})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- Generate AI Content ---
 @app.route('/api/generate-content', methods=['POST'])
 @login_required
 def api_generate_content():
-    # LIMIT CHECK
+    # MONTHLY LIMIT CHECK
     limits = current_user.get_limits()
     if current_user.ai_requests_this_month >= limits['ai_requests_per_month']:
-        return jsonify({'error': 'Monthly AI Limit Reached. Upgrade to Pro.'}), 403
+        return jsonify({'error': 'Monthly Limit Reached. Upgrade to Pro!'}), 403
 
     try:
         data = request.get_json()
         sys_prompt = "You are a helpful SEO expert writer."
-        if data.get('mode') == 'human': sys_prompt = "Opinionated human writer."
+        if data.get('mode') == 'human': sys_prompt = "You are an opinionated human writer. Write at an 8th-grade level."
         
         res = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -284,22 +303,21 @@ def api_generate_content():
             max_tokens=1500
         )
         text = res.choices[0].message.content
+        
         current_user.ai_requests_this_month += 1
         db.session.commit()
+        
         return jsonify({'success': True, 'content': text, 'html_content': markdown.markdown(text)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- Keyword Clusters ---
 @app.route('/api/generate-clusters', methods=['POST'])
 @login_required
 def api_generate_clusters():
-    # LIMIT CHECK
-    if current_user.tier == 'free': return jsonify({'error': 'Keyword Clusters is a PRO feature.'}), 403
-
+    if current_user.tier == 'free': return jsonify({'error': 'Pro Feature'}), 403
     try:
         data = request.get_json()
-        keyword = data.get('keyword')
-        prompt = (f"Generate a keyword cluster strategy for: '{keyword}'. Create 4 clusters. "
-                  "Output strictly valid JSON: [{'name': '...', 'keywords': ['...']}]")
+        prompt = f"Generate a keyword cluster strategy for: '{data.get('keyword')}'. Create 4 clusters. Output strictly JSON: [{{'name': '...', 'keywords': ['...']}}]"
         res = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "system", "content": "You are a JSON generator."}, {"role": "user", "content": prompt}],
@@ -312,20 +330,22 @@ def api_generate_clusters():
         return jsonify({'success': True, 'clusters': clusters})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- Competitor Analysis ---
 @app.route('/api/analyze-competitor', methods=['POST'])
 @login_required
 def api_analyze_competitor():
-    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro to use Competitor Spy.'}), 403
-
+    if current_user.tier == 'free': return jsonify({'error': 'Pro Feature'}), 403
     try:
         url = request.get_json().get('url')
         if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         r = requests.get(url, headers=headers, timeout=10)
         if r.status_code == 406: return jsonify({'error': 'Blocked by WAF'}), 406
+        
         soup = BeautifulSoup(r.content, 'html.parser')
         images = [{'src': urljoin(url, i.get('src')), 'alt': i.get('alt', '')} for i in soup.find_all('img') if i.get('src')]
         for s in soup(["script", "style"]): s.extract()
+        
         return jsonify({'success': True, 'analysis': {
             'title': soup.title.string if soup.title else "No Title",
             'h1_tags': [h.text.strip() for h in soup.find_all('h1')],
@@ -334,6 +354,7 @@ def api_analyze_competitor():
         }})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- WordPress ---
 @app.route('/api/publish-wordpress', methods=['POST'])
 @login_required
 def api_publish_wordpress():
@@ -349,6 +370,7 @@ def api_publish_wordpress():
         return jsonify({'error': f"WP Error: {r.text}"}), 400
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- Delete Content ---
 @app.route('/api/delete-content/<int:id>', methods=['POST'])
 @login_required
 def api_delete(id):
@@ -359,6 +381,7 @@ def api_delete(id):
         return jsonify({'success': True})
     return jsonify({'error': 'Auth'}), 403
 
+# --- Export ---
 @app.route('/api/export/<int:id>/<fmt>')
 @login_required
 def api_export(id, fmt):
@@ -369,12 +392,11 @@ def api_export(id, fmt):
     filename = re.sub(r'[\\/*?:"<>|]', "", c.title) or "document"
     return send_file(BytesIO(data.encode()), mimetype=mime, as_attachment=True, download_name=f"{filename}.{fmt}")
 
+# --- Sitemap Gen ---
 @app.route('/api/generate-sitemap', methods=['POST'])
 @login_required
 def api_generate_sitemap():
-    # PRO Only
-    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro to use Sitemap Generator.'}), 403
-
+    if current_user.tier == 'free': return jsonify({'error': 'Pro Feature'}), 403
     try:
         url = request.get_json().get('url')
         if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
@@ -394,10 +416,10 @@ def api_generate_sitemap():
         return jsonify({'success': True, 'sitemap': xml})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- Robots Gen ---
 @app.route('/api/generate-robots', methods=['POST'])
 @login_required
 def api_generate_robots():
-    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro.'}), 403
     d = request.get_json()
     c = f"User-agent: {d.get('userAgent', '*')}\n"
     if d.get('allow'): c += f"Allow: {d.get('allow')}\n"
@@ -406,7 +428,7 @@ def api_generate_robots():
     return jsonify({'success': True, 'content': c})
 
 # ==========================================
-# 8. INIT
+# 9. INITIALIZATION
 # ==========================================
 with app.app_context():
     try: db.create_all()
