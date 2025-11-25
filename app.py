@@ -259,7 +259,16 @@ def profile():
 
 @app.route('/pricing')
 def pricing():
-    return render_template('pricing.html')
+    @app.route('/admin')
+@login_required
+def admin():
+    # Security Check: Only Admins allowed
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    
+    users = User.query.order_by(User.created_at.desc()).all()
+    total_users = len(users)
+    total_content = Content.query.count()return render_template('pricing.html')
 
 # Tool Routes (Templates)
 @app.route('/keyword-research')
