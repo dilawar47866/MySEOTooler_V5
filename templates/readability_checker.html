@@ -1,172 +1,101 @@
 {% extends "base.html" %}
-{% block title %}Readability Checker - My SEO King Tool V5{% endblock %}
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <h1><i class="fas fa-book-reader"></i> Readability Checker</h1>
-            <p class="text-muted mb-4">Analyze and improve your content's readability score</p>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <h2><i class="fas fa-book-reader text-info"></i> Readability Checker</h2>
+            <p class="text-muted">Analyze your text to see how easy it is to read (Flesch-Kincaid Score).</p>
 
-            <!-- Input Card -->
-            <div class="card p-4 mb-4">
-                <div class="form-group">
-                    <label><strong>Paste Your Content</strong></label>
-                    <textarea id="contentInput" class="form-control" rows="10" 
-                              placeholder="Paste your article or content here..."></textarea>
-                    <small class="text-muted">Minimum 100 words recommended</small>
+            <div class="row">
+                <!-- Input Area -->
+                <div class="col-md-7">
+                    <div class="card shadow-sm p-3 h-100">
+                        <textarea id="textInput" class="form-control border-0" rows="15" placeholder="Paste your content here to analyze..." style="resize: none; font-size: 16px;"></textarea>
+                        <div class="d-grid mt-3">
+                            <button class="btn btn-primary" onclick="analyzeText()">Check Readability</button>
+                        </div>
+                    </div>
                 </div>
-                
-                <button onclick="analyzeReadability()" class="btn btn-primary btn-lg btn-block">
-                    <i class="fas fa-chart-line"></i> Analyze Readability
-                </button>
-            </div>
 
-            <!-- Loading -->
-            <div id="loading" class="alert alert-info text-center" style="display:none;">
-                <i class="fas fa-spinner fa-spin"></i> Analyzing content...
-            </div>
-
-            <!-- Results -->
-            <div id="results" style="display:none;">
-                <!-- Score Card -->
-                <div class="card p-4 mb-4">
-                    <h3 class="mb-4">📊 Readability Score</h3>
-                    
-                    <div class="row text-center mb-4">
-                        <div class="col-md-6">
-                            <div class="card bg-light p-4">
-                                <h1 id="fleschScore" class="display-3 mb-0"></h1>
-                                <p class="text-muted mb-0">Flesch Reading Ease</p>
-                                <small class="text-muted">0 (hard) - 100 (easy)</small>
+                <!-- Results Area -->
+                <div class="col-md-5">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light fw-bold">Analysis Results</div>
+                        <div class="card-body">
+                            <div class="text-center mb-4">
+                                <h5 class="text-muted">Reading Ease Score</h5>
+                                <h1 id="scoreDisplay" class="display-4 fw-bold text-secondary">--</h1>
+                                <span id="difficultyLabel" class="badge bg-secondary">Waiting for text...</span>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card bg-light p-4">
-                                <h2 id="readingLevel" class="mb-0"></h2>
-                                <p class="text-muted mb-0">Reading Level</p>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Metrics -->
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <strong>Word Count:</strong>
-                            <p id="wordCount" class="mb-0"></p>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <strong>Sentences:</strong>
-                            <p id="sentenceCount" class="mb-0"></p>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <strong>Avg Sentence:</strong>
-                            <p id="avgSentence" class="mb-0"></p>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <strong>Grade Level:</strong>
-                            <p id="gradeLevel" class="mb-0"></p>
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <strong>Complex Words:</strong>
-                            <p id="complexWords" class="mb-0"></p>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <strong>Passive Voice:</strong>
-                            <p id="passiveVoice" class="mb-0"></p>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <strong>Transitions:</strong>
-                            <p id="transitions" class="mb-0"></p>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Words</span>
+                                    <span id="wordCount" class="fw-bold">0</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Sentences</span>
+                                    <span id="sentenceCount" class="fw-bold">0</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Syllables (Est.)</span>
+                                    <span id="syllableCount" class="fw-bold">0</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>Speaking Time</span>
+                                    <span id="readTime" class="fw-bold">0 min</span>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </div>
-
-                <!-- Suggestions -->
-                <div class="card p-4">
-                    <h4><i class="fas fa-lightbulb"></i> Improvement Suggestions</h4>
-                    <ul id="suggestionsList" class="mb-0"></ul>
-                </div>
-            </div>
-
-            <!-- Info Card -->
-            <div class="card p-4 mt-4">
-                <h5><i class="fas fa-info-circle"></i> Reading Ease Score Guide</h5>
-                <ul class="mb-0">
-                    <li><strong>90-100:</strong> Very Easy (5th grade) - Ideal for broad audience</li>
-                    <li><strong>80-89:</strong> Easy (6th grade) - Conversational English</li>
-                    <li><strong>70-79:</strong> Fairly Easy (7th grade) - Good for blogs</li>
-                    <li><strong>60-69:</strong> Standard (8th-9th grade) - Most web content</li>
-                    <li><strong>50-59:</strong> Fairly Difficult (High school) - Technical blogs</li>
-                    <li><strong>30-49:</strong> Difficult (College) - Academic content</li>
-                    <li><strong>0-29:</strong> Very Difficult (Graduate) - Professional/Legal</li>
-                </ul>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-async function analyzeReadability() {
-    const content = document.getElementById('contentInput').value.trim();
+function analyzeText() {
+    const text = document.getElementById('textInput').value;
+    if(!text.trim()) return alert("Please paste some text.");
+
+    // 1. Statistics
+    const words = text.trim().split(/\s+/).length;
+    const sentences = text.split(/[.!?]+/).filter(Boolean).length || 1;
+    const syllables = countSyllables(text);
+
+    // 2. Flesch Reading Ease Formula
+    // 206.835 - (1.015 x ASL) - (84.6 x ASW)
+    const asl = words / sentences; // Average Sentence Length
+    const asw = syllables / words; // Average Syllables per Word
+    let score = 206.835 - (1.015 * asl) - (84.6 * asw);
+    score = Math.round(score);
+    if(score > 100) score = 100;
+    if(score < 0) score = 0;
+
+    // 3. Update UI
+    document.getElementById('wordCount').innerText = words;
+    document.getElementById('sentenceCount').innerText = sentences;
+    document.getElementById('syllableCount').innerText = syllables;
+    document.getElementById('readTime').innerText = Math.ceil(words / 200) + " min";
     
-    if (!content) {
-        alert('⚠️ Please enter some content to analyze');
-        return;
-    }
-    
-    if (content.split(' ').length < 50) {
-        alert('⚠️ Please enter at least 50 words for accurate analysis');
-        return;
-    }
-    
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
-    
-    try {
-        const res = await fetch('/api/check-readability', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({content: content})
-        });
-        
-        const data = await res.json();
-        
-        if (!res.ok) throw new Error(data.error || 'Analysis failed');
-        
-        // Display results
-        document.getElementById('fleschScore').textContent = data.flesch_score;
-        document.getElementById('readingLevel').textContent = data.reading_level;
-        document.getElementById('wordCount').textContent = data.word_count;
-        document.getElementById('sentenceCount').textContent = data.sentence_count;
-        document.getElementById('avgSentence').textContent = data.avg_sentence_length + ' words';
-        document.getElementById('gradeLevel').textContent = 'Grade ' + data.grade_level;
-        document.getElementById('complexWords').textContent = data.complex_words + ' (' + data.complex_word_percentage + '%)';
-        document.getElementById('passiveVoice').textContent = data.passive_voice_count + ' instances';
-        document.getElementById('transitions').textContent = data.transition_words + ' found';
-        
-        // Suggestions
-        const suggestionsList = document.getElementById('suggestionsList');
-        suggestionsList.innerHTML = '';
-        data.suggestions.forEach(suggestion => {
-            const li = document.createElement('li');
-            li.textContent = suggestion;
-            li.style.marginBottom = '10px';
-            suggestionsList.appendChild(li);
-        });
-        
-        document.getElementById('results').style.display = 'block';
-        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
-        
-    } catch (err) {
-        alert('❌ ' + err.message);
-    } finally {
-        document.getElementById('loading').style.display = 'none';
-    }
+    const scoreEl = document.getElementById('scoreDisplay');
+    const labelEl = document.getElementById('difficultyLabel');
+    scoreEl.innerText = score;
+
+    if(score > 80) { scoreEl.className = "display-4 fw-bold text-success"; labelEl.className = "badge bg-success"; labelEl.innerText = "Very Easy (5th Grade)"; }
+    else if(score > 60) { scoreEl.className = "display-4 fw-bold text-primary"; labelEl.className = "badge bg-primary"; labelEl.innerText = "Standard (8th Grade)"; }
+    else if(score > 40) { scoreEl.className = "display-4 fw-bold text-warning"; labelEl.className = "badge bg-warning text-dark"; labelEl.innerText = "Fairly Difficult (College)"; }
+    else { scoreEl.className = "display-4 fw-bold text-danger"; labelEl.className = "badge bg-danger"; labelEl.innerText = "Very Difficult (Graduate)"; }
+}
+
+function countSyllables(text) {
+    return text.toLowerCase().split(/\s+/).reduce((acc, word) => {
+        word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '')
+                   .replace(/^y/, '');
+        const res = word.match(/[aeiouy]{1,2}/g);
+        return acc + (res ? res.length : 1);
+    }, 0);
 }
 </script>
 {% endblock %}
