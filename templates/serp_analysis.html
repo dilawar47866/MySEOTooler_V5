@@ -1,201 +1,51 @@
 {% extends "base.html" %}
-
 {% block content %}
-<div class="container">
-    <h1>📊 SERP Analysis</h1>
-    <p>AI-powered search engine results analysis</p>
-    
-    <div class="card">
-        <div class="form-group">
-            <label>🎯 Enter Keyword to Analyze</label>
-            <input type="text" id="searchKeyword" class="form-control" placeholder="e.g., best SEO tools 2024">
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fas fa-chart-line mr-2 text-purple-600"></i> SERP Analysis</h2>
+        
+        <div class="mb-6">
+            <label class="block text-sm font-bold mb-2 text-slate-700">Keyword to Analyze:</label>
+            <input type="text" id="keyword" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="e.g. Best SEO Tools">
         </div>
         
-        <button onclick="analyzeSERP()" class="btn btn-primary" id="analyzeBtn">
-            🔍 Analyze SERP
+        <button onclick="analyzeSerp()" id="btn" class="bg-purple-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-700 transition w-full">
+            <i class="fas fa-microscope mr-2"></i> Analyze Results
         </button>
-    </div>
-    
-    <div id="loading" style="display:none; margin-top: 20px;">
-        <div class="alert alert-info">
-            <strong>⏳ Analyzing...</strong> AI is examining search results for your keyword...
-        </div>
-    </div>
-    
-    <div id="results" style="display:none; margin-top: 20px;">
-        <div class="card">
-            <h3>📈 Analysis Results</h3>
-            
-            <div class="row" style="margin-bottom: 20px;">
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <h4>Search Volume</h4>
-                        <p id="searchVolume" class="stat-value">-</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <h4>Competition</h4>
-                        <p id="competition" class="stat-value">-</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="stat-card">
-                        <h4>Difficulty Score</h4>
-                        <p id="difficulty" class="stat-value">-</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="fullAnalysis" class="analysis-content"></div>
+
+        <div id="result" class="hidden mt-8">
+            <div class="bg-slate-50 p-6 rounded-lg border whitespace-pre-wrap" id="analysisOutput"></div>
         </div>
     </div>
 </div>
 
 <script>
-async function analyzeSERP() {
-    const keyword = document.getElementById('searchKeyword').value.trim();
+async function analyzeSerp() {
+    const btn = document.getElementById('btn');
+    const keyword = document.getElementById('keyword').value;
     
-    if (!keyword) {
-        alert('⚠️ Please enter a keyword');
-        return;
-    }
+    if(!keyword) return alert("Enter a keyword");
     
-    const btn = document.getElementById('analyzeBtn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing Data...';
     btn.disabled = true;
-    btn.textContent = '⏳ Analyzing...';
-    
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
     
     try {
-        const response = await fetch('/api/serp-analysis', {
+        const res = await fetch('/api/serp-analysis', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({keyword: keyword})
         });
+        const data = await res.json();
+        if(data.error) throw new Error(data.error);
         
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.error || 'Analysis failed');
-        }
-        
-        if (result.success) {
-            displayResults(result.data);
-        }
-        
-    } catch (error) {
-        console.error('Error:', error);
-        alert('❌ Error: ' + error.message);
+        document.getElementById('analysisOutput').innerText = data.data.analysis;
+        document.getElementById('result').classList.remove('hidden');
+    } catch(e) {
+        alert(e.message);
     } finally {
-        document.getElementById('loading').style.display = 'none';
+        btn.innerHTML = '<i class="fas fa-microscope"></i> Analyze Results';
         btn.disabled = false;
-        btn.textContent = '🔍 Analyze SERP';
     }
 }
-
-function displayResults(data) {
-    // Update stats
-    document.getElementById('searchVolume').textContent = data.search_volume || 'Medium';
-    document.getElementById('searchVolume').className = 'stat-value badge-' + (data.search_volume || 'Medium').toLowerCase();
-    
-    document.getElementById('competition').textContent = data.competition || 'Medium';
-    document.getElementById('competition').className = 'stat-value badge-' + (data.competition || 'Medium').toLowerCase();
-    
-    const difficulty = data.difficulty || 50;
-    document.getElementById('difficulty').textContent = difficulty + '/100';
-    document.getElementById('difficulty').className = 'stat-value badge-' + getDifficultyColor(difficulty);
-    
-    // Format full analysis
-    const analysisHtml = data.analysis.split('\n').map(line => {
-        line = escapeHtml(line);
-        if (line.match(/^[A-Z\s]+:$/)) {
-            return `<h4 style="margin-top: 20px; color: #2c3e50;">${line}</h4>`;
-        } else if (line.trim().startsWith('-') || line.match(/^\d+\./)) {
-            return `<li style="margin-left: 20px;">${line.replace(/^[-\d.]\s*/, '')}</li>`;
-        } else if (line.trim()) {
-            return `<p>${line}</p>`;
-        }
-        return '';
-    }).join('');
-    
-    document.getElementById('fullAnalysis').innerHTML = analysisHtml;
-    document.getElementById('results').style.display = 'block';
-}
-
-function getDifficultyColor(score) {
-    if (score <= 30) return 'low';
-    if (score <= 60) return 'medium';
-    return 'high';
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 </script>
-
-<style>
-.stat-card {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    text-align: center;
-    border: 2px solid #e9ecef;
-}
-
-.stat-card h4 {
-    margin: 0 0 10px 0;
-    color: #6c757d;
-    font-size: 14px;
-    text-transform: uppercase;
-}
-
-.stat-value {
-    font-size: 24px;
-    font-weight: bold;
-    margin: 0;
-    padding: 8px 15px;
-    border-radius: 5px;
-    display: inline-block;
-}
-
-.badge-low {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.badge-medium {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
-.badge-high {
-    background-color: #f8d7da;
-    color: #721c24;
-}
-
-.analysis-content {
-    margin-top: 20px;
-    line-height: 1.8;
-}
-
-.analysis-content h4 {
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 5px;
-}
-
-.analysis-content li {
-    list-style: none;
-    padding: 5px 0;
-}
-
-.analysis-content li:before {
-    content: "✓ ";
-    color: #28a745;
-    font-weight: bold;
-}
-</style>
 {% endblock %}
