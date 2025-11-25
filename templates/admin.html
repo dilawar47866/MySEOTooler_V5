@@ -1,30 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-user-shield text-dark"></i> Admin Dashboard</h2>
+            <p class="text-muted mb-0">Manage users and system access.</p>
+        </div>
+        <span class="badge bg-primary p-3 fs-6 shadow-sm">
+            <i class="fas fa-database me-2"></i> Total Content: {{ total_content }}
+        </span>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-uppercase small fw-bold">
+                        <tr>
+                            <th class="ps-4 py-3">ID</th>
+                            <th>User Details</th>
+                            <th>Current Plan</th>
+                            <th>Monthly Usage</th>
+                            <th>Account Status</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr id="user-row-{{ u.id }}">
+                            <td class="ps-4 text-muted">#{{ u.id }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; color: #4f46e5; font-weight: bold;">
+                                        {{ u.username[0].upper() }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark">{{ u.username }}</div>
+                                        <div class="small text-muted">{{ u.email }}</div>
+                                        {% if u.is_admin %}<span class="badge bg-dark mt-1" style="font-size: 0.6rem;">ADMIN</span>{% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if u.tier == 'enterprise' %}
+                                    <span class="badge bg-dark text-white">ENTERPRISE</span>
+                                {% elif u.tier == 'pro' %}
+                                    <span class="badge bg-primary">PRO KING</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">FREE</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column small">
+                                    <span><i class="fas fa-robot text-muted me-1"></i> <strong>{{ u.ai_requests_this_month }}</strong> AI Requests</span>
+                                    <span><i class="fas fa-file-alt text-muted me-1"></i> <strong>{{ u.content_count }}</strong> Articles</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if u.is_active == False %}
+                                    <span class="badge bg-danger" id="status-badge-{{ u.id }}">BANNED</span>
+                                {% else %}
+                                    <span class="badge bg-success" id="status-badge-{{ u.id }}">ACTIVE</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                {% if u.id != current_user.id %}
+                                <div class="btn-group">
+                                    <!-- Ban Button -->
+                                    <button class="btn btn-sm btn-outline-warning" onclick="toggleUser({{ u.id }})" title="Ban/Unban User">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                    <!-- Delete Button -->
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser({{ u.id }})" title="Permanently Delete">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                                {% else %}
+                                <span class="text-muted small fst-italic">Current User</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 async function toggleUser(id) {
-    if(!confirm("Change this user's active status?")) return;
+    if(!confirm("Are you sure you want to change this user's access status (Ban/Unban)?")) return;
+    
     try {
         const res = await fetch(`/admin/user/${id}/toggle`, {method: 'POST'});
         const data = await res.json();
+        
         if(data.success) {
-            window.location.reload();
-        } else {
-            alert(data.error);
-        }
-    } catch(e) { alert("Error connecting to server"); }
-}
-
-async function deleteUser(id) {
-    if(!confirm("PERMANENTLY DELETE USER? This will delete all their content and cannot be undone.")) return;
-    try {
-        const res = await fetch(`/admin/user/${id}/delete`, {method: 'POST'});
-        const data = await res.json();
-        if(data.success) {
-            document.getElementById(`user-row-${id}`).remove();
+            // Update UI without reload
+            const badge = document.getElementById(`status-badge-${id}`);
+            if(data.status) {
+                badge.className = "badge bg-success";
+                badge.innerText = "ACTIVE";
+            } else {
+                badge.className = "badge bg-danger";
+                badge.innerText = "BANNED";
+            }
         } else {
             alert("Error: " + data.error);
         }
     } catch(e) { 
-        console.error(e);
-        alert("Error connecting to server. Check console for details."); 
+        alert("Server connection failed."); 
+    }
+}
+
+async function deleteUser(id) {
+    if(!confirm("⚠️ WARNING: This will PERMANENTLY delete the user and ALL their content. This cannot be undone. Continue?")) return;
+    
+    try {
+        const res = await fetch(`/admin/user/${id}/delete`, {method: 'POST'});
+        const data = await res.json();
+        
+        if(data.success) {
+            // Remove row
+            const row = document.getElementById(`user-row-${id}`);
+            row.style.transition = "all 0.3s";
+            row.style.opacity = "0";
+            setTimeout(() => row.remove(), 300);
+        } else {
+            alert("Error: " + data.error);
+        }
+    } catch(e) { 
+        alert("Server connection failed."); 
     }
 }
 </script>
+{% endblock %}
