@@ -1,290 +1,74 @@
 {% extends "base.html" %}
-
-{% block title %}Schema Markup Generator - My SEO King Tool V5{% endblock %}
-
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <div class="mb-4">
-                <h1><i class="fas fa-code"></i> Schema Markup Generator</h1>
-                <p class="text-muted">Generate JSON-LD structured data for better SEO and rich snippets</p>
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fas fa-code mr-2 text-purple-600"></i> Schema Generator</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <label class="block text-sm font-bold mb-2 text-slate-700">Page Title / Headline:</label>
+                <input type="text" id="title" class="w-full p-3 border rounded-lg" placeholder="e.g. Ultimate Guide to SEO">
             </div>
+            <div>
+                <label class="block text-sm font-bold mb-2 text-slate-700">Schema Type:</label>
+                <select id="type" class="w-full p-3 border rounded-lg bg-white">
+                    <option value="Article">Article</option>
+                    <option value="Product">Product</option>
+                    <option value="Organization">Organization</option>
+                    <option value="FAQPage">FAQ Page</option>
+                </select>
+            </div>
+        </div>
+        
+        <button onclick="generateSchema()" id="btn" class="bg-purple-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-700 transition w-full">
+            <i class="fas fa-bolt mr-2"></i> Generate JSON-LD
+        </button>
 
-            <!-- Generator Form -->
-            <div class="card p-4 mb-4">
-                <form id="schemaForm">
-                    <div class="form-group">
-                        <label for="schemaType"><strong>Schema Type</strong></label>
-                        <select id="schemaType" class="form-control form-control-lg" onchange="updateFields()">
-                            <option value="Article">Article</option>
-                            <option value="Product">Product</option>
-                            <option value="FAQ">FAQ Page</option>
-                            <option value="Organization">Organization</option>
-                            <option value="LocalBusiness">Local Business</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="schemaTitle"><strong>Title/Name</strong> <span class="text-danger">*</span></label>
-                        <input type="text" id="schemaTitle" class="form-control" placeholder="Enter title or name..." required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="schemaDescription"><strong>Description</strong></label>
-                        <textarea id="schemaDescription" class="form-control" rows="3" placeholder="Enter description..."></textarea>
-                    </div>
-                    
-                    <!-- Product Fields -->
-                    <div id="productFields" style="display:none;">
-                        <hr class="my-4">
-                        <h5 class="mb-3"><i class="fas fa-box"></i> Product Details</h5>
-                        
-                        <div class="form-group">
-                            <label for="schemaBrand"><strong>Brand Name</strong></label>
-                            <input type="text" id="schemaBrand" class="form-control" placeholder="Your Brand">
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="schemaPrice"><strong>Price</strong></label>
-                                    <input type="text" id="schemaPrice" class="form-control" placeholder="99.99">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="schemaCurrency"><strong>Currency</strong></label>
-                                    <input type="text" id="schemaCurrency" class="form-control" value="USD">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Local Business Fields -->
-                    <div id="businessFields" style="display:none;">
-                        <hr class="my-4">
-                        <h5 class="mb-3"><i class="fas fa-store"></i> Business Information</h5>
-                        
-                        <div class="form-group">
-                            <label for="schemaStreet"><strong>Street Address</strong></label>
-                            <input type="text" id="schemaStreet" class="form-control" placeholder="123 Main Street">
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="schemaCity"><strong>City</strong></label>
-                                    <input type="text" id="schemaCity" class="form-control" placeholder="City">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="schemaState"><strong>State</strong></label>
-                                    <input type="text" id="schemaState" class="form-control" placeholder="State">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="schemaZip"><strong>ZIP Code</strong></label>
-                                    <input type="text" id="schemaZip" class="form-control" placeholder="12345">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="schemaPhone"><strong>Phone Number</strong></label>
-                            <input type="tel" id="schemaPhone" class="form-control" placeholder="+1-234-567-8900">
-                        </div>
-                    </div>
-                    
-                    <!-- Organization Fields -->
-                    <div id="orgFields" style="display:none;">
-                        <hr class="my-4">
-                        <h5 class="mb-3"><i class="fas fa-building"></i> Organization Details</h5>
-                        
-                        <div class="form-group">
-                            <label for="schemaUrl"><strong>Website URL</strong></label>
-                            <input type="url" id="schemaUrl" class="form-control" placeholder="https://example.com">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="schemaLogo"><strong>Logo URL</strong></label>
-                            <input type="url" id="schemaLogo" class="form-control" placeholder="https://example.com/logo.png">
-                        </div>
-                    </div>
-                    
-                    <button type="button" onclick="generateSchema()" class="btn btn-primary btn-lg btn-block mt-4">
-                        <i class="fas fa-magic"></i> Generate Schema Markup
-                    </button>
-                </form>
+        <div id="result" class="hidden mt-8">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="font-bold text-lg">Result:</h3>
+                <button onclick="copySchema()" class="text-sm text-blue-500 hover:underline">Copy to Clipboard</button>
             </div>
-
-            <!-- Loading State -->
-            <div id="loading" class="alert alert-info text-center" style="display:none;">
-                <i class="fas fa-spinner fa-spin"></i> <strong>Generating schema markup...</strong>
-            </div>
-
-            <!-- Results -->
-            <div id="results" class="card p-4" style="display:none;">
-                <h3 class="mb-3"><i class="fas fa-check-circle text-success"></i> Generated Schema Markup</h3>
-                
-                <div class="alert alert-info">
-                    <small><i class="fas fa-info-circle"></i> <strong>Usage:</strong> Copy the code below and paste it in the <code>&lt;head&gt;</code> section of your webpage.</small>
-                </div>
-                
-                <div class="code-container">
-                    <pre id="schemaOutput" class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow: auto; font-size: 13px; line-height: 1.6;"></pre>
-                </div>
-                
-                <button onclick="copySchema()" class="btn btn-success btn-lg mt-3">
-                    <i class="fas fa-copy"></i> Copy to Clipboard
-                </button>
-                
-                <button onclick="downloadSchema()" class="btn btn-secondary btn-lg mt-3 ml-2">
-                    <i class="fas fa-download"></i> Download JSON
-                </button>
-            </div>
-
-            <!-- Info Section -->
-            <div class="card p-4 mt-4">
-                <h5><i class="fas fa-question-circle"></i> What is Schema Markup?</h5>
-                <p class="mb-2">Schema markup (JSON-LD) helps search engines understand your content better and can result in:</p>
-                <ul class="mb-0">
-                    <li>Rich snippets in search results</li>
-                    <li>Better click-through rates (CTR)</li>
-                    <li>Improved SEO rankings</li>
-                    <li>Enhanced visibility in search</li>
-                </ul>
-            </div>
+            <textarea id="schemaOutput" readonly class="w-full h-64 p-4 bg-slate-900 text-green-400 font-mono text-sm rounded-lg"></textarea>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
-function updateFields() {
-    const type = document.getElementById('schemaType').value;
-    
-    // Hide all conditional fields
-    document.getElementById('productFields').style.display = 'none';
-    document.getElementById('businessFields').style.display = 'none';
-    document.getElementById('orgFields').style.display = 'none';
-    
-    // Show relevant fields
-    if (type === 'Product') {
-        document.getElementById('productFields').style.display = 'block';
-    } else if (type === 'LocalBusiness') {
-        document.getElementById('businessFields').style.display = 'block';
-    } else if (type === 'Organization') {
-        document.getElementById('orgFields').style.display = 'block';
-    }
-}
-
 async function generateSchema() {
-    const type = document.getElementById('schemaType').value;
-    const title = document.getElementById('schemaTitle').value.trim();
-    const description = document.getElementById('schemaDescription').value.trim();
+    const btn = document.getElementById('btn');
+    const title = document.getElementById('title').value;
+    const type = document.getElementById('type').value;
     
-    if (!title) {
-        alert('⚠️ Title/Name is required');
-        return;
-    }
+    if(!title) return alert("Please enter a title");
     
-    const data = {
-        type: type,
-        title: title,
-        description: description
-    };
-    
-    // Add type-specific fields
-    if (type === 'Product') {
-        data.brand = document.getElementById('schemaBrand').value;
-        data.price = document.getElementById('schemaPrice').value;
-        data.currency = document.getElementById('schemaCurrency').value;
-    } else if (type === 'LocalBusiness') {
-        data.street = document.getElementById('schemaStreet').value;
-        data.city = document.getElementById('schemaCity').value;
-        data.state = document.getElementById('schemaState').value;
-        data.zip = document.getElementById('schemaZip').value;
-        data.phone = document.getElementById('schemaPhone').value;
-    } else if (type === 'Organization') {
-        data.url = document.getElementById('schemaUrl').value;
-        data.logo = document.getElementById('schemaLogo').value;
-    }
-    
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    btn.disabled = true;
     
     try {
-        const response = await fetch('/api/generate-schema', {
+        const res = await fetch('/api/generate-schema', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({title: title, type: type})
         });
+        const data = await res.json();
+        if(data.error) throw new Error(data.error);
         
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.error || 'Generation failed');
-        }
-        
-        if (result.success) {
-            const formatted = `<script type="application/ld+json">\n${result.schema}\n<\/script>`;
-            document.getElementById('schemaOutput').textContent = formatted;
-            document.getElementById('results').style.display = 'block';
-            
-            // Scroll to results
-            document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-        
-    } catch (error) {
-        alert('❌ Error: ' + error.message);
+        document.getElementById('schemaOutput').value = data.schema;
+        document.getElementById('result').classList.remove('hidden');
+    } catch(e) {
+        alert(e.message);
     } finally {
-        document.getElementById('loading').style.display = 'none';
+        btn.innerHTML = '<i class="fas fa-bolt"></i> Generate JSON-LD';
+        btn.disabled = false;
     }
 }
 
 function copySchema() {
-    const text = document.getElementById('schemaOutput').textContent;
-    navigator.clipboard.writeText(text).then(() => {
-        // Show success feedback
-        const btn = event.target;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-info');
-        
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.classList.remove('btn-info');
-            btn.classList.add('btn-success');
-        }, 2000);
-    }).catch(err => {
-        alert('❌ Failed to copy to clipboard');
-        console.error(err);
-    });
+    const copyText = document.getElementById("schemaOutput");
+    copyText.select();
+    document.execCommand("copy");
+    alert("Copied to clipboard!");
 }
-
-function downloadSchema() {
-    const text = document.getElementById('schemaOutput').textContent;
-    const blob = new Blob([text], { type: 'application/ld+json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'schema-markup.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    updateFields();
-});
 </script>
 {% endblock %}
