@@ -1088,18 +1088,44 @@ def api_analyze_headline():
         char_count = len(headline)
         word_count = len(headline.split())
 
-        power_words = ['secret', 'proven', 'ultimate', 'best', 'free', 'easy', 'quick']
+        power_words = ['secret', 'proven', 'ultimate', 'best', 'free', 'easy', 'quick', 'essential', 'complete', 'guide']
+        emotional_words = ['amazing', 'incredible', 'shocking', 'stunning', 'heartbreaking', 'inspiring']
+        common_words = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for']
+        
+        words_lower = headline.lower().split()
+        uncommon_words = [w for w in words_lower if w not in common_words]
         found_power = [w for w in power_words if w in headline.lower()]
+        found_emotional = [w for w in emotional_words if w in headline.lower()]
 
         score = 50
         if 50 <= char_count <= 60:
             score += 25
-        if word_count >= 6:
+        elif 40 <= char_count <= 70:
             score += 15
+            
+        if 6 <= word_count <= 9:
+            score += 15
+        elif word_count >= 6:
+            score += 10
+            
         if found_power:
             score += 10
+        if found_emotional:
+            score += 5
 
         grade = "A" if score >= 80 else "B" if score >= 60 else "C"
+
+        suggestions = []
+        if char_count < 40:
+            suggestions.append('Make headline longer (40-60 chars ideal)')
+        if char_count > 70:
+            suggestions.append('Shorten headline (40-60 chars ideal)')
+        if word_count < 6:
+            suggestions.append('Add more descriptive words')
+        if not found_power:
+            suggestions.append('Add power words (best, ultimate, complete, etc.)')
+        if score >= 80:
+            suggestions.append('Excellent headline!')
 
         return jsonify({
             'success': True,
@@ -1107,9 +1133,16 @@ def api_analyze_headline():
             'char_count': char_count,
             'word_count': word_count,
             'power_words': found_power,
+            'emotional_words': found_emotional,
+            'word_types': {
+                'common': [w for w in words_lower if w in common_words],
+                'uncommon': uncommon_words,
+                'emotional': found_emotional,
+                'power': found_power
+            },
             'overall_score': min(score, 100),
             'grade': grade,
-            'suggestions': ['Good headline!'] if score >= 70 else ['Add power words', 'Aim for 50-60 characters']
+            'suggestions': suggestions
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1188,6 +1221,8 @@ def api_export(content_id, fmt):
         return jsonify({'error': 'Invalid format'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
 # ============================================================================
 # ADDITIONAL API ROUTES FOR ALL TOOLS
 # ============================================================================
@@ -1222,7 +1257,6 @@ Format as a clean list with clear category headers."""
 
         current_user.increment_ai_usage()
         
-        # Parse keywords from response
         response = result['content']
         keywords = []
         for line in response.split('\n'):
@@ -1259,22 +1293,17 @@ def api_check_plagiarism():
         if len(content) < 50:
             return jsonify({'error': 'Content too short (minimum 50 characters)'}), 400
 
-        # Word and sentence analysis
         words = content.split()
         word_count = len(words)
         sentences = sent_tokenize(content)
         sentence_count = len(sentences)
         
-        # Calculate uniqueness metrics
         unique_words = len(set([w.lower() for w in words]))
         uniqueness_ratio = (unique_words / word_count * 100) if word_count > 0 else 0
         
-        # Simulate plagiarism check (in production, use actual plagiarism API)
-        # Higher uniqueness ratio = lower plagiarism
         plagiarism_score = max(5, min(30, 100 - uniqueness_ratio))
         unique_score = 100 - plagiarism_score
         
-        # Determine status
         if plagiarism_score < 15:
             status = 'Original'
             status_class = 'success'
@@ -1352,7 +1381,6 @@ Format with clear hierarchy and markdown headings."""
 
         current_user.increment_ai_usage()
 
-        # Convert to HTML for better display
         html_outline = markdown.markdown(result['content'])
 
         return jsonify({
@@ -1470,7 +1498,7 @@ def api_generate_faq_schema():
         if not topic:
             return jsonify({'error': 'Topic required'}), 400
 
-        num_questions = min(max(num_questions, 3), 10)  # Between 3-10
+        num_questions = min(max(num_questions, 3), 10)
 
         prompt = f"""Generate {num_questions} FAQ questions and answers about: "{topic}"
 
@@ -1495,7 +1523,6 @@ Make them valuable and comprehensive."""
 
         current_user.increment_ai_usage()
 
-        # Parse FAQs and create schema
         faq_items = []
         lines = result['content'].split('\n')
         current_q = None
@@ -1518,7 +1545,6 @@ Make them valuable and comprehensive."""
             elif line.startswith('A:'):
                 current_a = line[2:].strip()
         
-        # Add last Q&A if exists
         if current_q and current_a:
             faq_items.append({
                 "@type": "Question",
@@ -1535,7 +1561,6 @@ Make them valuable and comprehensive."""
             "mainEntity": faq_items
         }
 
-        # HTML snippet for embedding
         html_snippet = '<script type="application/ld+json">\n' + json.dumps(schema, indent=2) + '\n</script>'
 
         return jsonify({
@@ -1567,7 +1592,7 @@ def api_optimize_image_seo():
         if not image_context:
             return jsonify({'error': 'Image context required'}), 400
 
-        num_images = min(max(num_images, 1), 5)  # Between 1-5
+        num_images = min(max(num_images, 1), 5)
 
         prompt = f"""Generate SEO-optimized image metadata for {num_images} image(s) about: "{image_context}"
 Target Keyword: {keyword}
@@ -1579,9 +1604,6 @@ For each image provide:
 - **Alt Text:** Descriptive alt text under 125 characters with keyword
 - **Title Text:** Engaging title with keyword
 - **Caption:** Optional engaging caption (1 sentence)
-
-{"**Image 2:**" if num_images > 1 else ""}
-{"(same format)" if num_images > 1 else ""}
 
 Requirements:
 - File names: lowercase, hyphens, keywords
@@ -1630,7 +1652,6 @@ def api_analyze_competitor():
         if not competitor_url:
             return jsonify({'error': 'Competitor URL required'}), 400
 
-        # Validate URL format
         if not competitor_url.startswith(('http://', 'https://')):
             competitor_url = 'https://' + competitor_url
 
@@ -1715,7 +1736,6 @@ def api_generate_internal_links():
         if not content:
             return jsonify({'error': 'Content required'}), 400
 
-        # Get user's existing content as linking opportunities
         user_contents = Content.query.filter_by(user_id=current_user.id).limit(15).all()
         existing_topics = [f"- {c.title} (keyword: {c.keyword or 'N/A'})" for c in user_contents]
         
@@ -1975,41 +1995,19 @@ Tone: {tone}
 Create variety:
 
 **CURIOSITY-DRIVEN (3 subject lines)**
-[Make readers curious - ask questions, tease content]
-1. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-2. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-3. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+1. [Subject line] | Open Rate: High/Medium | Why: [Reason]
 
 **BENEFIT-FOCUSED (3 subject lines)**
-[Clear value proposition - what's in it for them]
-4. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-5. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-6. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+4. [Subject line] | Open Rate: High/Medium | Why: [Reason]
 
 **URGENCY-BASED (3 subject lines)**
-[Create FOMO - time-sensitive, scarcity]
-7. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-8. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-9. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+7. [Subject line] | Open Rate: High/Medium | Why: [Reason]
 
 **QUESTION-BASED (3 subject lines)**
-[Engaging questions that resonate]
-10. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-11. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-12. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+10. [Subject line] | Open Rate: High/Medium | Why: [Reason]
 
 **CREATIVE/UNIQUE (3 subject lines)**
-[Stand out - humor, emojis, unusual angles]
-13. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-14. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-15. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
-
-**BEST PRACTICES:**
-- Keep under 50 characters for mobile
-- Use action words
-- Personalize when possible
-- A/B test different types
-- Avoid spam trigger words
+13. [Subject line] | Open Rate: High/Medium | Why: [Reason]
 
 Requirements:
 - Each under 60 characters
@@ -2022,19 +2020,15 @@ Requirements:
 
         current_user.increment_ai_usage()
 
-        # Parse subject lines
         subject_lines = []
         lines = result['content'].split('\n')
         for line in lines:
             line = line.strip()
-            # Look for numbered lines
             if re.match(r'^\d+\.', line):
-                # Extract just the subject line part (before |)
                 parts = line.split('|')
                 if parts:
                     subject = re.sub(r'^\d+\.\s*', '', parts[0]).strip()
                     if len(subject) > 10 and len(subject) < 100:
-                        # Determine open rate
                         open_rate = 'High' if 'High' in line else 'Medium' if 'Medium' in line else 'Medium'
                         subject_lines.append({
                             'subject': subject,
@@ -2062,6 +2056,7 @@ Requirements:
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # ============================================================================
 # ADMIN ROUTES
@@ -2134,14 +2129,6 @@ if __name__ == '__main__':
     print(f"Port: {port}")
     print(f"Database: {'PostgreSQL' if os.environ.get('DATABASE_URL') else 'SQLite'}")
     print(f"OpenAI: {'Connected' if client else 'Not configured'}")
-    print("=" * 50)
-    print("\nPublic Routes:")
-    print("  / - Landing Page")
-    print("  /robots.txt - SEO Robots")
-    print("  /sitemap.xml - SEO Sitemap")
-    print("\nProtected Routes:")
-    print("  /dashboard - Main Dashboard")
-    print("  + 20 more tools...")
     print("=" * 50 + "\n")
     
     app.run(debug=debug, host='0.0.0.0', port=port)
