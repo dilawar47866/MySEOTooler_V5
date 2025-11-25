@@ -37,6 +37,8 @@ class User(UserMixin, db.Model):
     content_count = db.Column(db.Integer, default=0)
     ai_requests_this_month = db.Column(db.Integer, default=0)
     last_reset_date = db.Column(db.DateTime, default=datetime.utcnow)
+    # FIXED: Added Admin Field back
+    is_admin = db.Column(db.Boolean, default=False)
     
     def check_password(self, password): return bcrypt.check_password_hash(self.password_hash, password)
     def get_limits(self):
@@ -57,9 +59,10 @@ class Content(db.Model):
 @login_manager.user_loader
 def load_user(user_id): return User.query.get(int(user_id))
 
-# --- ROUTES ---
+# --- CORE ROUTES ---
 @app.route('/')
-def landing(): return redirect(url_for('dashboard')) if current_user.is_authenticated else render_template('landing.html')
+def landing(): 
+    return redirect(url_for('dashboard')) if current_user.is_authenticated else render_template('landing.html')
 
 @app.route('/dashboard')
 @login_required
@@ -78,6 +81,12 @@ def editor():
 @app.route('/pricing')
 def pricing(): return render_template('pricing.html')
 
+@app.route('/profile')
+@login_required
+def profile():
+    return render_template('profile.html')
+
+# --- AUTH ROUTES ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -89,11 +98,41 @@ def login():
         return jsonify({'error': 'Invalid credentials'}), 401
     return render_template('login.html')
 
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if current_user.is_authenticated: return redirect('/dashboard')
+    if request.method == 'POST':
+        try:
+            data = request.get_json() if request.is_json else request.form
+            if User.query.filter_by(email=data.get('email').lower()).first(): return jsonify({'error': 'Email taken'}), 400
+            
+            hashed = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
+            user = User(username=data.get('username'), email=data.get('email').lower(), password_hash=hashed)
+            
+            # First user becomes admin automatically
+            if User.query.count() == 0: user.is_admin = True
+            
+            db.session.add(user)
+            db.session.commit()
+            login_user(user)
+            return jsonify({'success': True, 'redirect': '/dashboard'})
+        except Exception as e: return jsonify({'error': str(e)}), 500
+    return render_template('signup.html')
+
 @app.route('/logout')
 @login_required
 def logout(): logout_user(); return redirect('/')
 
-# --- TOOL ROUTES (ALL INCLUDED) ---
+# --- ADMIN ROUTES ---
+@app.route('/admin')
+@login_required
+def admin():
+    if not getattr(current_user, 'is_admin', False): return redirect('/dashboard')
+    users = User.query.order_by(User.id.desc()).all()
+    total_content = Content.query.count()
+    return render_template('admin.html', users=users, total_content=total_content)
+
+# --- TOOL ROUTES ---
 tools = ['content-library', 'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
          'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
          'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
@@ -101,10 +140,10 @@ tools = ['content-library', 'competitor-analyzer', 'keyword-research', 'sitemap-
          'faq-schema', 'youtube-script']
 
 for tool in tools:
+    # IMPORTANT: Replaces dashes with underscores for filenames
     app.add_url_rule(f'/{tool}', tool.replace('-', '_'), lambda tool=tool: render_template(f'{tool.replace("-", "_")}.html'))
 
 # --- API ENDPOINTS ---
-
 @app.route('/api/save-content', methods=['POST'])
 @login_required
 def api_save_content():
@@ -115,7 +154,6 @@ def api_save_content():
             if c and c.user_id == current_user.id:
                 c.title = d.get('title'); c.content = d.get('content'); c.html_content = d.get('html_content')
                 c.keyword = d.get('keyword'); c.word_count = len(d.get('content', '').split())
-                # Rough score calc
                 score = 0
                 if c.word_count > 800: score += 40
                 if c.keyword and c.keyword.lower() in c.title.lower(): score += 30
@@ -123,7 +161,6 @@ def api_save_content():
                 db.session.commit()
                 return jsonify({'success': True, 'id': c.id})
         
-        # Create New
         new_c = Content(user_id=current_user.id, title=d.get('title', 'Untitled'), 
                         keyword=d.get('keyword'), content=d.get('content'), 
                         html_content=d.get('html_content'), word_count=len(d.get('content', '').split()))
@@ -157,6 +194,7 @@ def api_generate_content():
 def api_analyze_competitor():
     try:
         url = request.get_json().get('url')
+        if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         r = requests.get(url, headers=headers, timeout=10)
         if r.status_code == 406: return jsonify({'error': 'Blocked by WAF'}), 406
@@ -188,53 +226,47 @@ def api_delete(id):
 def api_export(id, fmt):
     c = Content.query.get_or_404(id)
     if c.user_id != current_user.id: return "Auth Error", 403
-    
     data = c.content if fmt == 'txt' else c.html_content
     mime = 'text/plain' if fmt == 'txt' else 'text/html'
     return send_file(BytesIO(data.encode()), mimetype=mime, as_attachment=True, download_name=f"{c.title}.{fmt}")
+
+@app.route('/api/generate-sitemap', methods=['POST'])
+@login_required
+def api_generate_sitemap():
+    try:
+        url = request.get_json().get('url')
+        if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        r = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(r.content, 'html.parser')
+        base_url = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+        links = set([url.rstrip('/')])
+        for a in soup.find_all('a', href=True):
+            full_url = urljoin(base_url, a['href'])
+            if urlparse(full_url).netloc == urlparse(url).netloc:
+                links.add(full_url.split('#')[0].split('?')[0])
+        
+        xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        for link in list(links)[:50]:
+            xml += f'  <url>\n    <loc>{link}</loc>\n    <changefreq>weekly</changefreq>\n  </url>\n'
+        xml += '</urlset>'
+        return jsonify({'success': True, 'sitemap': xml})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+@app.route('/api/generate-robots', methods=['POST'])
+@login_required
+def api_generate_robots():
+    d = request.get_json()
+    c = f"User-agent: {d.get('userAgent', '*')}\n"
+    if d.get('allow'): c += f"Allow: {d.get('allow')}\n"
+    if d.get('disallow'): c += f"Disallow: {d.get('disallow')}\n"
+    if d.get('sitemap'): c += f"\nSitemap: {d.get('sitemap')}"
+    return jsonify({'success': True, 'content': c})
 
 # --- INIT ---
 with app.app_context():
     try: db.create_all()
     except: pass
-# ==========================================
-# MISSING ROUTES (Signup & Profile)
-# ==========================================
 
-@app.route('/signup', methods=['GET', 'POST'])
-def signup():
-    if current_user.is_authenticated: 
-        return redirect('/dashboard')
-        
-    if request.method == 'POST':
-        try:
-            data = request.get_json() if request.is_json else request.form
-            
-            # Check if email exists
-            if User.query.filter_by(email=data.get('email').lower()).first():
-                return jsonify({'error': 'Email already exists'}), 400
-            
-            # Create new user
-            hashed_pw = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
-            user = User(
-                username=data.get('username'),
-                email=data.get('email').lower(),
-                password_hash=hashed_pw
-            )
-            
-            db.session.add(user)
-            db.session.commit()
-            
-            login_user(user)
-            return jsonify({'success': True, 'redirect': '/dashboard'})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-            
-    return render_template('signup.html')
-
-@app.route('/profile')
-@login_required
-def profile():
-    return render_template('profile.html', user=current_user)
 if __name__ == '__main__':
     app.run(debug=True, port=int(os.environ.get('PORT', 5001)))
