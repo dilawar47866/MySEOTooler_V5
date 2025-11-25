@@ -1,31 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
 <div class="container mt-4">
-    <h2>Robots.txt Generator</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-robot"></i> Robots.txt Generator</h2>
+    </div>
+
     <div class="row">
-        <div class="col-md-6">
-            <div class="card p-4">
-                <div class="mb-3">
-                    <label>User Agent (Default: *)</label>
-                    <input type="text" id="userAgent" class="form-control" value="*">
+        <!-- Input Form -->
+        <div class="col-md-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light fw-bold">Configuration</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">User Agent</label>
+                        <input type="text" id="userAgent" class="form-control" value="*" placeholder="*">
+                        <small class="text-muted">Use * for all bots, or Googlebot for Google.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Disallow Path</label>
+                        <input type="text" id="disallowPath" class="form-control" placeholder="/admin">
+                        <small class="text-muted">Folder to block from search engines.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Allow Path</label>
+                        <input type="text" id="allowPath" class="form-control" placeholder="/public">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Sitemap URL (Optional)</label>
+                        <input type="url" id="sitemapUrl" class="form-control" placeholder="https://mysite.com/sitemap.xml">
+                    </div>
+
+                    <button class="btn btn-success w-100 mt-3" onclick="generateRobots()">
+                        <i class="fas fa-cog"></i> Generate File
+                    </button>
                 </div>
-                <div class="mb-3">
-                    <label>Disallow (e.g. /admin)</label>
-                    <input type="text" id="disallowPath" class="form-control" placeholder="/private">
-                </div>
-                <div class="mb-3">
-                    <label>Allow (e.g. /public)</label>
-                    <input type="text" id="allowPath" class="form-control" placeholder="/public">
-                </div>
-                <div class="mb-3">
-                    <label>Sitemap URL</label>
-                    <input type="url" id="sitemapUrl" class="form-control" placeholder="https://example.com/sitemap.xml">
-                </div>
-                <button class="btn btn-success w-100" onclick="generateRobots()">Generate File</button>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card p-4 h-100">
-                <label>Output:</label>
-                <textarea id="robotsOutput" class="form-control h-100" style="min-height: 300px; font-family: monospace;"></textarea>
+
+        <!-- Output Area -->
+        <div class="col-md-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light fw-bold">Generated Output</div>
+                <div class="card-body d-flex flex-column">
+                    <textarea id="robotsOutput" class="form-control flex-grow-1 mb-3" 
+                        style="font-family: monospace; min-height: 300px; background-color: #f8f9fa;" readonly>User-agent: *
+Disallow: /</textarea>
+                    
+                    <button class="btn btn-outline-primary" onclick="copyToClipboard()">
+                        <i class="fas fa-copy"></i> Copy to Clipboard
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -34,7 +62,7 @@
 <script>
 async function generateRobots() {
     const data = {
-        userAgent: document.getElementById('userAgent').value,
+        userAgent: document.getElementById('userAgent').value || '*',
         disallow: document.getElementById('disallowPath').value,
         allow: document.getElementById('allowPath').value,
         sitemap: document.getElementById('sitemapUrl').value
@@ -46,6 +74,7 @@ async function generateRobots() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(data)
         });
+
         const result = await res.json();
         
         if(result.success) {
@@ -57,4 +86,12 @@ async function generateRobots() {
         alert("Network Error");
     }
 }
+
+function copyToClipboard() {
+    const copyText = document.getElementById("robotsOutput");
+    copyText.select();
+    document.execCommand("copy");
+    alert("Copied to clipboard!");
+}
 </script>
+{% endblock %}
