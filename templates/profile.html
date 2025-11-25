@@ -1,162 +1,62 @@
 {% extends "base.html" %}
-{% block title %}Profile - My SEO King Tool V5{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 800px; margin: 0 auto;">
-    <h1>👤 Profile</h1>
-    
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin: 20px 0;">
-        <h2 style="color: white; margin-bottom: 15px;">{{ user.username }}</h2>
-        <p><strong>Email:</strong> {{ user.email }}</p>
-        <p><strong>Tier:</strong> 
-            <span style="background: rgba(255,255,255,0.3); padding: 5px 15px; border-radius: 20px;">
-                {{ user.tier|upper }}
-            </span>
-        </p>
-        <p><strong>Member Since:</strong> {{ user.created_at.strftime('%B %d, %Y') }}</p>
-        {% if user.is_admin %}
-        <p><strong>Role:</strong> 
-            <span style="background: #fbbf24; color: #78350f; padding: 5px 15px; border-radius: 20px;">
-                👑 ADMIN
-            </span>
-        </p>
-        {% endif %}
-    </div>
-    
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0;">
-        <div style="background: #f7fafc; padding: 20px; border-radius: 8px; text-align: center;">
-            <h3 style="color: #667eea;">{{ user.content_count }}</h3>
-            <p>Content This Month</p>
-            <p style="color: #a0aec0; font-size: 14px;">Limit: {{ limits.content_per_month }}</p>
-            {% set content_percent = ((user.content_count / limits.content_per_month * 100) | int) if limits.content_per_month > 0 else 0 %}
-            <div style="background: #e2e8f0; border-radius: 10px; height: 10px; margin-top: 10px; overflow: hidden;">
-                <div style="background: #667eea; height: 100%; width: {{ content_percent }}%;"></div>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white p-4 border-bottom-0">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 64px; height: 64px; font-size: 24px;">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <div class="ms-3">
+                            <h2 class="mb-0 fw-bold">{{ current_user.username }}</h2>
+                            <p class="text-muted mb-0">{{ current_user.email }}</p>
+                        </div>
+                        
+                        {% if current_user.is_admin %}
+                        <div class="ms-auto">
+                            <a href="/admin" class="btn btn-dark"><i class="fas fa-user-shield"></i> Admin Panel</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-uppercase text-muted small mb-3">Account Details</h5>
+                    
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-light">
+                                <small class="d-block text-muted">Current Plan</small>
+                                <strong class="text-uppercase text-primary">{{ current_user.tier }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-light">
+                                <small class="d-block text-muted">AI Usage (This Month)</small>
+                                <strong>{{ current_user.ai_requests_this_month }} Requests</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-light">
+                                <small class="d-block text-muted">Total Articles</small>
+                                <strong>{{ current_user.content_count }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-light">
+                                <small class="d-block text-muted">Member Since</small>
+                                <strong>2024</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <a href="/pricing" class="btn btn-primary">Upgrade Plan</a>
+                    </div>
+                </div>
             </div>
-        </div>
-        
-        <div style="background: #f7fafc; padding: 20px; border-radius: 8px; text-align: center;">
-            <h3 style="color: #764ba2;">{{ user.ai_requests_this_month }}</h3>
-            <p>AI Requests This Month</p>
-            <p style="color: #a0aec0; font-size: 14px;">Limit: {{ limits.ai_requests_per_month }}</p>
-            {% set ai_percent = ((user.ai_requests_this_month / limits.ai_requests_per_month * 100) | int) if limits.ai_requests_per_month > 0 else 0 %}
-            <div style="background: #e2e8f0; border-radius: 10px; height: 10px; margin-top: 10px; overflow: hidden;">
-                <div style="background: #764ba2; height: 100%; width: {{ ai_percent }}%;"></div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Change Password Section -->
-    <div style="background: #fff5f5; border: 2px solid #feb2b2; padding: 20px; border-radius: 8px; margin-top: 30px;">
-        <h3 style="color: #c53030;">🔐 Change Password</h3>
-        
-        <form id="passwordForm" style="margin-top: 20px;">
-            <div class="form-group">
-                <label><strong>Current Password</strong></label>
-                <input type="password" id="currentPassword" class="form-control" required>
-            </div>
-            
-            <div class="form-group">
-                <label><strong>New Password</strong></label>
-                <input type="password" id="newPassword" class="form-control" required>
-                <small style="color: #a0aec0;">Minimum 6 characters</small>
-            </div>
-            
-            <div class="form-group">
-                <label><strong>Confirm New Password</strong></label>
-                <input type="password" id="confirmPassword" class="form-control" required>
-            </div>
-            
-            <button type="button" onclick="changePassword()" class="btn btn-primary">
-                🔑 Change Password
-            </button>
-        </form>
-    </div>
-    
-    <!-- Upgrade Section -->
-    {% if user.tier == 'free' %}
-    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; border-radius: 12px; margin-top: 30px; text-align: center;">
-        <h3 style="color: white;">🚀 Upgrade to Pro</h3>
-        <p style="margin: 15px 0;">Get 50 content pieces/month, 500 AI requests, and export to Word!</p>
-        <a href="{{ url_for('pricing') }}" class="btn" style="background: white; color: #f5576c; text-decoration: none; padding: 12px 30px; border-radius: 8px; display: inline-block; font-weight: 600;">
-            View Pricing Plans
-        </a>
-    </div>
-    {% elif user.tier == 'pro' %}
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-top: 30px; text-align: center;">
-        <h3 style="color: white;">⭐ You're on Pro Plan</h3>
-        <p style="margin: 15px 0;">Want unlimited content and AI requests? Upgrade to Enterprise!</p>
-        <a href="{{ url_for('pricing') }}" class="btn" style="background: white; color: #764ba2; text-decoration: none; padding: 12px 30px; border-radius: 8px; display: inline-block; font-weight: 600;">
-            View Enterprise Plan
-        </a>
-    </div>
-    {% else %}
-    <div style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white; padding: 30px; border-radius: 12px; margin-top: 30px; text-align: center;">
-        <h3 style="color: white;">👑 Enterprise Plan</h3>
-        <p style="margin: 15px 0;">You have unlimited access to all features!</p>
-    </div>
-    {% endif %}
-    
-    <!-- Export Formats Info -->
-    <div style="background: #f0f9ff; border: 2px solid #bae6fd; padding: 20px; border-radius: 8px; margin-top: 30px;">
-        <h3 style="color: #0c4a6e;">📄 Available Export Formats</h3>
-        <div style="margin-top: 15px;">
-            {% for format in limits.export_formats %}
-            <span style="background: #0ea5e9; color: white; padding: 5px 15px; border-radius: 20px; margin-right: 10px; display: inline-block; margin-bottom: 10px;">
-                {{ format|upper }}
-            </span>
-            {% endfor %}
         </div>
     </div>
 </div>
-
-<script>
-async function changePassword() {
-    const current = document.getElementById('currentPassword').value.trim();
-    const newPass = document.getElementById('newPassword').value.trim();
-    const confirm = document.getElementById('confirmPassword').value.trim();
-    
-    // Validation
-    if (!current || !newPass || !confirm) {
-        alert('⚠️ All fields are required');
-        return;
-    }
-    
-    if (newPass !== confirm) {
-        alert('⚠️ New passwords do not match');
-        return;
-    }
-    
-    if (newPass.length < 6) {
-        alert('⚠️ New password must be at least 6 characters');
-        return;
-    }
-    
-    if (current === newPass) {
-        alert('⚠️ New password must be different from current password');
-        return;
-    }
-    
-    try {
-        const res = await fetch('/change-password', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                current_password: current,
-                new_password: newPass
-            })
-        });
-        
-        const data = await res.json();
-        
-        if (data.success) {
-            alert('✅ ' + data.message);
-            // Clear form
-            document.getElementById('passwordForm').reset();
-        } else {
-            alert('❌ ' + data.error);
-        }
-    } catch (err) {
-        alert('❌ Error: ' + err.message);
-    }
-}
-</script>
 {% endblock %}
