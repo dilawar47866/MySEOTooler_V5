@@ -1,52 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <div class="bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fab fa-youtube mr-2 text-red-600"></i> YouTube Script Generator</h2>
-        
-        <div class="mb-6">
-            <label class="block text-sm font-bold mb-2 text-slate-700">Video Topic / Title:</label>
-            <input type="text" id="topic" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500" placeholder="e.g., How to bake a cake in 10 minutes">
-        </div>
-        
-        <button onclick="generateScript()" id="btn" class="bg-red-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-red-700 transition w-full">
-            <i class="fas fa-video mr-2"></i> Generate Script
-        </button>
-
-        <div id="result" class="hidden mt-8">
-            <h3 class="font-bold text-lg mb-2">Your Script:</h3>
-            <div id="scriptContent" class="bg-slate-50 p-6 rounded-lg border whitespace-pre-wrap font-mono text-sm"></div>
-        </div>
+<div class="container mt-5">
+    <h2><i class="fab fa-youtube text-danger"></i> YouTube Script Writer</h2>
+    <div class="input-group mb-4">
+        <input type="text" id="topic" class="form-control" placeholder="Video Topic...">
+        <button class="btn btn-danger" onclick="genScript()">Generate Script</button>
     </div>
+    <div id="output" class="card p-4 bg-light d-none" style="white-space: pre-wrap;"></div>
 </div>
-
 <script>
-async function generateScript() {
-    const btn = document.getElementById('btn');
-    const topic = document.getElementById('topic').value;
-    
-    if(!topic) return alert("Please enter a topic");
-    
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Writing Script...';
-    btn.disabled = true;
-    
-    try {
-        const res = await fetch('/api/generate-youtube-script', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({topic: topic})
-        });
-        const data = await res.json();
-        if(data.error) throw new Error(data.error);
-        
-        document.getElementById('scriptContent').innerText = data.script;
-        document.getElementById('result').classList.remove('hidden');
-    } catch(e) {
-        alert(e.message);
-    } finally {
-        btn.innerHTML = '<i class="fas fa-video"></i> Generate Script';
-        btn.disabled = false;
-    }
+async function genScript() {
+    const t = document.getElementById('topic').value;
+    if(!t) return;
+    document.getElementById('output').classList.remove('d-none');
+    document.getElementById('output').innerText = "Writing script...";
+    const res = await fetch('/api/generate-content', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keyword: `Write a YouTube video script for "${t}". Include Intro, 3 Main Points, and Outro.`, mode:'standard'})});
+    const d = await res.json();
+    document.getElementById('output').innerText = d.content;
 }
 </script>
 {% endblock %}
