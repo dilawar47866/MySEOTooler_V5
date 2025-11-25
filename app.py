@@ -10,7 +10,8 @@ import os
 import requests
 import base64
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse
+# CHANGED: Added urljoin to fix image paths
+from urllib.parse import urlparse, urljoin
 from dotenv import load_dotenv
 from openai import OpenAI
 import markdown
@@ -439,14 +440,88 @@ def api_check_plagiarism():
         return jsonify({'success': True, 'verdict': 'High Similarity' if matches else 'Original', 'matches': matches})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- UPDATED COMPETITOR ANALYSIS (Fixes Not Acceptable & Undefined Images) ---
 @app.route('/api/analyze-competitor', methods=['POST'])
 @api_login_required
 def api_analyze_competitor():
     try:
         url = request.get_json().get('url', '')
         if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
-        soup = BeautifulSoup(requests.get(url, timeout=10).content, 'html.parser')
-        return jsonify({'success': True, 'analysis': {'title': soup.title.string, 'word_count': len(soup.get_text().split()), 'h1_tags': [h.text for h in soup.find_all('h1')]}})
+        
+        # Added Headers to fix 406 Not Acceptable
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 406:
+            return jsonify({'error': 'Target site blocked the request (406).'}), 406
+            
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Fix for "undefined" images
+        images = []
+        for img in soup.find_all('img'):
+            src = img.get('src')
+            if src:
+                full_src = urljoin(url, src)
+                images.append({'src': full_src, 'alt': img.get('alt', '')})
+        
+        # Clean text extraction for score calculations
+        for script in soup(["script", "style"]):
+            script.extract()
+        
+        return jsonify({
+            'success': True, 
+            'analysis': {
+                'title': soup.title.string if soup.title else "No Title", 
+                'word_count': len(soup.get_text().split()), 
+                'h1_tags': [h.text.strip() for h in soup.find_all('h1')],
+                'images': images,
+                'total_images': len(images)
+            }
+        })
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- NEW ROBOTS GENERATOR API ---
+@app.route('/api/generate-robots', methods=['POST'])
+@api_login_required
+def api_generate_robots():
+    try:
+        data = request.get_json()
+        content = f"User-agent: {data.get('userAgent', '*')}\n"
+        if data.get('allow'): content += f"Allow: {data.get('allow')}\n"
+        if data.get('disallow'): content += f"Disallow: {data.get('disallow')}\n"
+        if data.get('sitemap'): content += f"\nSitemap: {data.get('sitemap')}"
+        return jsonify({'success': True, 'content': content})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- NEW SITEMAP GENERATOR API ---
+@app.route('/api/generate-sitemap', methods=['POST'])
+@api_login_required
+def api_generate_sitemap():
+    try:
+        url = request.get_json().get('url', '')
+        if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
+        
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124 Safari/537.36'}
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        base_url = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+        links = set([url.rstrip('/')])
+        
+        for a in soup.find_all('a', href=True):
+            full_url = urljoin(base_url, a['href'])
+            if urlparse(full_url).netloc == urlparse(url).netloc:
+                links.add(full_url.split('#')[0].split('?')[0])
+        
+        xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        for link in list(links)[:50]:
+            xml += f'  <url>\n    <loc>{link}</loc>\n    <changefreq>weekly</changefreq>\n  </url>\n'
+        xml += '</urlset>'
+        return jsonify({'success': True, 'sitemap': xml})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate-schema', methods=['POST'])
