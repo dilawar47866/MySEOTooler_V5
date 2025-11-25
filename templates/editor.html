@@ -297,4 +297,157 @@ async function saveContent() {
 // Trigger score on load
 window.onload = updateSeoScore;
 </script>
+<script>
+// CHANGED: Use 'let' so we can update the ID dynamically
+let contentId = "{{ content.id if content else '' }}";
+const editor = document.getElementById('editor');
+const titleInput = document.getElementById('docTitle');
+const keywordInput = document.getElementById('targetKeyword');
+
+// 1. EDITOR COMMANDS
+function execCmd(command, value = null) {
+    document.execCommand(command, false, value);
+    updateSeoScore();
+}
+
+// 2. REAL-TIME SEO SCORING LOGIC
+function updateSeoScore() {
+    const text = editor.innerText || "";
+    const html = editor.innerHTML;
+    const keyword = keywordInput.value.toLowerCase().trim();
+    const title = titleInput.value.toLowerCase().trim();
+
+    let score = 0;
+    const wordCount = text.trim().split(/\s+/).length;
+    
+    // Word Count
+    const wordsEl = document.getElementById('checkWords');
+    wordsEl.innerText = wordCount;
+    if(wordCount > 800) { wordsEl.className = "badge bg-success"; score += 30; }
+    else if(wordCount > 300) { wordsEl.className = "badge bg-warning text-dark"; score += 15; }
+    else { wordsEl.className = "badge bg-danger"; }
+
+    if(keyword) {
+        // Title Check
+        const titleCheck = document.getElementById('checkTitle');
+        if(title.includes(keyword)) { 
+            titleCheck.className = "badge bg-success"; titleCheck.innerHTML = '<i class="fas fa-check"></i>'; score += 20;
+        } else {
+            titleCheck.className = "badge bg-danger"; titleCheck.innerHTML = '<i class="fas fa-times"></i>';
+        }
+
+        // Intro Check
+        const introCheck = document.getElementById('checkIntro');
+        if(text.substring(0, 200).toLowerCase().includes(keyword)) {
+            introCheck.className = "badge bg-success"; introCheck.innerHTML = '<i class="fas fa-check"></i>'; score += 20;
+        } else {
+            introCheck.className = "badge bg-danger"; introCheck.innerHTML = '<i class="fas fa-times"></i>';
+        }
+
+        // Density
+        const regex = new RegExp(keyword, "gi");
+        const matches = (text.match(regex) || []).length;
+        const density = wordCount > 0 ? ((matches / wordCount) * 100).toFixed(1) : 0;
+        document.getElementById('checkDensity').innerText = density + "%";
+        if(density >= 0.5 && density <= 2.5) { score += 20; } else { score += 5; }
+    }
+
+    // Headings
+    const hCount = (html.match(/<h[23]/g) || []).length;
+    document.getElementById('checkHeadings').innerText = hCount;
+    if(hCount > 2) score += 10;
+
+    score = Math.min(score, 100);
+    document.getElementById('scoreValue').innerText = score;
+    document.getElementById('scoreCircle').style.background = `conic-gradient(${score < 50 ? 'red' : 'green'} ${score}%, #e9ecef ${score}% 100%)`;
+}
+
+editor.addEventListener('keyup', updateSeoScore);
+titleInput.addEventListener('keyup', updateSeoScore);
+keywordInput.addEventListener('keyup', updateSeoScore);
+
+// 3. AI GENERATION (FIXED: Updates ID)
+async function generateAI() {
+    const keyword = document.getElementById('aiKeyword').value;
+    const mode = document.getElementById('aiMode').value;
+
+    if(!keyword) return alert("Please enter a topic");
+
+    document.getElementById('aiLoading').style.display = 'block';
+    
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ keyword: keyword, mode: mode })
+        });
+        
+        const data = await res.json();
+        document.getElementById('aiLoading').style.display = 'none';
+
+        if(data.error) {
+            alert("AI Error: " + data.error);
+        } else {
+            editor.innerHTML = data.html_content;
+            titleInput.value = `${keyword} (${mode})`;
+            keywordInput.value = keyword;
+            
+            // CRITICAL FIX: Update the JS ID so subsequent saves update this file
+            contentId = data.id; 
+            console.log("New Content ID set to:", contentId);
+
+            const modalEl = document.getElementById('aiModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+            
+            updateSeoScore();
+            saveContent(); // Auto save immediately
+        }
+    } catch(e) {
+        document.getElementById('aiLoading').style.display = 'none';
+        alert("Network Error");
+    }
+}
+
+// 4. SAVE CONTENT (FIXED: Handles New Creation)
+async function saveContent() {
+    const status = document.getElementById('saveStatus');
+    status.innerText = "Saving...";
+    
+    const data = {
+        id: contentId, // Sends ID if it exists, or empty string if new
+        title: titleInput.value,
+        keyword: keywordInput.value,
+        content: editor.innerText, 
+        html_content: editor.innerHTML 
+    };
+
+    try {
+        const res = await fetch('/api/save-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        
+        if(result.success) {
+            status.innerText = "Saved " + new Date().toLocaleTimeString();
+            // If this was a new creation, update the ID for future saves
+            if(result.id) {
+                contentId = result.id;
+                // Optional: Update URL without reload so refresh works
+                window.history.pushState({}, "", `/editor?id=${contentId}`);
+            }
+        } else {
+            status.innerText = "Save Failed";
+            alert("Error: " + result.error);
+        }
+    } catch(e) {
+        status.innerText = "Error Saving";
+        console.error(e);
+    }
+}
+
+window.onload = updateSeoScore;
+</script>
 {% endblock %}
