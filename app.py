@@ -86,7 +86,7 @@ PRO_TOOLS = [
 # 4. CORE PAGE ROUTES
 # ==========================================
 @app.route('/')
-def landing(): 
+def home(): # RENAMED from 'landing' to 'home' to fix url_for('home') errors
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return render_template('landing.html')
@@ -245,7 +245,8 @@ tool_list = [
 ]
 
 for t in tool_list:
-    app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
+    # FIX: Registered endpoint with underscores (replace - with _) so {{ url_for('tool_name') }} works
+    app.add_url_rule(f'/{t}', endpoint=t.replace('-', '_'), view_func=lambda t=t: tool_view(t))
 
 
 # ==========================================
