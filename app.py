@@ -306,7 +306,7 @@ def api_generate_content():
         return jsonify({'success': True, 'content': text, 'html_content': markdown.markdown(text)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- NEW FEATURE: SEO Terms Generator ---
+# --- SEO Terms Generator ---
 @app.route('/api/generate-seo-terms', methods=['POST'])
 @login_required
 def api_generate_seo_terms():
@@ -315,7 +315,6 @@ def api_generate_seo_terms():
         keyword = data.get('keyword')
         if not keyword: return jsonify({'error': 'Keyword missing'}), 400
         
-        # Ask AI for semantic keywords
         prompt = f"List 20 single-word or two-word semantic keywords (LSI) that are essential for an in-depth article about '{keyword}'. Return ONLY a JSON array of strings. Example: ['term1', 'term2']"
         
         res = client.chat.completions.create(
@@ -328,6 +327,29 @@ def api_generate_seo_terms():
         terms = json.loads(content)
         
         return jsonify({'success': True, 'terms': terms})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- NEW: PAA Questions Generator ---
+@app.route('/api/generate-questions', methods=['POST'])
+@login_required
+def api_generate_questions():
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword')
+        if not keyword: return jsonify({'error': 'Keyword missing'}), 400
+        
+        prompt = f"List 5 common 'People Also Ask' questions related to '{keyword}'. Return ONLY a JSON array of strings."
+        
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": "You are an SEO expert JSON generator."}, {"role": "user", "content": prompt}],
+            max_tokens=500
+        )
+        
+        content = res.choices[0].message.content.replace('```json', '').replace('```', '').strip()
+        questions = json.loads(content)
+        
+        return jsonify({'success': True, 'questions': questions})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
 # --- Keyword Clusters ---
