@@ -1,57 +1,65 @@
 {% extends "base.html" %}
-{% block auth_content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="text-center mb-4"><i class="bi bi-search"></i> Create Account</h4>
-                    <form id="signupForm">
-                        <div class="mb-3">
-                            <label class="form-label">Username</label>
-                            <input type="text" class="form-control" name="username" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Password (6+ chars)</label>
-                            <input type="password" class="form-control" name="password" required minlength="6">
-                        </div>
-                        <div id="error" class="alert alert-danger d-none"></div>
-                        <button type="submit" class="btn btn-primary w-100">Sign Up</button>
-                    </form>
-                    <p class="text-center mt-3">
-                        <a href="{{ url_for('login') }}">Already have account?</a>
-                    </p>
-                </div>
+{% block content %}
+<div class="min-h-[80vh] flex items-center justify-center">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md border border-slate-100">
+        <h2 class="text-3xl font-bold text-center text-slate-800 mb-2">Create Account</h2>
+        <p class="text-center text-slate-500 mb-8">Start your SEO journey today.</p>
+        
+        <form onsubmit="handleSignup(event)">
+            <div class="mb-4">
+                <label class="block text-sm font-bold mb-2 text-slate-700">Username</label>
+                <input type="text" id="username" class="w-full p-4 border rounded-xl focus:ring-2 focus:ring-blue-500" required>
             </div>
-        </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-bold mb-2 text-slate-700">Email Address</label>
+                <input type="email" id="email" class="w-full p-4 border rounded-xl focus:ring-2 focus:ring-blue-500" required>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-bold mb-2 text-slate-700">Password</label>
+                <input type="password" id="password" class="w-full p-4 border rounded-xl focus:ring-2 focus:ring-blue-500" required>
+            </div>
+            
+            <button type="submit" id="btn" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg">
+                Get Started Free
+            </button>
+        </form>
+        
+        <p class="text-center mt-6 text-slate-500">
+            Already have an account? <a href="{{ url_for('login') }}" class="text-blue-600 font-bold hover:underline">Log In</a>
+        </p>
     </div>
 </div>
+
 <script>
-document.getElementById('signupForm').addEventListener('submit', async (e) => {
+async function handleSignup(e) {
     e.preventDefault();
-    const form = e.target;
-    const data = Object.fromEntries(new FormData(form));
+    const btn = document.getElementById('btn');
+    const username = document.getElementById('username').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+    btn.disabled = true;
+    
     try {
         const res = await fetch('/signup', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
+            body: JSON.stringify({username: username, email: email, password: password})
         });
-        const result = await res.json();
-        if (result.success) {
-            window.location.href = result.redirect;
-        } else {
-            document.getElementById('error').textContent = result.error;
-            document.getElementById('error').classList.remove('d-none');
-        }
-    } catch (err) {
-        document.getElementById('error').textContent = 'Connection error';
-        document.getElementById('error').classList.remove('d-none');
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+        
+        // Success - Redirect
+        window.location.href = data.redirect;
+    } catch(err) {
+        alert(err.message);
+        btn.innerHTML = 'Get Started Free';
+        btn.disabled = false;
     }
-});
+}
 </script>
 {% endblock %}
