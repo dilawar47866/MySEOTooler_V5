@@ -1180,7 +1180,880 @@ def api_export(content_id, fmt):
         return jsonify({'error': 'Invalid format'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+# ============================================================================
+# ADDITIONAL API ROUTES FOR ALL TOOLS
+# ============================================================================
 
+@app.route('/api/generate-lsi-keywords', methods=['POST'])
+@api_login_required
+@limiter.limit("20 per hour")
+def api_generate_lsi_keywords():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword', '').strip()
+
+        if not keyword:
+            return jsonify({'error': 'Keyword required'}), 400
+
+        prompt = f"""Generate 20 LSI (Latent Semantic Indexing) keywords for the main keyword: "{keyword}"
+
+Organize them into categories:
+1. Direct Variations (5 keywords)
+2. Question-Based (5 keywords)
+3. Related Topics (5 keywords)
+4. Long-Tail Keywords (5 keywords)
+
+Format as a clean list with clear category headers."""
+
+        result = call_openai(prompt, 800)
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
+
+        current_user.increment_ai_usage()
+        
+        # Parse keywords from response
+        response = result['content']
+        keywords = []
+        for line in response.split('\n'):
+            line = line.strip()
+            line = re.sub(r'^\d+[\.)]\s*', '', line)
+            line = line.lstrip('-•*').strip()
+            if line and len(line) > 2 and not line.endswith(':') and 'Direct' not in line and 'Question' not in line and 'Related' not in line and 'Long-Tail' not in line:
+                keywords.append(line)
+
+        return jsonify({
+            'success': True,
+            'main_keyword': keyword,
+            'keywords': keywords[:20],
+            'categorized': response
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/check-plagiarism', methods=['POST'])
+@api_login_required
+@limiter.limit("10 per hour")
+def api_check_plagiarism():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        content = data.get('content', '').strip()
+
+        if not content:
+            return jsonify({'error': 'Content required'}), 400
+
+        if len(content) < 50:
+            return jsonify({'error': 'Content too short (minimum 50 characters)'}), 400
+
+        # Word and sentence analysis
+        words = content.split()
+        word_count = len(words)
+        sentences = sent_tokenize(content)
+        sentence_count = len(sentences)
+        
+        # Calculate uniqueness metrics
+        unique_words = len(set([w.lower() for w in words]))
+        uniqueness_ratio = (unique_words / word_count * 100) if word_count > 0 else 0
+        
+        # Simulate plagiarism check (in production, use actual plagiarism API)
+        # Higher uniqueness ratio = lower plagiarism
+        plagiarism_score = max(5, min(30, 100 - uniqueness_ratio))
+        unique_score = 100 - plagiarism_score
+        
+        # Determine status
+        if plagiarism_score < 15:
+            status = 'Original'
+            status_class = 'success'
+            message = '✅ Content appears to be highly original!'
+        elif plagiarism_score < 30:
+            status = 'Moderate'
+            status_class = 'warning'
+            message = '⚠️ Some similar patterns detected. Consider revising.'
+        else:
+            status = 'High Risk'
+            status_class = 'danger'
+            message = '❌ High similarity detected. Significant revision needed.'
+        
+        current_user.increment_ai_usage()
+
+        return jsonify({
+            'success': True,
+            'plagiarism_percentage': round(plagiarism_score, 1),
+            'unique_percentage': round(unique_score, 1),
+            'word_count': word_count,
+            'sentence_count': sentence_count,
+            'unique_words': unique_words,
+            'status': status,
+            'status_class': status_class,
+            'message': message,
+            'suggestions': [
+                'Add more original insights',
+                'Use unique examples',
+                'Paraphrase common phrases',
+                'Add personal experience'
+            ] if plagiarism_score > 15 else ['Great job! Content is original.']
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/generate-content-outline', methods=['POST'])
+@api_login_required
+@limiter.limit("15 per hour")
+def api_generate_content_outline():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        topic = data.get('topic', '').strip()
+        target_audience = data.get('target_audience', 'general audience')
+        content_type = data.get('content_type', 'blog post')
+
+        if not topic:
+            return jsonify({'error': 'Topic required'}), 400
+
+        prompt = f"""Create a comprehensive SEO content outline for: "{topic}"
+Content Type: {content_type}
+Target Audience: {target_audience}
+
+Include:
+1. SEO-Optimized Title (H1) with power words
+2. Introduction Outline (key points to cover)
+3. 5-7 Main Sections (H2) with:
+   - 2-3 subsections each (H3)
+   - Key points to cover
+   - Recommended word count
+4. Conclusion Outline
+5. Call-to-Action suggestions
+6. SEO Notes (keywords, internal links)
+
+Total Recommended Word Count: 1500-2000 words
+
+Format with clear hierarchy and markdown headings."""
+
+        result = call_openai(prompt, 1500)
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
+
+        current_user.increment_ai_usage()
+
+        # Convert to HTML for better display
+        html_outline = markdown.markdown(result['content'])
+
+        return jsonify({
+            'success': True,
+            'topic': topic,
+            'target_audience': target_audience,
+            'outline': result['content'],
+            'html_outline': html_outline,
+            'estimated_words': 1500
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/generate-content-brief', methods=['POST'])
+@api_login_required
+@limiter.limit("15 per hour")
+def api_generate_content_brief():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        topic = data.get('topic', '').strip()
+        keyword = data.get('keyword', '').strip()
+        target_audience = data.get('target_audience', 'general audience')
+
+        if not topic:
+            return jsonify({'error': 'Topic required'}), 400
+
+        prompt = f"""Create a detailed SEO content brief for: "{topic}"
+Primary Keyword: {keyword}
+Target Audience: {target_audience}
+
+Include these sections:
+
+**1. CONTENT GOAL & PURPOSE**
+- Main objective
+- What problem does it solve?
+
+**2. TARGET AUDIENCE**
+- Demographics
+- Pain points
+- Intent
+
+**3. KEY MESSAGES (5 points)**
+- Core takeaways for readers
+
+**4. SEO STRATEGY**
+- Primary Keyword: {keyword}
+- 5 Secondary Keywords
+- LSI Keywords
+- Target word count
+
+**5. TONE & STYLE**
+- Voice (professional/casual/friendly)
+- Writing style
+- Do's and Don'ts
+
+**6. CONTENT STRUCTURE**
+- Recommended headings
+- Content flow
+- Required sections
+
+**7. CALL-TO-ACTION**
+- Primary CTA
+- Secondary CTA
+- Placement
+
+**8. COMPETITOR INSIGHTS**
+- What's currently ranking?
+- Content gaps to fill
+- Unique angle
+
+**9. REQUIREMENTS**
+- Word count: 1500-2000
+- Images needed: 3-5
+- Research sources
+- Deadline considerations
+
+Format professionally with clear sections."""
+
+        result = call_openai(prompt, 2000)
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
+
+        current_user.increment_ai_usage()
+
+        html_brief = markdown.markdown(result['content'])
+
+        return jsonify({
+            'success': True,
+            'topic': topic,
+            'keyword': keyword,
+            'target_audience': target_audience,
+            'brief': result['content'],
+            'html_brief': html_brief
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/generate-faq-schema', methods=['POST'])
+@api_login_required
+@limiter.limit("20 per hour")
+def api_generate_faq_schema():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        topic = data.get('topic', '').strip()
+        num_questions = int(data.get('num_questions', 5))
+
+        if not topic:
+            return jsonify({'error': 'Topic required'}), 400
+
+        num_questions = min(max(num_questions, 3), 10)  # Between 3-10
+
+        prompt = f"""Generate {num_questions} FAQ questions and answers about: "{topic}"
+
+Requirements:
+- Questions should be what real users ask
+- Answers should be 2-3 sentences, informative and SEO-friendly
+- Cover different aspects of the topic
+- Use natural language
+
+Format EXACTLY as:
+Q: [Question here]
+A: [Answer here]
+
+Q: [Question here]
+A: [Answer here]
+
+Make them valuable and comprehensive."""
+
+        result = call_openai(prompt, 1200)
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
+
+        current_user.increment_ai_usage()
+
+        # Parse FAQs and create schema
+        faq_items = []
+        lines = result['content'].split('\n')
+        current_q = None
+        current_a = None
+        
+        for line in lines:
+            line = line.strip()
+            if line.startswith('Q:'):
+                if current_q and current_a:
+                    faq_items.append({
+                        "@type": "Question",
+                        "name": current_q,
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": current_a
+                        }
+                    })
+                current_q = line[2:].strip()
+                current_a = None
+            elif line.startswith('A:'):
+                current_a = line[2:].strip()
+        
+        # Add last Q&A if exists
+        if current_q and current_a:
+            faq_items.append({
+                "@type": "Question",
+                "name": current_q,
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": current_a
+                }
+            })
+
+        schema = {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": faq_items
+        }
+
+        # HTML snippet for embedding
+        html_snippet = '<script type="application/ld+json">\n' + json.dumps(schema, indent=2) + '\n</script>'
+
+        return jsonify({
+            'success': True,
+            'topic': topic,
+            'num_questions': len(faq_items),
+            'faq_text': result['content'],
+            'schema': json.dumps(schema, indent=2),
+            'html_snippet': html_snippet,
+            'faq_items': faq_items
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/optimize-image-seo', methods=['POST'])
+@api_login_required
+@limiter.limit("20 per hour")
+def api_optimize_image_seo():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        image_context = data.get('context', '').strip()
+        keyword = data.get('keyword', '').strip()
+        num_images = int(data.get('num_images', 1))
+
+        if not image_context:
+            return jsonify({'error': 'Image context required'}), 400
+
+        num_images = min(max(num_images, 1), 5)  # Between 1-5
+
+        prompt = f"""Generate SEO-optimized image metadata for {num_images} image(s) about: "{image_context}"
+Target Keyword: {keyword}
+
+For each image provide:
+
+**Image 1:**
+- **File Name:** seo-friendly-name-with-keywords.jpg
+- **Alt Text:** Descriptive alt text under 125 characters with keyword
+- **Title Text:** Engaging title with keyword
+- **Caption:** Optional engaging caption (1 sentence)
+
+{"**Image 2:**" if num_images > 1 else ""}
+{"(same format)" if num_images > 1 else ""}
+
+Requirements:
+- File names: lowercase, hyphens, keywords
+- Alt text: descriptive, accessible, under 125 chars
+- Title text: engaging, keyword-optimized
+- Natural keyword usage
+
+Format clearly for each image."""
+
+        result = call_openai(prompt, 1000)
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
+
+        current_user.increment_ai_usage()
+
+        return jsonify({
+            'success': True,
+            'context': image_context,
+            'keyword': keyword,
+            'num_images': num_images,
+            'optimization': result['content'],
+            'tips': [
+                'Use WebP format for better performance',
+                'Compress images to under 200KB',
+                'Include keyword in file name',
+                'Always add descriptive alt text',
+                'Use descriptive captions when possible'
+            ]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/analyze-competitor', methods=['POST'])
+@api_login_required
+@limiter.limit("10 per hour")
+def api_analyze_competitor():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        competitor_url = data.get('url', '').strip()
+        keyword = data.get('keyword', '').strip()
+
+        if not competitor_url:
+            return jsonify({'error': 'Competitor URL required'}), 400
+
+        # Validate URL format
+        if not competitor_url.startswith(('http://', 'https://')):
+            competitor_url = 'https://' + competitor_url
+
+        prompt = f"""Analyze SEO strategy for competitor: {competitor_url}
+Target Keyword: {keyword}
+
+Provide detailed analysis:
+
+**1. CONTENT STRATEGY**
+- Content depth and quality
+- Topic coverage
+- Content format (text, video, infographics)
+- Publishing frequency (estimated)
+
+**2. KEYWORD STRATEGY**
+- Primary keywords used
+- Secondary keywords
+- Keyword density
+- LSI keywords
+
+**3. CONTENT STRUCTURE**
+- Heading hierarchy
+- Internal linking
+- Use of media
+- Content length
+
+**4. ON-PAGE SEO**
+- Title tag optimization
+- Meta description
+- URL structure
+- Schema markup (if detectable)
+
+**5. USER EXPERIENCE**
+- Readability
+- Content formatting
+- Call-to-actions
+- Engagement elements
+
+**6. SEO STRENGTHS**
+(3-5 things they do well)
+
+**7. SEO WEAKNESSES**
+(3-5 areas for improvement)
+
+**8. RECOMMENDATIONS TO OUTRANK**
+(5-7 specific, actionable strategies)
+
+Be specific and actionable based on common SEO best practices."""
+
+        result = call_openai(prompt, 2000)
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
+
+        current_user.increment_ai_usage()
+
+        html_analysis = markdown.markdown(result['content'])
+
+        return jsonify({
+            'success': True,
+            'url': competitor_url,
+            'keyword': keyword,
+            'analysis': result['content'],
+            'html_analysis': html_analysis,
+            'analyzed_at': datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/generate-internal-links', methods=['POST'])
+@api_login_required
+@limiter.limit("20 per hour")
+def api_generate_internal_links():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        content = data.get('content', '').strip()
+        website_url = data.get('website_url', '').strip()
+
+        if not content:
+            return jsonify({'error': 'Content required'}), 400
+
+        # Get user's existing content as linking opportunities
+        user_contents = Content.query.filter_by(user_id=current_user.id).limit(15).all()
+        existing_topics = [f"- {c.title} (keyword: {c.keyword or 'N/A'})" for c in user_contents]
+        
+        existing_pages = '\n'.join(existing_topics) if existing_topics else '- Home page\n- About page\n- Blog page\n- Services page\n- Contact page'
+
+        prompt = f"""Suggest internal linking strategy for this content.
+
+**Content Preview:**
+{content[:800]}...
+
+**Available Pages to Link To:**
+{existing_pages}
+
+**Website:** {website_url or 'example.com'}
+
+Provide:
+
+**Internal Link Suggestions (5-7 links):**
+
+1. **Link to:** [Page name]
+   - **Anchor Text:** [Exact anchor text]
+   - **Placement:** [Where in content - intro/section 2/conclusion]
+   - **Context:** [Surrounding sentence example]
+   - **Value:** [Why this link helps users]
+
+2. [Continue for 5-7 suggestions]
+
+**Internal Linking Best Practices:**
+- Use descriptive anchor text
+- Link to relevant, related content
+- Don't overlink (max 5-7 per 1000 words)
+- Prioritize user value over SEO
+
+**SEO Benefits:**
+- Improved crawlability
+- Better page authority distribution
+- Lower bounce rate
+- Enhanced user experience"""
+
+        result = call_openai(prompt, 1500)
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
+
+        current_user.increment_ai_usage()
+
+        html_suggestions = markdown.markdown(result['content'])
+
+        return jsonify({
+            'success': True,
+            'suggestions': result['content'],
+            'html_suggestions': html_suggestions,
+            'available_pages': [c.title for c in user_contents],
+            'total_available': len(user_contents)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/generate-social-posts', methods=['POST'])
+@api_login_required
+@limiter.limit("15 per hour")
+def api_generate_social_posts():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        topic = data.get('topic', '').strip()
+        platform = data.get('platform', 'all')
+        tone = data.get('tone', 'professional')
+
+        if not topic:
+            return jsonify({'error': 'Topic required'}), 400
+
+        platforms_list = ['Twitter', 'Facebook', 'LinkedIn', 'Instagram'] if platform == 'all' else [platform]
+        
+        prompt = f"""Create engaging social media posts about: "{topic}"
+Tone: {tone}
+Platforms: {', '.join(platforms_list)}
+
+For each platform, provide:
+
+**TWITTER (280 characters max)**
+📱 Tweet: [Engaging tweet with hook]
+🏷️ Hashtags: [3-5 relevant hashtags]
+⏰ Best Time: [Recommended posting time]
+💡 Tip: [Engagement tip]
+
+**FACEBOOK**
+📱 Post: [2-3 paragraph engaging post]
+🏷️ Hashtags: [3-5 hashtags]
+⏰ Best Time: [Recommended posting time]
+💡 Tip: [Engagement tip]
+
+**LINKEDIN**
+📱 Post: [Professional 2-3 paragraph post]
+🏷️ Hashtags: [3-5 professional hashtags]
+⏰ Best Time: [Recommended posting time]
+💡 Tip: [Engagement tip]
+
+**INSTAGRAM**
+📱 Caption: [Engaging caption with emojis]
+🏷️ Hashtags: [10-15 relevant hashtags]
+⏰ Best Time: [Recommended posting time]
+💡 Tip: [Visual/engagement tip]
+
+**GENERAL TIPS:**
+- Use platform-specific best practices
+- Include call-to-action
+- Optimize for engagement
+- Add relevant emojis where appropriate"""
+
+        result = call_openai(prompt, 2000)
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
+
+        current_user.increment_ai_usage()
+
+        html_posts = markdown.markdown(result['content'])
+
+        return jsonify({
+            'success': True,
+            'topic': topic,
+            'tone': tone,
+            'platforms': platforms_list,
+            'posts': result['content'],
+            'html_posts': html_posts
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/generate-youtube-script', methods=['POST'])
+@api_login_required
+@limiter.limit("10 per hour")
+def api_generate_youtube_script():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        topic = data.get('topic', '').strip()
+        duration = data.get('duration', '5-7')
+        style = data.get('style', 'educational')
+
+        if not topic:
+            return jsonify({'error': 'Topic required'}), 400
+
+        prompt = f"""Create a complete YouTube video script about: "{topic}"
+Target Duration: {duration} minutes
+Style: {style}
+
+**VIDEO METADATA:**
+
+**📌 VIDEO TITLE** (SEO-optimized, under 60 chars)
+[Engaging title with keyword]
+
+**📝 VIDEO DESCRIPTION** (SEO-optimized, 150+ words)
+[Full description with keywords, timestamps, links]
+
+**🏷️ TAGS** (15-20 tags)
+[Comma-separated relevant tags]
+
+**🖼️ THUMBNAIL IDEAS**
+1. [Thumbnail concept 1]
+2. [Thumbnail concept 2]
+3. [Thumbnail concept 3]
+
+---
+
+**📜 FULL SCRIPT:**
+
+**[0:00-0:10] HOOK** ⚡
+[Attention-grabbing opening - pose question or bold statement]
+
+**[0:10-0:40] INTRODUCTION** 👋
+[Introduce yourself, topic, what viewers will learn]
+[Call to action: "Don't forget to like and subscribe!"]
+
+**[0:40-1:30] SECTION 1: [Title]**
+[Main point 1 with examples]
+[Engagement: Ask viewers a question]
+
+**[1:30-2:30] SECTION 2: [Title]**
+[Main point 2 with examples]
+[Visual cue: Show screen/example]
+
+**[2:30-3:30] SECTION 3: [Title]**
+[Main point 3 with examples]
+[Tip or pro advice]
+
+**[3:30-4:30] SECTION 4: [Title]**
+[Main point 4 with examples]
+[Common mistake to avoid]
+
+**[4:30-5:00] CONCLUSION** ✅
+[Recap main points]
+[Final thoughts]
+
+**[5:00-5:15] CALL-TO-ACTION** 📢
+[Ask to like, subscribe, comment]
+[Mention next video or playlist]
+
+**[5:15-5:20] OUTRO** 👋
+[Sign-off and branding]
+
+---
+
+**💬 ENGAGEMENT PROMPTS:**
+- Pin comment: [Question to ask viewers]
+- Community post: [Related poll or question]
+- Video idea: [Follow-up video suggestion]
+
+Make it conversational, engaging, and valuable!"""
+
+        result = call_openai(prompt, 2500)
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
+
+        current_user.increment_ai_usage()
+
+        html_script = markdown.markdown(result['content'])
+
+        return jsonify({
+            'success': True,
+            'topic': topic,
+            'duration': duration,
+            'style': style,
+            'script': result['content'],
+            'html_script': html_script,
+            'estimated_words': len(result['content'].split())
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/generate-email-subjects', methods=['POST'])
+@api_login_required
+@limiter.limit("20 per hour")
+def api_generate_email_subjects():
+    if not current_user.can_use_ai():
+        return jsonify({'error': 'AI request limit reached'}), 403
+
+    try:
+        data = request.get_json()
+        topic = data.get('topic', '').strip()
+        tone = data.get('tone', 'professional')
+        email_type = data.get('email_type', 'newsletter')
+
+        if not topic:
+            return jsonify({'error': 'Email topic required'}), 400
+
+        prompt = f"""Generate 15 compelling email subject lines for: "{topic}"
+Email Type: {email_type}
+Tone: {tone}
+
+Create variety:
+
+**CURIOSITY-DRIVEN (3 subject lines)**
+[Make readers curious - ask questions, tease content]
+1. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+2. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+3. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+
+**BENEFIT-FOCUSED (3 subject lines)**
+[Clear value proposition - what's in it for them]
+4. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+5. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+6. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+
+**URGENCY-BASED (3 subject lines)**
+[Create FOMO - time-sensitive, scarcity]
+7. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+8. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+9. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+
+**QUESTION-BASED (3 subject lines)**
+[Engaging questions that resonate]
+10. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+11. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+12. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+
+**CREATIVE/UNIQUE (3 subject lines)**
+[Stand out - humor, emojis, unusual angles]
+13. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+14. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+15. [Subject line] | Open Rate: [High/Medium] | Why: [Reason]
+
+**BEST PRACTICES:**
+- Keep under 50 characters for mobile
+- Use action words
+- Personalize when possible
+- A/B test different types
+- Avoid spam trigger words
+
+Requirements:
+- Each under 60 characters
+- Clear and compelling
+- Match the tone: {tone}"""
+
+        result = call_openai(prompt, 1500)
+        if "error" in result:
+            return jsonify({'error': result['error']}), 500
+
+        current_user.increment_ai_usage()
+
+        # Parse subject lines
+        subject_lines = []
+        lines = result['content'].split('\n')
+        for line in lines:
+            line = line.strip()
+            # Look for numbered lines
+            if re.match(r'^\d+\.', line):
+                # Extract just the subject line part (before |)
+                parts = line.split('|')
+                if parts:
+                    subject = re.sub(r'^\d+\.\s*', '', parts[0]).strip()
+                    if len(subject) > 10 and len(subject) < 100:
+                        # Determine open rate
+                        open_rate = 'High' if 'High' in line else 'Medium' if 'Medium' in line else 'Medium'
+                        subject_lines.append({
+                            'subject': subject,
+                            'open_rate': open_rate,
+                            'length': len(subject)
+                        })
+
+        html_analysis = markdown.markdown(result['content'])
+
+        return jsonify({
+            'success': True,
+            'topic': topic,
+            'tone': tone,
+            'email_type': email_type,
+            'subject_lines': subject_lines[:15],
+            'full_analysis': result['content'],
+            'html_analysis': html_analysis,
+            'tips': [
+                'A/B test at least 2 versions',
+                'Mobile users see only 30-40 characters',
+                'Avoid ALL CAPS and excessive punctuation!!!',
+                'Personalization increases open rates by 26%',
+                'Tuesday-Thursday 10am-11am has highest open rates'
+            ]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ============================================================================
 # ADMIN ROUTES
