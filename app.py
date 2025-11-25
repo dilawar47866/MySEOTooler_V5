@@ -197,6 +197,44 @@ def api_export(id, fmt):
 with app.app_context():
     try: db.create_all()
     except: pass
+# ==========================================
+# MISSING ROUTES (Signup & Profile)
+# ==========================================
 
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if current_user.is_authenticated: 
+        return redirect('/dashboard')
+        
+    if request.method == 'POST':
+        try:
+            data = request.get_json() if request.is_json else request.form
+            
+            # Check if email exists
+            if User.query.filter_by(email=data.get('email').lower()).first():
+                return jsonify({'error': 'Email already exists'}), 400
+            
+            # Create new user
+            hashed_pw = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
+            user = User(
+                username=data.get('username'),
+                email=data.get('email').lower(),
+                password_hash=hashed_pw
+            )
+            
+            db.session.add(user)
+            db.session.commit()
+            
+            login_user(user)
+            return jsonify({'success': True, 'redirect': '/dashboard'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+            
+    return render_template('signup.html')
+
+@app.route('/profile')
+@login_required
+def profile():
+    return render_template('profile.html', user=current_user)
 if __name__ == '__main__':
     app.run(debug=True, port=int(os.environ.get('PORT', 5001)))
