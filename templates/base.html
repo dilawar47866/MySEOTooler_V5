@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MySEO King Tool</title>
+    <!-- FIX 1: Allow child templates to set their own titles -->
+    <title>{% block title %}MySEO King Tool{% endblock %}</title>
+    
     <!-- Bootstrap 5 & FontAwesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -69,11 +71,14 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             background: white;
         }
-        /* Mobile Responsiveness */
+        
+        /* FIX 2: Better Mobile Handling (Removed conflicting inline styles) */
+        .mobile-toggle { display: none; }
+
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .main-content { margin-left: 0; }
-            .mobile-toggle { display: block !important; }
+            .mobile-toggle { display: flex !important; } /* Changed to flex for alignment */
         }
     </style>
 </head>
@@ -88,31 +93,45 @@
 
         <div class="flex-grow-1">
             <p class="small text-muted text-uppercase px-4 mb-2 fw-bold" style="font-size: 0.75rem;">Main</p>
-            <a href="/dashboard" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">
+            
+            <!-- FIX 3: Updated Active Logic to use endpoints -->
+            <a href="/dashboard" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
                 <i class="fas fa-home"></i> Dashboard
             </a>
-            <a href="/editor" class="nav-link {% if request.path == '/editor' %}active{% endif %}">
+            <!-- Note: 'content_generator' is the endpoint name defined in app.py for /editor -->
+            <a href="/editor" class="nav-link {% if request.endpoint == 'content_generator' %}active{% endif %}">
                 <i class="fas fa-pen-nib"></i> AI Editor
             </a>
-            <a href="/content-library" class="nav-link {% if request.path == '/content-library' %}active{% endif %}">
+            <a href="/content-library" class="nav-link {% if request.endpoint == 'content_library' %}active{% endif %}">
                 <i class="fas fa-folder-open"></i> Library
             </a>
 
             <p class="small text-muted text-uppercase px-4 mt-4 mb-2 fw-bold" style="font-size: 0.75rem;">Tools</p>
-            <a href="/competitor-analyzer" class="nav-link"><i class="fas fa-chart-pie"></i> Competitor Spy</a>
-            <a href="/keyword-research" class="nav-link"><i class="fas fa-search"></i> Keyword Research</a>
-            <a href="/sitemap-generator" class="nav-link"><i class="fas fa-sitemap"></i> Sitemap Gen</a>
-            <a href="/robots-generator" class="nav-link"><i class="fas fa-robot"></i> Robots.txt</a>
+            <!-- Links match app.py routes -->
+            <a href="/competitor-analyzer" class="nav-link {% if 'competitor' in request.path %}active{% endif %}">
+                <i class="fas fa-chart-pie"></i> Competitor Spy
+            </a>
+            <a href="/keyword-research" class="nav-link {% if 'keyword' in request.path %}active{% endif %}">
+                <i class="fas fa-search"></i> Keyword Research
+            </a>
+            <a href="/sitemap-generator" class="nav-link {% if 'sitemap' in request.path %}active{% endif %}">
+                <i class="fas fa-sitemap"></i> Sitemap Gen
+            </a>
+            <a href="/robots-generator" class="nav-link {% if 'robots' in request.path %}active{% endif %}">
+                <i class="fas fa-robot"></i> Robots.txt
+            </a>
         </div>
 
         <div class="border-top p-3">
             <a href="/profile" class="d-flex align-items-center text-decoration-none text-dark mb-2">
                 <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 32px; height: 32px;">
-                    {{ current_user.username[0].upper() }}
+                    <!-- Safe navigation in case username is short -->
+                    {{ current_user.username[0].upper() if current_user.username else 'U' }}
                 </div>
                 <div class="ms-2">
                     <small class="d-block fw-bold">{{ current_user.username }}</small>
-                    <small class="text-muted text-uppercase" style="font-size: 0.65rem;">{{ current_user.tier }} Plan</small>
+                    <!-- FIX 4: Capitalize 'free' to 'Free' -->
+                    <small class="text-muted text-uppercase text-capitalize" style="font-size: 0.65rem;">{{ current_user.tier }} Plan</small>
                 </div>
             </a>
             <a href="/pricing" class="btn btn-sm btn-outline-primary w-100 mb-2">Upgrade</a>
@@ -123,26 +142,46 @@
 
     <!-- MAIN CONTENT -->
     <div class="{% if current_user.is_authenticated %}main-content{% endif %}">
+        
         <!-- Mobile Header -->
         {% if current_user.is_authenticated %}
-        <div class="d-md-none d-flex justify-content-between align-items-center mb-4 mobile-toggle" style="display: none;">
+        <div class="d-md-none justify-content-between align-items-center mb-4 mobile-toggle">
             <span class="fw-bold text-primary">MySEO King</span>
-            <button class="btn btn-light" onclick="document.querySelector('.sidebar').style.transform = 'translateX(0)'"><i class="fas fa-bars"></i></button>
+            <button class="btn btn-light" onclick="document.querySelector('.sidebar').style.transform = 'translateX(0)'">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
         {% endif %}
         
+        <!-- FIX 5: Flash Messages (CRITICAL for Python interaction) -->
+        <div class="container-fluid px-0 mb-3">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <!-- Maps 'error' to 'danger', 'message' to 'success' -->
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'message' else category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
         {% block content %}{% endblock %}
     </div>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     <!-- Close sidebar on mobile click outside -->
     <script>
         document.addEventListener('click', function(e) {
             if(window.innerWidth < 768) {
                 const sidebar = document.querySelector('.sidebar');
                 const btn = document.querySelector('.mobile-toggle button');
-                if (sidebar && !sidebar.contains(e.target) && !btn.contains(e.target)) {
+                // Only close if sidebar is open (transform 0)
+                if (sidebar && sidebar.style.transform === 'translateX(0px)' && !sidebar.contains(e.target) && !btn.contains(e.target)) {
                     sidebar.style.transform = 'translateX(-100%)';
                 }
             }
