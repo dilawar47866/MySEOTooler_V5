@@ -2,8 +2,6 @@ from flask import Flask, request, jsonify, render_template, send_file, redirect,
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from datetime import datetime
 import re, os, requests, base64, json, validators
 from bs4 import BeautifulSoup
@@ -47,7 +45,7 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     
-    # Cascade Delete: If user is deleted, delete their content too
+    # Cascade Delete
     contents = db.relationship('Content', backref='author', lazy=True, cascade="all, delete-orphan")
     
     def check_password(self, password): 
@@ -73,7 +71,7 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # ==========================================
-# 3. PERMISSION SETTINGS (Feature Gating)
+# 3. PERMISSION SETTINGS
 # ==========================================
 PRO_TOOLS = [
     'competitor-analyzer', 'image-seo', 'sitemap-generator', 
@@ -91,7 +89,6 @@ def landing():
         return redirect(url_for('dashboard'))
     return render_template('landing.html')
 
-# FAIL-SAFE 1: Register aliases for the homepage
 app.add_url_rule('/', endpoint='home', view_func=landing)
 app.add_url_rule('/', endpoint='index', view_func=landing)
 
@@ -116,8 +113,6 @@ def editor():
     c = Content.query.filter_by(id=request.args.get('id'), user_id=current_user.id).first() if request.args.get('id') else None
     return render_template('editor.html', content=c)
 
-# FAIL-SAFE 2: CRITICAL FIX FOR YOUR ERROR
-# This tells Flask: if HTML asks for 'content_generator', use the 'editor' function
 app.add_url_rule('/editor', endpoint='content_generator', view_func=editor)
 
 @app.route('/content-library')
@@ -160,8 +155,6 @@ def signup():
     if request.method == 'POST':
         try:
             data = request.get_json() if request.is_json else request.form
-            
-            # Validations
             if not data.get('username') or len(data.get('username')) < 3:
                 return jsonify({'error': 'Username required (min 3 chars)'}), 400
             if User.query.filter_by(username=data.get('username')).first():
@@ -172,7 +165,6 @@ def signup():
             hashed = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
             user = User(username=data.get('username'), email=data.get('email').lower(), password_hash=hashed)
             
-            # First user becomes Admin
             if User.query.count() == 0: user.is_admin = True
             
             db.session.add(user)
@@ -218,14 +210,12 @@ def admin_delete_user(user_id):
     if not getattr(current_user, 'is_admin', False): return jsonify({'error': 'Unauthorized'}), 403
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id: return jsonify({'error': 'Cannot delete yourself'}), 400
-    
-    # DB Cascade handles content deletion
     db.session.delete(user)
     db.session.commit()
     return jsonify({'success': True})
 
 # ==========================================
-# 7. TOOL ROUTES (With Security)
+# 7. TOOL ROUTES
 # ==========================================
 @app.route('/tool/<tool_name>')
 @login_required
@@ -235,15 +225,12 @@ def tool_view(tool_name):
     if tool_name not in all_tools:
         return "Tool not found", 404
 
-    # ENFORCE PRO LIMITS
     if tool_name in PRO_TOOLS and current_user.tier == 'free':
         flash("Upgrade to Pro to use this tool!", "warning")
         return redirect('/pricing')
         
-    # File naming convention: tool-name -> tool_name.html
     return render_template(f'{tool_name.replace("-", "_")}.html')
 
-# Register URL rules for all tools
 tool_list = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
     'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
@@ -253,7 +240,6 @@ tool_list = [
 ]
 
 for t in tool_list:
-    # FAIL-SAFE 3: Register BOTH hyphenated and underscored versions
     app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
     if '-' in t:
         app.add_url_rule(f'/{t}', endpoint=t.replace('-', '_'), view_func=lambda t=t: tool_view(t))
@@ -274,7 +260,7 @@ def api_save_content():
             if c and c.user_id == current_user.id:
                 c.title = d.get('title'); c.content = d.get('content'); c.html_content = d.get('html_content')
                 c.keyword = d.get('keyword'); c.word_count = len(d.get('content', '').split())
-                
+                # Simple score fallback
                 score = 0
                 if c.word_count > 800: score += 40
                 if c.keyword and c.keyword.lower() in c.title.lower(): score += 30
@@ -298,7 +284,6 @@ def api_save_content():
 @app.route('/api/generate-content', methods=['POST'])
 @login_required
 def api_generate_content():
-    # MONTHLY LIMIT CHECK
     limits = current_user.get_limits()
     if current_user.ai_requests_this_month >= limits['ai_requests_per_month']:
         return jsonify({'error': 'Monthly Limit Reached. Upgrade to Pro!'}), 403
@@ -319,6 +304,30 @@ def api_generate_content():
         db.session.commit()
         
         return jsonify({'success': True, 'content': text, 'html_content': markdown.markdown(text)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- NEW FEATURE: SEO Terms Generator ---
+@app.route('/api/generate-seo-terms', methods=['POST'])
+@login_required
+def api_generate_seo_terms():
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword')
+        if not keyword: return jsonify({'error': 'Keyword missing'}), 400
+        
+        # Ask AI for semantic keywords
+        prompt = f"List 20 single-word or two-word semantic keywords (LSI) that are essential for an in-depth article about '{keyword}'. Return ONLY a JSON array of strings. Example: ['term1', 'term2']"
+        
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": "You are an SEO expert JSON generator."}, {"role": "user", "content": prompt}],
+            max_tokens=500
+        )
+        
+        content = res.choices[0].message.content.replace('```json', '').replace('```', '').strip()
+        terms = json.loads(content)
+        
+        return jsonify({'success': True, 'terms': terms})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
 # --- Keyword Clusters ---
@@ -363,22 +372,6 @@ def api_analyze_competitor():
             'word_count': len(soup.get_text().split()),
             'images': images, 'total_images': len(images)
         }})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- WordPress ---
-@app.route('/api/publish-wordpress', methods=['POST'])
-@login_required
-def api_publish_wordpress():
-    data = request.get_json()
-    wp_url = data.get('url').rstrip('/')
-    creds = f"{data.get('username')}:{data.get('password')}"
-    token = base64.b64encode(creds.encode()).decode('utf-8')
-    headers = {'Authorization': f'Basic {token}', 'Content-Type': 'application/json'}
-    payload = {'title': data.get('title'), 'content': data.get('content'), 'status': 'draft'}
-    try:
-        r = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=payload)
-        if r.status_code == 201: return jsonify({'success': True, 'link': r.json().get('link')})
-        return jsonify({'error': f"WP Error: {r.text}"}), 400
     except Exception as e: return jsonify({'error': str(e)}), 500
 
 # --- Delete Content ---
