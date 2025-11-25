@@ -3,16 +3,22 @@
 {% block content %}
 <div class="container-fluid" style="height: calc(100vh - 80px);">
     <div class="row h-100">
-        <!-- MAIN EDITOR AREA -->
+        <!-- MAIN EDITOR -->
         <div class="col-lg-9 col-md-8 h-100 d-flex flex-column p-0 bg-white border-end">
             <!-- Toolbar -->
             <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
                 <div class="input-group w-50">
                     <input type="text" id="docTitle" class="form-control border-0 bg-transparent fw-bold fs-5" 
-                           value="{{ content.title if content else '' }}" placeholder="Enter Article Title..." style="box-shadow: none;">
+                           value="{{ content.title if content else '' }}" placeholder="Enter Article Title...">
                 </div>
                 <div>
                     <span id="saveStatus" class="text-muted small me-3">Saved</span>
+                    
+                    <!-- WORDPRESS BUTTON -->
+                    <button class="btn btn-dark btn-sm rounded-pill px-3 me-1" data-bs-toggle="modal" data-bs-target="#wpModal">
+                        <i class="fab fa-wordpress"></i> Publish
+                    </button>
+
                     <button class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#aiModal">
                         <i class="fas fa-robot"></i> AI Writer
                     </button>
@@ -22,7 +28,7 @@
                 </div>
             </div>
 
-            <!-- Formatting Bar -->
+            <!-- Formatting -->
             <div class="bg-white border-bottom p-2 sticky-top d-flex gap-2">
                 <button class="btn btn-sm btn-light" onclick="execCmd('bold')"><b>B</b></button>
                 <button class="btn btn-sm btn-light" onclick="execCmd('italic')"><i>I</i></button>
@@ -32,7 +38,7 @@
                 <button class="btn btn-sm btn-light" onclick="execCmd('createLink', prompt('Enter URL:', 'http://'))"><i class="fas fa-link"></i></button>
             </div>
 
-            <!-- Writing Canvas -->
+            <!-- Canvas -->
             <div id="editor" contenteditable="true" class="flex-grow-1 p-5" 
                  style="outline: none; overflow-y: auto; font-size: 18px; line-height: 1.8; max-width: 900px; margin: 0 auto; font-family: 'Georgia', serif; color: #333;">
                 {% if content and content.html_content %}
@@ -43,48 +49,30 @@
             </div>
         </div>
 
-        <!-- SEO SIDEBAR -->
+        <!-- SIDEBAR -->
         <div class="col-lg-3 col-md-4 h-100 bg-light p-0 overflow-auto border-start">
             <div class="p-4">
                 <h6 class="fw-bold text-uppercase text-muted small mb-3">SEO Score</h6>
-                
-                <!-- Score Circle -->
                 <div class="d-flex justify-content-center mb-4">
                     <div class="position-relative d-flex align-items-center justify-content-center shadow-sm bg-white" 
-                         id="scoreCircle" 
-                         style="width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(red 0%, #ddd 0%); transition: 0.5s;">
+                         id="scoreCircle" style="width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(red 0%, #ddd 0%); transition: 0.5s;">
                         <span class="h1 fw-bold mb-0" id="scoreValue">0</span>
                     </div>
                 </div>
-
-                <!-- Keyword Input -->
                 <div class="mb-4">
                     <label class="form-label small fw-bold">Focus Keyword</label>
-                    <input type="text" id="targetKeyword" class="form-control" value="{{ content.keyword if content else '' }}" placeholder="e.g. digital marketing">
+                    <input type="text" id="targetKeyword" class="form-control" value="{{ content.keyword if content else '' }}">
                 </div>
-
-                <!-- Checklist -->
-                <h6 class="fw-bold text-uppercase text-muted small mb-2">Optimization</h6>
+                <h6 class="fw-bold text-uppercase text-muted small mb-2">Checklist</h6>
                 <ul class="list-group list-group-flush rounded shadow-sm">
                     <li class="list-group-item d-flex justify-content-between align-items-center small">
-                        <span>Word Count (>800)</span>
-                        <span id="checkWords" class="badge bg-secondary">0</span>
+                        <span>Word Count (>800)</span><span id="checkWords" class="badge bg-secondary">0</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center small">
-                        <span>Title contains Keyword</span>
-                        <span id="checkTitle" class="badge bg-danger">No</span>
+                        <span>Title Keyword</span><span id="checkTitle" class="badge bg-danger">No</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center small">
-                        <span>Intro contains Keyword</span>
-                        <span id="checkIntro" class="badge bg-danger">No</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center small">
-                        <span>Keyword Density</span>
-                        <span id="checkDensity" class="badge bg-secondary">0%</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center small">
-                        <span>Use of H2/H3</span>
-                        <span id="checkHeadings" class="badge bg-secondary">0</span>
+                        <span>Headings</span><span id="checkHeadings" class="badge bg-secondary">0</span>
                     </li>
                 </ul>
             </div>
@@ -92,28 +80,47 @@
     </div>
 </div>
 
-<!-- AI Modal (Same logic as before, kept for functionality) -->
+<!-- AI Modal -->
 <div class="modal fade" id="aiModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">AI Writer Assistant</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header"><h5>AI Writer</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="text" id="aiKeyword" class="form-control mb-3" placeholder="Topic...">
+                <select id="aiMode" class="form-select mb-3"><option value="standard">Standard</option><option value="human">Human-Like</option></select>
+                <button class="btn btn-primary w-100" onclick="generateAI()">Generate</button>
+                <div id="aiLoading" class="mt-2 text-center" style="display:none;">Generating...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- WORDPRESS MODAL -->
+<div class="modal fade" id="wpModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fab fa-wordpress"></i> Publish to WordPress</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <label class="form-label">What should we write about?</label>
-                <input type="text" id="aiKeyword" class="form-control mb-3" placeholder="Topic or Keyword...">
-                <label class="form-label">Writing Tone</label>
-                <select id="aiMode" class="form-select mb-3">
-                    <option value="standard">SEO Optimized (Standard)</option>
-                    <option value="human">Human-Like (Opinionated)</option>
-                </select>
-                <div id="aiLoading" class="alert alert-info" style="display:none;">
-                    <div class="spinner-border spinner-border-sm me-2"></div> Generating content...
+                <p class="small text-muted">Requires an "Application Password" from WP Admin > Users > Profile.</p>
+                <div class="mb-3">
+                    <label>Website URL</label>
+                    <input type="url" id="wpUrl" class="form-control" placeholder="https://yourblog.com">
                 </div>
+                <div class="mb-3">
+                    <label>Username</label>
+                    <input type="text" id="wpUser" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label>Application Password</label>
+                    <input type="password" id="wpPass" class="form-control" placeholder="xxxx xxxx xxxx xxxx">
+                </div>
+                <div id="wpMsg" class="alert alert-info" style="display:none;"></div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary w-100" onclick="generateAI()">Generate Article</button>
+                <button class="btn btn-dark w-100" onclick="publishToWP()">Publish Draft</button>
             </div>
         </div>
     </div>
@@ -125,48 +132,34 @@ const editor = document.getElementById('editor');
 const titleInput = document.getElementById('docTitle');
 const keywordInput = document.getElementById('targetKeyword');
 
-function execCmd(command, value = null) { document.execCommand(command, false, value); updateSeoScore(); }
+function execCmd(c, v=null) { document.execCommand(c, false, v); updateSeoScore(); }
 
 function updateSeoScore() {
     const text = editor.innerText || "";
     const html = editor.innerHTML;
-    const keyword = keywordInput.value.toLowerCase().trim();
+    const kw = keywordInput.value.toLowerCase().trim();
     const title = titleInput.value.toLowerCase().trim();
-
     let score = 0;
-    const wordCount = text.trim().split(/\s+/).length;
     
-    const wordsEl = document.getElementById('checkWords');
-    wordsEl.innerText = wordCount;
-    if(wordCount > 800) { wordsEl.className = "badge bg-success"; score += 30; }
-    else if(wordCount > 300) { wordsEl.className = "badge bg-warning text-dark"; score += 15; }
-    else { wordsEl.className = "badge bg-danger"; }
+    // Words
+    const wc = text.trim().split(/\s+/).length;
+    document.getElementById('checkWords').innerText = wc;
+    if(wc > 800) { score += 30; document.getElementById('checkWords').className = "badge bg-success"; }
+    else { document.getElementById('checkWords').className = "badge bg-warning text-dark"; }
 
-    if(keyword) {
-        const titleCheck = document.getElementById('checkTitle');
-        if(title.includes(keyword)) { titleCheck.className = "badge bg-success"; titleCheck.innerText = "Yes"; score += 20; }
-        else { titleCheck.className = "badge bg-danger"; titleCheck.innerText = "No"; }
+    // Keyword in Title
+    if(kw && title.includes(kw)) { score += 20; document.getElementById('checkTitle').className="badge bg-success"; document.getElementById('checkTitle').innerText="Yes"; }
+    else { document.getElementById('checkTitle').className="badge bg-danger"; document.getElementById('checkTitle').innerText="No"; }
 
-        const introCheck = document.getElementById('checkIntro');
-        if(text.substring(0, 200).toLowerCase().includes(keyword)) { introCheck.className = "badge bg-success"; introCheck.innerText = "Yes"; score += 20; }
-        else { introCheck.className = "badge bg-danger"; introCheck.innerText = "No"; }
+    // Headings
+    const hc = (html.match(/<h[23]/g) || []).length;
+    document.getElementById('checkHeadings').innerText = hc;
+    if(hc > 2) score += 10;
 
-        const regex = new RegExp(keyword, "gi");
-        const matches = (text.match(regex) || []).length;
-        const density = wordCount > 0 ? ((matches / wordCount) * 100).toFixed(1) : 0;
-        document.getElementById('checkDensity').innerText = density + "%";
-        if(density >= 0.5 && density <= 2.5) { score += 20; } else { score += 5; }
-    }
-
-    const hCount = (html.match(/<h[23]/g) || []).length;
-    document.getElementById('checkHeadings').innerText = hCount;
-    if(hCount > 2) score += 10;
-
-    score = Math.min(score, 100);
+    // Visuals
+    score = Math.min(score + (wc > 100 ? 10 : 0), 100);
     document.getElementById('scoreValue').innerText = score;
-    
-    let color = score < 50 ? '#dc3545' : (score < 80 ? '#ffc107' : '#198754');
-    document.getElementById('scoreCircle').style.background = `conic-gradient(${color} ${score}%, #e9ecef ${score}% 100%)`;
+    document.getElementById('scoreCircle').style.background = `conic-gradient(${score < 50 ? 'red' : '#198754'} ${score}%, #e9ecef ${score}% 100%)`;
 }
 
 editor.addEventListener('keyup', updateSeoScore);
@@ -174,49 +167,70 @@ titleInput.addEventListener('keyup', updateSeoScore);
 keywordInput.addEventListener('keyup', updateSeoScore);
 
 async function generateAI() {
-    const keyword = document.getElementById('aiKeyword').value;
-    const mode = document.getElementById('aiMode').value;
-    if(!keyword) return alert("Enter a keyword");
-
+    const k = document.getElementById('aiKeyword').value;
+    const m = document.getElementById('aiMode').value;
+    if(!k) return alert("Enter topic");
     document.getElementById('aiLoading').style.display = 'block';
     try {
-        const res = await fetch('/api/generate-content', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ keyword: keyword, mode: mode })
-        });
-        const data = await res.json();
+        const r = await fetch('/api/generate-content', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({keyword:k, mode:m})});
+        const d = await r.json();
         document.getElementById('aiLoading').style.display = 'none';
-
-        if(data.error) { alert(data.error); } else {
-            editor.innerHTML = data.html_content;
-            titleInput.value = `${keyword} (${mode})`;
-            keywordInput.value = keyword;
-            contentId = data.id;
+        if(d.success) {
+            editor.innerHTML = d.html_content;
+            titleInput.value = `${k}`;
+            keywordInput.value = k;
             bootstrap.Modal.getInstance(document.getElementById('aiModal')).hide();
             updateSeoScore();
             saveContent();
-        }
-    } catch(e) { alert("Network Error"); }
+        } else { alert(d.error); }
+    } catch(e) { alert("Error"); }
 }
 
 async function saveContent() {
     document.getElementById('saveStatus').innerText = "Saving...";
     try {
-        const res = await fetch('/api/save-content', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+        const r = await fetch('/api/save-content', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({id: contentId, title: titleInput.value, keyword: keywordInput.value, content: editor.innerText, html_content: editor.innerHTML})
+        });
+        const d = await r.json();
+        if(d.success) {
+            document.getElementById('saveStatus').innerText = "Saved";
+            if(d.id) { contentId = d.id; window.history.pushState({}, "", `/editor?id=${contentId}`); }
+        } else { alert("Save Failed"); }
+    } catch(e) { alert("Save Error"); }
+}
+
+async function publishToWP() {
+    const url = document.getElementById('wpUrl').value;
+    const user = document.getElementById('wpUser').value;
+    const pass = document.getElementById('wpPass').value;
+    
+    if(!url || !user || !pass) return alert("Fill all details");
+    
+    const msg = document.getElementById('wpMsg');
+    msg.style.display = 'block';
+    msg.innerText = "Publishing to WordPress...";
+    
+    try {
+        const res = await fetch('/api/publish-wordpress', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                id: contentId, title: titleInput.value,
-                keyword: keywordInput.value, content: editor.innerText, html_content: editor.innerHTML
+                url: url, username: user, password: pass,
+                title: titleInput.value, content: editor.innerHTML
             })
         });
-        const result = await res.json();
-        if(result.success) {
-            document.getElementById('saveStatus').innerText = "Saved";
-            if(result.id) { contentId = result.id; window.history.pushState({}, "", `/editor?id=${contentId}`); }
-        } else { alert(result.error); }
-    } catch(e) { alert("Save Error"); }
+        const data = await res.json();
+        if(data.success) {
+            msg.className = "alert alert-success";
+            msg.innerHTML = `Published! <a href="${data.link}" target="_blank">View Post</a>`;
+        } else {
+            msg.className = "alert alert-danger";
+            msg.innerText = data.error;
+        }
+    } catch(e) {
+        msg.innerText = "Network Error";
+    }
 }
 
 window.onload = updateSeoScore;
