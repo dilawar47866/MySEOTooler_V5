@@ -1,97 +1,98 @@
 {% extends "base.html" %}
 
+{% block title %}Robots.txt Generator - MySEO King{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-robot"></i> Robots.txt Generator</h2>
-    </div>
-
-    <div class="row">
-        <!-- Input Form -->
-        <div class="col-md-5">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light fw-bold">Configuration</div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">User Agent</label>
-                        <input type="text" id="userAgent" class="form-control" value="*" placeholder="*">
-                        <small class="text-muted">Use * for all bots, or Googlebot for Google.</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Disallow Path</label>
-                        <input type="text" id="disallowPath" class="form-control" placeholder="/admin">
-                        <small class="text-muted">Folder to block from search engines.</small>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Allow Path</label>
-                        <input type="text" id="allowPath" class="form-control" placeholder="/public">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Sitemap URL (Optional)</label>
-                        <input type="url" id="sitemapUrl" class="form-control" placeholder="https://mysite.com/sitemap.xml">
-                    </div>
-
-                    <button class="btn btn-success w-100 mt-3" onclick="generateRobots()">
-                        <i class="fas fa-cog"></i> Generate File
-                    </button>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Robots.txt Generator</h2>
+                    <p class="text-muted">Create the file that tells search engines what to index.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-robot fa-2x text-primary"></i>
                 </div>
             </div>
-        </div>
 
-        <!-- Output Area -->
-        <div class="col-md-7">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light fw-bold">Generated Output</div>
-                <div class="card-body d-flex flex-column">
-                    <textarea id="robotsOutput" class="form-control flex-grow-1 mb-3" 
-                        style="font-family: monospace; min-height: 300px; background-color: #f8f9fa;" readonly>User-agent: *
-Disallow: /</textarea>
-                    
-                    <button class="btn btn-outline-primary" onclick="copyToClipboard()">
-                        <i class="fas fa-copy"></i> Copy to Clipboard
-                    </button>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold mb-3">Configuration</h5>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">User Agent</label>
+                                <select id="userAgent" class="form-select">
+                                    <option value="*">All Robots (*)</option>
+                                    <option value="Googlebot">Googlebot</option>
+                                    <option value="Bingbot">Bingbot</option>
+                                </select>
+                                <div class="form-text">Who are these rules for? Usually '*'.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Disallow (Private Pages)</label>
+                                <input type="text" id="disallowPath" class="form-control" placeholder="/admin/">
+                                <div class="form-text">Path to block (e.g. /admin/ or /cgi-bin/).</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Sitemap URL (Optional)</label>
+                                <input type="url" id="sitemapUrl" class="form-control" placeholder="https://example.com/sitemap.xml">
+                            </div>
+
+                            <button class="btn btn-primary w-100 mt-3" onclick="generateRobots()">
+                                Generate File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100 bg-dark text-white">
+                        <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-light">robots.txt</span>
+                            <button class="btn btn-sm btn-light" onclick="downloadRobots()">Download</button>
+                        </div>
+                        <div class="card-body p-0">
+                            <textarea id="robotsOutput" class="form-control bg-dark text-white border-0 font-monospace p-3 h-100" readonly style="min-height: 300px;"></textarea>
+                        </div>
+                    </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
 
 <script>
 async function generateRobots() {
-    const data = {
-        userAgent: document.getElementById('userAgent').value || '*',
+    const payload = {
+        userAgent: document.getElementById('userAgent').value,
         disallow: document.getElementById('disallowPath').value,
-        allow: document.getElementById('allowPath').value,
         sitemap: document.getElementById('sitemapUrl').value
     };
 
-    try {
-        const res = await fetch('/api/generate-robots', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        });
-
-        const result = await res.json();
-        
-        if(result.success) {
-            document.getElementById('robotsOutput').value = result.content;
-        } else {
-            alert("Error: " + result.error);
-        }
-    } catch (e) {
-        alert("Network Error");
-    }
+    const res = await fetch('/api/generate-robots', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    document.getElementById('robotsOutput').value = data.content;
 }
 
-function copyToClipboard() {
-    const copyText = document.getElementById("robotsOutput");
-    copyText.select();
-    document.execCommand("copy");
-    alert("Copied to clipboard!");
+function downloadRobots() {
+    const text = document.getElementById('robotsOutput').value;
+    if(!text) return alert("Generate first!");
+    const blob = new Blob([text], { type: "text/plain" });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = "robots.txt";
+    a.click();
 }
 </script>
 {% endblock %}
