@@ -18,6 +18,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Database Config
+# Use SQLite for local dev, Postgres for production
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///myseotoolver5.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
@@ -129,6 +130,57 @@ def pricing():
 @login_required
 def profile():
     return render_template('profile.html')
+
+# --- TECHNICAL SEO ROUTES (For Google Bot) ---
+@app.route('/robots.txt')
+def robots_txt():
+    # Tells Google: "You can crawl everything except my dashboard."
+    lines = [
+        "User-agent: *",
+        "Disallow: /dashboard",
+        "Disallow: /editor",
+        "Disallow: /profile",
+        f"Sitemap: {request.url_root}sitemap.xml"
+    ]
+    return "\n".join(lines), 200, {'Content-Type': 'text/plain'}
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    # Dynamically generates a list of all your tool pages
+    base_url = request.url_root.rstrip('/')
+    
+    # Static pages
+    pages = ['/', '/pricing', '/login', '/signup']
+    
+    # Add all your tool pages automatically (so Google finds them)
+    tool_list = [
+        'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
+        'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
+        'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
+        'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
+        'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis'
+    ]
+    
+    # NOTE: We link to the public landing pages if you have them. 
+    # Since these tools are behind login, Google can't crawl the tool itself, 
+    # BUT having them in sitemap helps discoverability if you create landing pages for them later.
+    # For now, we map them to a generic structure or assume you might make public landers.
+    # Ideally, create a public landing page for each tool (e.g., /tools/keyword-research-tool) that links to login.
+    
+    # Build XML
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    
+    for page in pages:
+        xml += f'  <url>\n'
+        xml += f'    <loc>{base_url}{page}</loc>\n'
+        xml += f'    <changefreq>weekly</changefreq>\n'
+        xml += f'    <priority>{0.8 if page == "/" else 0.6}</priority>\n'
+        xml += f'  </url>\n'
+        
+    xml += '</urlset>'
+    
+    return xml, 200, {'Content-Type': 'application/xml'}
 
 # ==========================================
 # 5. AUTHENTICATION ROUTES
@@ -260,7 +312,6 @@ def api_save_content():
             if c and c.user_id == current_user.id:
                 c.title = d.get('title'); c.content = d.get('content'); c.html_content = d.get('html_content')
                 c.keyword = d.get('keyword'); c.word_count = len(d.get('content', '').split())
-                # Simple score fallback
                 score = 0
                 if c.word_count > 800: score += 40
                 if c.keyword and c.keyword.lower() in c.title.lower(): score += 30
