@@ -1,131 +1,45 @@
 {% extends "base.html" %}
-{% block title %}Pricing - myseokingtool {% endblock %}
 {% block content %}
-<div class="container">
-    <div class="text-center mb-5">
-        <h1>💎 Pricing Plans</h1>
-        <p class="text-muted">Choose the perfect plan for your SEO needs</p>
-    </div>
+<div class="container mt-5 text-center">
+    <h1 class="fw-bold mb-3">Simple, Transparent Pricing</h1>
+    <p class="text-muted mb-5">Choose the plan that fits your content needs.</p>
 
-    <div class="row">
-        <!-- Free Plan -->
-        <div class="col-md-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body text-center">
-                    <h3>Free</h3>
-                    <div class="display-4 my-4">$0</div>
-                    <p class="text-muted">per month</p>
-                    <hr>
-                    <ul class="list-unstyled text-left">
-                        <li class="mb-2">✅ 5 content pieces/month</li>
-                        <li class="mb-2">✅ 50 AI requests/month</li>
-                        <li class="mb-2">✅ Basic SEO tools</li>
-                        <li class="mb-2">✅ Keyword research</li>
-                        <li class="mb-2">✅ Export: TXT, HTML</li>
-                        <li class="mb-2 text-muted">❌ Advanced features</li>
-                    </ul>
-                    {% if current_user.is_authenticated and current_user.tier == 'free' %}
-                    <button class="btn btn-secondary btn-block" disabled>Current Plan</button>
-                    {% else %}
-                    <a href="{{ url_for('signup') }}" class="btn btn-outline-primary btn-block">Get Started</a>
-                    {% endif %}
-                </div>
+    <div class="row justify-content-center">
+        <!-- FREE PLAN -->
+        <div class="col-md-4">
+            <div class="card p-4 h-100 border-0 shadow-sm">
+                <h4 class="fw-bold">Starter</h4>
+                <h2 class="my-3">$0 <small class="text-muted fs-6">/mo</small></h2>
+                <ul class="list-unstyled text-start mb-4">
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Requests</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Basic SEO Tools</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Standard Support</li>
+                </ul>
+                <button class="btn btn-outline-primary w-100 disabled">Current Plan</button>
             </div>
         </div>
 
-        <!-- Pro Plan -->
-        <div class="col-md-4 mb-4">
-            <div class="card h-100 border-primary shadow">
-                <div class="card-header bg-primary text-white text-center">
-                    <strong>⭐ MOST POPULAR</strong>
-                </div>
-                <div class="card-body text-center">
-                    <h3>Pro</h3>
-                    <div class="display-4 my-4">$29</div>
-                    <p class="text-muted">per month</p>
-                    <hr>
-                    <ul class="list-unstyled text-left">
-                        <li class="mb-2">✅ 50 content pieces/month</li>
-                        <li class="mb-2">✅ 500 AI requests/month</li>
-                        <li class="mb-2">✅ All SEO tools</li>
-                        <li class="mb-2">✅ Advanced analytics</li>
-                        <li class="mb-2">✅ Export: All formats</li>
-                        <li class="mb-2">✅ Priority support</li>
-                    </ul>
-                    {% if current_user.is_authenticated %}
-                        {% if current_user.tier == 'pro' %}
-                        <button class="btn btn-success btn-block" disabled>Current Plan</button>
-                        {% else %}
-                        <button onclick="upgradePlan('pro')" class="btn btn-primary btn-block">Upgrade to Pro</button>
-                        {% endif %}
-                    {% else %}
-                    <a href="{{ url_for('signup') }}" class="btn btn-primary btn-block">Get Started</a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Enterprise Plan -->
-        <div class="col-md-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body text-center">
-                    <h3>Enterprise</h3>
-                    <div class="display-4 my-4">$99</div>
-                    <p class="text-muted">per month</p>
-                    <hr>
-                    <ul class="list-unstyled text-left">
-                        <li class="mb-2">✅ Unlimited content</li>
-                        <li class="mb-2">✅ Unlimited AI requests</li>
-                        <li class="mb-2">✅ All Pro features</li>
-                        <li class="mb-2">✅ API access</li>
-                        <li class="mb-2">✅ White-label option</li>
-                        <li class="mb-2">✅ Dedicated support</li>
-                    </ul>
-                    {% if current_user.is_authenticated %}
-                        {% if current_user.tier == 'enterprise' %}
-                        <button class="btn btn-success btn-block" disabled>Current Plan</button>
-                        {% else %}
-                        <button onclick="upgradePlan('enterprise')" class="btn btn-outline-primary btn-block">Upgrade to Enterprise</button>
-                        {% endif %}
-                    {% else %}
-                    <a href="{{ url_for('signup') }}" class="btn btn-outline-primary btn-block">Get Started</a>
-                    {% endif %}
-                </div>
+        <!-- PRO PLAN (The Upsell) -->
+        <div class="col-md-4">
+            <div class="card p-4 h-100 border-primary shadow" style="border-top: 5px solid #4f46e5;">
+                <div class="badge bg-primary position-absolute top-0 end-0 m-3">POPULAR</div>
+                <h4 class="fw-bold text-primary">Pro King</h4>
+                <h2 class="my-3">$29 <small class="text-muted fs-6">/mo</small></h2>
+                <ul class="list-unstyled text-start mb-4">
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Requests</strong></li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Access to Competitor Spy</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Bulk Image SEO</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Priority Email Support</li>
+                </ul>
+                
+                <!-- DIRECT EMAIL LINK -->
+                <a href="mailto:support@myseokingtool.com?subject=Upgrade%20Request&body=Hello%2C%20I%20would%20like%20to%20upgrade%20to%20the%20Pro%20Plan.%20My%20username%20is%3A%20{{ current_user.username }}" 
+                   class="btn btn-primary w-100 btn-lg">
+                   <i class="fas fa-envelope me-2"></i> Contact to Upgrade
+                </a>
+                <small class="text-muted d-block mt-2">Manual activation (response &lt; 24h)</small>
             </div>
         </div>
     </div>
-
-    <div class="container text-center my-5 py-4">
-    <p class="text-muted mb-2">
-        Need an upgrade or a custom plan?
-    </p>
-    <a href="mailto:support@myseokingtool.com" class="btn btn-outline-primary px-4">
-        Contact Us
-    </a>
 </div>
-
-<script>
-async function upgradePlan(tier) {
-    if (!confirm(`Upgrade to ${tier.toUpperCase()} plan?`)) return;
-    
-    try {
-        const res = await fetch('/upgrade', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({tier: tier})
-        });
-        
-        const data = await res.json();
-        
-        if (data.success) {
-            alert('✅ Upgraded successfully!');
-            window.location.reload();
-        } else {
-            alert('⚠️ ' + (data.error || 'Payment integration coming soon!'));
-        }
-    } catch (err) {
-        alert('❌ Error: ' + err.message);
-    }
-}
-</script>
 {% endblock %}
