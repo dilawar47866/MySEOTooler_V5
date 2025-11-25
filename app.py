@@ -127,10 +127,48 @@ def logout(): logout_user(); return redirect('/')
 @app.route('/admin')
 @login_required
 def admin():
-    if not getattr(current_user, 'is_admin', False): return redirect('/dashboard')
+    if not getattr(current_user, 'is_admin', False): 
+        return redirect('/dashboard')
+    
+    # Sort by ID desc
     users = User.query.order_by(User.id.desc()).all()
     total_content = Content.query.count()
     return render_template('admin.html', users=users, total_content=total_content)
+
+@app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
+@login_required
+def admin_toggle_user(user_id):
+    # Security: Only admins can do this
+    if not getattr(current_user, 'is_admin', False): 
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    user = User.query.get_or_404(user_id)
+    
+    # Prevent banning yourself
+    if user.id == current_user.id: 
+        return jsonify({'error': 'Cannot ban yourself'}), 400
+        
+    # Toggle status (Ban/Unban)
+    # Note: You might need to add 'is_active' to your DB if it's missing, 
+    # but the User model I gave you earlier included 'is_active'.
+    if not hasattr(user, 'is_active'):
+        user.is_active = True
+        
+    user.is_active = not user.is_active
+    db.session.commit()
+    
+    return jsonify({'success': True, 'status': user.is_active})
+
+@app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
+@login_required
+def admin_delete_user(user_id):
+    if not getattr(current_user, 'is_admin', False): return jsonify({'error': 'Unauthorized'}), 403
+    user = User.query.get_or_404(user_id)
+    if user.id == current_user.id: return jsonify({'error': 'Cannot delete yourself'}), 400
+    
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({'success': True})
 
 # --- TOOL ROUTES ---
 tools = ['content-library', 'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
