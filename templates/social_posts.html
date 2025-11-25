@@ -1,185 +1,55 @@
 {% extends "base.html" %}
-{% block title %}Social Media Posts Generator - My SEO King Tool V5{% endblock %}
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <h1><i class="fas fa-share-alt"></i> Social Media Posts Generator</h1>
-            <p class="text-muted mb-4">Create engaging social posts from your content with AI</p>
-
-            <!-- Input Card -->
-            <div class="card p-4 mb-4">
-                <div class="form-group">
-                    <label><strong>Your Content</strong></label>
-                    <textarea id="contentInput" class="form-control" rows="8" 
-                              placeholder="Paste your article or blog post content here..."></textarea>
-                    <small class="text-muted">AI will create promotional posts for each platform</small>
-                </div>
-
-                <div class="form-group">
-                    <label><strong>Select Platforms</strong></label>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="custom-control custom-checkbox">
-                                <input type="checkbox" class="custom-control-input platform-check" 
-                                       id="twitterCheck" value="twitter" checked>
-                                <label class="custom-control-label" for="twitterCheck">
-                                    <i class="fab fa-twitter text-info"></i> Twitter/X
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="custom-control custom-checkbox">
-                                <input type="checkbox" class="custom-control-input platform-check" 
-                                       id="linkedinCheck" value="linkedin" checked>
-                                <label class="custom-control-label" for="linkedinCheck">
-                                    <i class="fab fa-linkedin text-primary"></i> LinkedIn
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="custom-control custom-checkbox">
-                                <input type="checkbox" class="custom-control-input platform-check" 
-                                       id="facebookCheck" value="facebook" checked>
-                                <label class="custom-control-label" for="facebookCheck">
-                                    <i class="fab fa-facebook text-primary"></i> Facebook
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <button onclick="generatePosts()" class="btn btn-primary btn-lg btn-block">
-                    <i class="fas fa-magic"></i> Generate Social Posts
-                </button>
-            </div>
-
-            <!-- Loading -->
-            <div id="loading" class="alert alert-info text-center" style="display:none;">
-                <i class="fas fa-spinner fa-spin"></i> Creating social media posts...
-            </div>
-
-            <!-- Results -->
-            <div id="results" style="display:none;">
-                <!-- Twitter -->
-                <div id="twitterSection" class="card p-4 mb-4" style="display:none;">
-                    <h4><i class="fab fa-twitter text-info"></i> Twitter/X Posts</h4>
-                    <p class="text-muted">280 characters max</p>
-                    <div id="twitterPosts" style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
-                        <pre id="twitterText" style="white-space: pre-wrap; font-family: inherit; margin: 0;"></pre>
-                    </div>
-                    <button onclick="copyPost('twitterText')" class="btn btn-info mt-3">
-                        <i class="fas fa-copy"></i> Copy Twitter Posts
-                    </button>
-                </div>
-
-                <!-- LinkedIn -->
-                <div id="linkedinSection" class="card p-4 mb-4" style="display:none;">
-                    <h4><i class="fab fa-linkedin text-primary"></i> LinkedIn Post</h4>
-                    <p class="text-muted">Professional tone, up to 1300 characters</p>
-                    <div id="linkedinPosts" style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
-                        <pre id="linkedinText" style="white-space: pre-wrap; font-family: inherit; margin: 0;"></pre>
-                    </div>
-                    <button onclick="copyPost('linkedinText')" class="btn btn-primary mt-3">
-                        <i class="fas fa-copy"></i> Copy LinkedIn Post
-                    </button>
-                </div>
-
-                <!-- Facebook -->
-                <div id="facebookSection" class="card p-4 mb-4" style="display:none;">
-                    <h4><i class="fab fa-facebook text-primary"></i> Facebook Post</h4>
-                    <p class="text-muted">Conversational tone, around 500 characters</p>
-                    <div id="facebookPosts" style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
-                        <pre id="facebookText" style="white-space: pre-wrap; font-family: inherit; margin: 0;"></pre>
-                    </div>
-                    <button onclick="copyPost('facebookText')" class="btn btn-primary mt-3">
-                        <i class="fas fa-copy"></i> Copy Facebook Post
-                    </button>
-                </div>
-            </div>
-
-            <!-- Tips -->
-            <div class="card p-4 mt-4">
-                <h5><i class="fas fa-lightbulb"></i> Social Media Best Practices</h5>
-                <ul class="mb-0">
-                    <li><strong>Twitter:</strong> Use hashtags (2-3), tag relevant accounts, create threads for more detail</li>
-                    <li><strong>LinkedIn:</strong> Professional tone, include statistics, ask questions to boost engagement</li>
-                    <li><strong>Facebook:</strong> Conversational, use emojis, include call-to-action</li>
-                    <li><strong>Timing:</strong> Post when your audience is most active</li>
-                    <li><strong>Visuals:</strong> Always include images or videos for better engagement</li>
-                </ul>
-            </div>
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <h2 class="text-2xl font-bold mb-6 text-slate-800"><i class="fas fa-share-alt mr-2 text-blue-500"></i> Social Media Post Generator</h2>
+        
+        <div class="mb-6">
+            <label class="block text-sm font-bold mb-2 text-slate-700">Paste your Article or Content:</label>
+            <textarea id="inputContent" rows="6" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Paste content here..."></textarea>
         </div>
+        
+        <button onclick="generate()" id="btn" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition w-full">
+            <i class="fas fa-magic mr-2"></i> Generate Posts
+        </button>
+
+        <div id="result" class="hidden mt-8 space-y-6"></div>
     </div>
 </div>
 
 <script>
-async function generatePosts() {
-    const content = document.getElementById('contentInput').value.trim();
+async function generate() {
+    const btn = document.getElementById('btn');
+    const content = document.getElementById('inputContent').value;
+    const resDiv = document.getElementById('result');
     
-    if (!content) {
-        alert('⚠️ Please enter your content');
-        return;
-    }
+    if(!content) return alert("Please enter content");
     
-    if (content.split(' ').length < 50) {
-        alert('⚠️ Content should be at least 50 words');
-        return;
-    }
-    
-    const platforms = Array.from(document.querySelectorAll('.platform-check:checked'))
-        .map(cb => cb.value);
-    
-    if (platforms.length === 0) {
-        alert('⚠️ Please select at least one platform');
-        return;
-    }
-    
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    btn.disabled = true;
     
     try {
         const res = await fetch('/api/generate-social-posts', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({content: content, platforms: platforms})
+            body: JSON.stringify({content: content})
         });
-        
         const data = await res.json();
         
-        if (!res.ok) throw new Error(data.error || 'Generation failed');
+        if(data.error) throw new Error(data.error);
         
-        // Display posts for each platform
-        if (data.posts.twitter) {
-            document.getElementById('twitterText').textContent = data.posts.twitter;
-            document.getElementById('twitterSection').style.display = 'block';
-        }
+        let html = '';
+        // The API returns text, usually separated by platform
+        html += `<div class="bg-gray-50 p-6 rounded-lg border border-gray-200 whitespace-pre-wrap">${data.posts.generated}</div>`;
         
-        if (data.posts.linkedin) {
-            document.getElementById('linkedinText').textContent = data.posts.linkedin;
-            document.getElementById('linkedinSection').style.display = 'block';
-        }
-        
-        if (data.posts.facebook) {
-            document.getElementById('facebookText').textContent = data.posts.facebook;
-            document.getElementById('facebookSection').style.display = 'block';
-        }
-        
-        document.getElementById('results').style.display = 'block';
-        document.getElementById('results').scrollIntoView({behavior: 'smooth'});
-        
-    } catch (err) {
-        alert('❌ ' + err.message);
+        resDiv.innerHTML = html;
+        resDiv.classList.remove('hidden');
+    } catch(e) {
+        alert(e.message);
     } finally {
-        document.getElementById('loading').style.display = 'none';
+        btn.innerHTML = '<i class="fas fa-magic"></i> Generate Posts';
+        btn.disabled = false;
     }
-}
-
-function copyPost(elementId) {
-    const text = document.getElementById(elementId).textContent;
-    navigator.clipboard.writeText(text).then(() => {
-        alert('✅ Post copied to clipboard!');
-    });
 }
 </script>
 {% endblock %}
