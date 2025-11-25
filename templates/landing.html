@@ -12,12 +12,14 @@
         body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
         
         /* Navigation */
-        .navbar { padding: 1.5rem 0; background: #fff; }
+        .navbar { padding: 1.5rem 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
         .navbar-brand { font-weight: 800; font-size: 1.5rem; color: #4f46e5 !important; }
-        
+        .nav-link { font-weight: 600; color: #4b5563 !important; margin: 0 15px; }
+        .nav-link:hover { color: #4f46e5 !important; }
+
         /* Hero Section */
         .hero-section {
-            padding: 100px 0;
+            padding: 120px 0 100px;
             background: radial-gradient(circle at top right, #e0e7ff 0%, #fff 40%);
         }
         .text-gradient {
@@ -26,16 +28,16 @@
             -webkit-text-fill-color: transparent;
         }
         
-        /* Feature Cards */
-        .feature-card {
-            padding: 2rem;
+        /* Cards */
+        .feature-card, .pricing-card {
             border-radius: 16px;
             background: white;
             border: 1px solid #f3f4f6;
             transition: all 0.3s ease;
             height: 100%;
         }
-        .feature-card:hover {
+        .feature-card { padding: 2rem; }
+        .feature-card:hover, .pricing-card:hover {
             transform: translateY(-10px);
             box-shadow: 0 20px 40px rgba(0,0,0,0.08);
             border-color: #4f46e5;
@@ -50,7 +52,7 @@
             margin-bottom: 1.5rem;
         }
 
-        /* CTA Buttons */
+        /* Buttons */
         .btn-primary-custom {
             background: #4f46e5; color: white;
             padding: 12px 30px; border-radius: 50px;
@@ -74,15 +76,25 @@
     <nav class="navbar navbar-expand-lg fixed-top shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="/"><i class="fas fa-crown"></i> MySEO King</a>
-            <div class="d-flex">
-                <a href="/login" class="btn btn-outline-custom me-2">Login</a>
-                <a href="/signup" class="btn btn-primary-custom">Get Started</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#pricing">Pricing</a></li>
+                </ul>
+                <div class="d-flex mt-3 mt-lg-0">
+                    <a href="/login" class="btn btn-outline-custom me-2">Login</a>
+                    <a href="/signup" class="btn btn-primary-custom">Get Started</a>
+                </div>
             </div>
         </div>
     </nav>
 
     <!-- HERO SECTION -->
-    <section class="hero-section text-center mt-5">
+    <section class="hero-section text-center">
         <div class="container">
             <div class="row justify-content-center">
                 <div class="col-lg-8">
@@ -99,7 +111,10 @@
                         <a href="/signup" class="btn btn-primary-custom btn-lg px-5">Start for Free</a>
                         <a href="#features" class="btn btn-outline-custom btn-lg px-5">Explore Tools</a>
                     </div>
-                    <p class="small text-muted mt-3"><i class="fas fa-check-circle text-success"></i> No credit card required &nbsp;&nbsp; <i class="fas fa-check-circle text-success"></i> 50 Free AI Credits</p>
+                    <p class="small text-muted mt-3">
+                        <i class="fas fa-check-circle text-success"></i> No credit card required &nbsp;&nbsp; 
+                        <i class="fas fa-check-circle text-success"></i> 50 Free AI Credits
+                    </p>
                 </div>
             </div>
         </div>
@@ -114,39 +129,34 @@
             </div>
 
             <div class="row g-4">
-                <!-- Feature 1 -->
                 <div class="col-md-4">
                     <div class="feature-card">
                         <div class="icon-box"><i class="fas fa-robot"></i></div>
                         <h4>AI SEO Writer</h4>
-                        <p class="text-muted">Generate long-form, SEO-optimized articles in seconds. Switch between "Standard" and "Human-Like" modes to bypass detection.</p>
+                        <p class="text-muted">Generate long-form, SEO-optimized articles in seconds. Switch between "Standard" and "Human-Like" modes.</p>
                     </div>
                 </div>
-                <!-- Feature 2 -->
                 <div class="col-md-4">
                     <div class="feature-card">
                         <div class="icon-box"><i class="fas fa-project-diagram"></i></div>
                         <h4>Keyword Clusters</h4>
-                        <p class="text-muted">Don't just guess keywords. Our AI builds entire Topic Clusters strategies to help you build topical authority.</p>
+                        <p class="text-muted">Don't just guess keywords. Our AI builds entire Topic Clusters strategies to build topical authority.</p>
                     </div>
                 </div>
-                <!-- Feature 3 -->
                 <div class="col-md-4">
                     <div class="feature-card">
                         <div class="icon-box"><i class="fab fa-wordpress"></i></div>
                         <h4>1-Click Publishing</h4>
-                        <p class="text-muted">Hate copy-pasting? Connect your site and publish your articles directly to WordPress as Drafts.</p>
+                        <p class="text-muted">Connect your site and publish your articles directly to WordPress as Drafts instantly.</p>
                     </div>
                 </div>
-                <!-- Feature 4 -->
                 <div class="col-md-4">
                     <div class="feature-card">
                         <div class="icon-box"><i class="fas fa-chart-pie"></i></div>
                         <h4>Competitor Spy</h4>
-                        <p class="text-muted">Steal your competitor's strategy. Analyze their H1s, Word Count, and Keyword gaps instantly.</p>
+                        <p class="text-muted">Steal your competitor's strategy. Analyze their H1s, Word Count, and Keyword gaps.</p>
                     </div>
                 </div>
-                <!-- Feature 5 -->
                 <div class="col-md-4">
                     <div class="feature-card">
                         <div class="icon-box"><i class="fas fa-images"></i></div>
@@ -154,12 +164,73 @@
                         <p class="text-muted">Scan any URL and find images missing Alt Text. Fix them automatically with AI suggestions.</p>
                     </div>
                 </div>
-                <!-- Feature 6 -->
                 <div class="col-md-4">
                     <div class="feature-card">
                         <div class="icon-box"><i class="fas fa-cogs"></i></div>
                         <h4>Technical Tools</h4>
                         <p class="text-muted">Sitemap Generators, Robots.txt Builders, Schema Markup, and Readability Checkers included.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRICING SECTION -->
+    <section id="pricing" class="py-5 bg-light">
+        <div class="container py-5">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">Simple, Transparent Pricing</h2>
+                <p class="text-muted">Start for free, upgrade as you grow.</p>
+            </div>
+
+            <div class="row justify-content-center g-4">
+                <!-- Free -->
+                <div class="col-md-4">
+                    <div class="pricing-card p-4 h-100">
+                        <h4 class="fw-bold text-secondary">Starter</h4>
+                        <h2 class="my-3">$0 <small class="text-muted fs-6">/mo</small></h2>
+                        <hr>
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Requests</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Basic Tools</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Editor Access</li>
+                        </ul>
+                        <a href="/signup" class="btn btn-outline-secondary w-100 rounded-pill">Start Free</a>
+                    </div>
+                </div>
+
+                <!-- Pro -->
+                <div class="col-md-4">
+                    <div class="pricing-card p-4 h-100 border-primary shadow" style="transform: scale(1.05); border-top: 5px solid #4f46e5;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="fw-bold text-primary">Pro King</h4>
+                            <span class="badge bg-primary rounded-pill">POPULAR</span>
+                        </div>
+                        <h2 class="my-3">$29 <small class="text-muted fs-6">/mo</small></h2>
+                        <hr>
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Requests</strong></li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Competitor Spy</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Bulk Image SEO</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Priority Support</li>
+                        </ul>
+                        <a href="/signup" class="btn btn-primary w-100 rounded-pill">Get Started</a>
+                    </div>
+                </div>
+
+                <!-- Enterprise -->
+                <div class="col-md-4">
+                    <div class="pricing-card p-4 h-100">
+                        <h4 class="fw-bold text-dark">Enterprise</h4>
+                        <h2 class="my-3">$99 <small class="text-muted fs-6">/mo</small></h2>
+                        <hr>
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Unlimited AI</strong></li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> API Access</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Dedicated Manager</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Custom Integration</li>
+                        </ul>
+                        <a href="/signup" class="btn btn-outline-dark w-100 rounded-pill">Contact Sales</a>
                     </div>
                 </div>
             </div>
@@ -176,8 +247,11 @@
     </section>
 
     <!-- FOOTER -->
-    <footer class="py-4 bg-light mt-auto">
+    <footer class="py-4 bg-white mt-auto border-top">
         <div class="container text-center">
+            <div class="mb-3">
+                <span class="fw-bold text-primary"><i class="fas fa-crown"></i> MySEO King</span>
+            </div>
             <p class="text-muted small mb-0">&copy; 2024 MySEO King Tool. All rights reserved.</p>
             <div class="mt-2">
                 <a href="/login" class="text-decoration-none text-muted me-3">Login</a>
