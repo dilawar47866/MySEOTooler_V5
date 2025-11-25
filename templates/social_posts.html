@@ -1,28 +1,121 @@
 {% extends "base.html" %}
+
+{% block title %}Social Media Generator - MySEO King{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-    <h2><i class="fas fa-share-alt text-primary"></i> Social Media Post Generator</h2>
-    <div class="card p-4 shadow-sm">
-        <label class="fw-bold mb-2">What is your article/topic about?</label>
-        <textarea id="content" class="form-control mb-3" rows="4" placeholder="Paste your article summary or topic here..."></textarea>
-        <button class="btn btn-primary w-100" onclick="genSocial()">Generate Posts (LinkedIn, Twitter, FB)</button>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Social Media Generator</h2>
+                    <p class="text-muted">Generate viral posts for LinkedIn, Twitter (X), and Instagram.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fab fa-twitter fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Platform</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="platform" id="plat1" value="LinkedIn" checked>
+                            <label class="btn btn-outline-primary" for="plat1"><i class="fab fa-linkedin me-1"></i> LinkedIn</label>
+
+                            <input type="radio" class="btn-check" name="platform" id="plat2" value="Twitter">
+                            <label class="btn btn-outline-primary" for="plat2"><i class="fab fa-twitter me-1"></i> Twitter</label>
+
+                            <input type="radio" class="btn-check" name="platform" id="plat3" value="Instagram">
+                            <label class="btn btn-outline-primary" for="plat3"><i class="fab fa-instagram me-1"></i> Instagram</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">What is the post about?</label>
+                        <textarea id="topic" class="form-control" rows="3" placeholder="E.g. Launching our new SEO tool features today..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tone</label>
+                        <select id="tone" class="form-select">
+                            <option value="Professional">Professional</option>
+                            <option value="Viral/Hype">Viral / Hype</option>
+                            <option value="Educational">Educational</option>
+                            <option value="Funny">Funny</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary w-100 py-2" id="genBtn" onclick="generatePost()">
+                        <i class="fas fa-magic me-2"></i> Generate Post
+                    </button>
+
+                </div>
+            </div>
+
+            <!-- Result -->
+            <div id="resultCard" class="card shadow-sm d-none">
+                <div class="card-header bg-white fw-bold">Generated Content</div>
+                <div class="card-body">
+                    <div id="output" class="bg-light p-3 rounded border mb-3" style="white-space: pre-wrap;"></div>
+                    <button class="btn btn-sm btn-outline-dark" onclick="copyPost()"><i class="fas fa-copy"></i> Copy Text</button>
+                </div>
+            </div>
+
+        </div>
     </div>
-    <div id="loading" class="text-center mt-3 d-none"><div class="spinner-border"></div></div>
-    <div id="output" class="mt-4 card p-4 bg-light d-none" style="white-space: pre-wrap;"></div>
 </div>
+
 <script>
-async function genSocial() {
-    const c = document.getElementById('content').value;
-    if(!c) return;
-    document.getElementById('loading').classList.remove('d-none');
-    document.getElementById('output').classList.add('d-none');
+async function generatePost() {
+    const topic = document.getElementById('topic').value;
+    if(!topic) return alert("Enter a topic");
+
+    const platform = document.querySelector('input[name="platform"]:checked').value;
+    const tone = document.getElementById('tone').value;
+    const btn = document.getElementById('genBtn');
     
-    const res = await fetch('/api/generate-content', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keyword: `Write a LinkedIn post, a Twitter thread (3 tweets), and a Facebook post for this content: "${c}"`, mode:'standard'})});
-    const d = await res.json();
-    
-    document.getElementById('loading').classList.add('d-none');
-    document.getElementById('output').classList.remove('d-none');
-    document.getElementById('output').innerText = d.content;
+    // Construct prompt
+    const prompt = `Write a ${tone} ${platform} post about: "${topic}". 
+    Include emojis and hashtags. 
+    For Twitter, keep it under 280 chars. 
+    For LinkedIn, use line breaks for readability.`;
+
+    // UI Loading
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Writing...';
+    document.getElementById('resultCard').classList.add('d-none');
+
+    try {
+        // We reuse the generic AI endpoint
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+        });
+        
+        const data = await res.json();
+        if(data.success) {
+            // Display raw text (data.content) instead of HTML
+            document.getElementById('output').innerText = data.content;
+            document.getElementById('resultCard').classList.remove('d-none');
+        } else {
+            alert(data.error);
+        }
+    } catch(e) { console.error(e); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-2"></i> Generate Post';
+    }
+}
+
+function copyPost() {
+    const text = document.getElementById('output').innerText;
+    navigator.clipboard.writeText(text);
+    alert("Copied!");
 }
 </script>
 {% endblock %}
