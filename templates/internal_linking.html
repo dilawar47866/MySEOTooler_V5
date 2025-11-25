@@ -1,152 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Internal Linking Suggestions - My SEO King Tool V5{% endblock %}
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <h1><i class="fas fa-link"></i> Internal Linking Suggestions</h1>
-            <p class="text-muted mb-4">Find relevant internal linking opportunities from your content library</p>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2><i class="fas fa-link text-primary"></i> Internal Linking Suggestions</h2>
+            <p>Paste your article content below. The AI will analyze it and suggest phrases that would make good internal links (anchor text).</p>
 
-            <!-- Input Card -->
-            <div class="card p-4 mb-4">
-                <div class="form-group">
-                    <label><strong>Current Content</strong></label>
-                    <textarea id="contentInput" class="form-control" rows="8" 
-                              placeholder="Paste your current article content here..."></textarea>
-                    <small class="text-muted">Minimum 100 words for accurate suggestions</small>
-                </div>
-
-                <div class="form-group">
-                    <label><strong>Target Keyword (Optional)</strong></label>
-                    <input type="text" id="keywordInput" class="form-control" 
-                           placeholder="e.g., SEO tips">
-                </div>
-                
-                <button onclick="findLinks()" class="btn btn-primary btn-lg btn-block">
-                    <i class="fas fa-search"></i> Find Internal Link Opportunities
-                </button>
+            <div class="card shadow-sm p-4">
+                <label class="fw-bold">Article Content</label>
+                <textarea id="content" class="form-control mb-3" rows="6" placeholder="Paste your blog post text here..."></textarea>
+                <button class="btn btn-primary w-100" onclick="analyzeLinks()">Find Link Opportunities</button>
             </div>
 
-            <!-- Loading -->
-            <div id="loading" class="alert alert-info text-center" style="display:none;">
-                <i class="fas fa-spinner fa-spin"></i> Analyzing your content library...
+            <div id="loading" class="text-center mt-3" style="display:none;">
+                <div class="spinner-border"></div> Finding opportunities...
             </div>
 
-            <!-- Results -->
-            <div id="results" style="display:none;">
-                <div class="card p-4">
-                    <h3 class="mb-4">🔗 Recommended Internal Links</h3>
-                    <div id="linksList"></div>
-                </div>
-            </div>
-
-            <!-- No Results -->
-            <div id="noResults" class="alert alert-warning" style="display:none;">
-                <i class="fas fa-info-circle"></i> <strong>No suggestions found.</strong>
-                <p class="mb-0 mt-2">Create more content to get internal linking suggestions. You need at least 2 articles in your library.</p>
-            </div>
-
-            <!-- Info -->
-            <div class="card p-4 mt-4">
-                <h5><i class="fas fa-info-circle"></i> Why Internal Linking Matters</h5>
-                <ul class="mb-0">
-                    <li><strong>SEO Boost:</strong> Distributes page authority across your site</li>
-                    <li><strong>User Experience:</strong> Helps visitors discover related content</li>
-                    <li><strong>Crawlability:</strong> Makes it easier for search engines to index pages</li>
-                    <li><strong>Dwell Time:</strong> Keeps visitors on your site longer</li>
-                    <li><strong>Topical Authority:</strong> Shows expertise in subject areas</li>
-                </ul>
+            <div id="results" class="mt-4" style="display:none;">
+                <h4>Suggested Anchor Texts</h4>
+                <div id="linkOutput" class="bg-white p-3 border rounded"></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-async function findLinks() {
-    const content = document.getElementById('contentInput').value.trim();
-    const keyword = document.getElementById('keywordInput').value.trim();
-    
-    if (!content) {
-        alert('⚠️ Please enter your content');
-        return;
-    }
-    
-    if (content.split(' ').length < 50) {
-        alert('⚠️ Please enter at least 50 words for accurate suggestions');
-        return;
-    }
-    
+async function analyzeLinks() {
+    const text = document.getElementById('content').value;
+    if(!text) return alert("Enter content");
+
     document.getElementById('loading').style.display = 'block';
     document.getElementById('results').style.display = 'none';
-    document.getElementById('noResults').style.display = 'none';
-    
+
+    const prompt = `Analyze this text and extract 5-10 phrases that would be excellent "Anchor Text" for internal links to other SEO or marketing articles. Explain why for each. Text: "${text.substring(0, 1500)}..."`;
+
     try {
-        const res = await fetch('/api/suggest-internal-links', {
+        const res = await fetch('/api/generate-content', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({content: content, keyword: keyword})
+            body: JSON.stringify({ keyword: prompt, mode: "standard" })
         });
-        
         const data = await res.json();
         
-        if (!res.ok) throw new Error(data.error || 'Analysis failed');
-        
-        if (data.suggestions.length === 0) {
-            document.getElementById('noResults').style.display = 'block';
-        } else {
-            const linksList = document.getElementById('linksList');
-            linksList.innerHTML = '';
-            
-            data.suggestions.forEach((suggestion, index) => {
-                const card = document.createElement('div');
-                card.className = 'card p-3 mb-3';
-                card.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                            <h5>${suggestion.title}</h5>
-                            <p class="text-muted mb-2">
-                                <strong>Keyword:</strong> ${suggestion.keyword || 'N/A'} | 
-                                <strong>Relevance:</strong> <span class="badge badge-success">${suggestion.relevance}%</span>
-                            </p>
-                            <p class="mb-2">
-                                <strong>Suggested Anchor Text:</strong> 
-                                <code>${suggestion.anchor_text}</code>
-                            </p>
-                            <p class="mb-0">
-                                <strong>Common Topics:</strong> 
-                                ${suggestion.common_topics.map(topic => `<span class="badge badge-info mr-1">${topic}</span>`).join('')}
-                            </p>
-                        </div>
-                        <div class="ml-3">
-                            <button onclick="copyAnchor('${suggestion.anchor_text.replace(/'/g, "\\'")}', this)" 
-                                    class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-copy"></i> Copy
-                            </button>
-                        </div>
-                    </div>
-                `;
-                linksList.appendChild(card);
-            });
-            
-            document.getElementById('results').style.display = 'block';
-            document.getElementById('results').scrollIntoView({behavior: 'smooth'});
-        }
-        
-    } catch (err) {
-        alert('❌ ' + err.message);
-    } finally {
         document.getElementById('loading').style.display = 'none';
-    }
-}
-
-function copyAnchor(text, button) {
-    navigator.clipboard.writeText(text).then(() => {
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check"></i> Copied';
-        setTimeout(() => {
-            button.innerHTML = originalHTML;
-        }, 2000);
-    });
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('linkOutput').innerHTML = `<pre style="white-space: pre-wrap;">${data.content}</pre>`;
+    } catch(e) { alert("Error"); }
 }
 </script>
 {% endblock %}
