@@ -1,56 +1,70 @@
 {% extends "base.html" %}
+
+{% block title %}Pricing Plans - MySEO King{% endblock %}
+
 {% block content %}
-<div class="container mt-5 text-center">
-    <h1 class="fw-bold mb-3">Simple, Transparent Pricing</h1>
-    <p class="text-muted mb-5">Choose the plan that fits your content needs.</p>
+<div class="container-fluid py-5">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold display-5">Simple, Transparent Pricing</h1>
+        <p class="text-muted lead">Unlock the full power of AI SEO tools.</p>
+    </div>
 
-    <div class="row justify-content-center g-4">
-        <!-- FREE PLAN -->
+    <div class="row justify-content-center align-items-center">
+        
+        <!-- Free Plan -->
         <div class="col-md-4">
-            <div class="card p-4 h-100 border-0 shadow-sm">
-                <h4 class="fw-bold text-secondary">Starter</h4>
-                <h2 class="my-3">$0 <small class="text-muted fs-6">/mo</small></h2>
-                <hr>
-                <ul class="list-unstyled text-start mb-4">
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Requests/mo</li>
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Basic SEO Tools</li>
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Standard Support</li>
-                </ul>
-                <button class="btn btn-outline-secondary w-100 mt-auto disabled">Current Plan</button>
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-5">
+                    <h5 class="fw-bold text-muted text-uppercase mb-4">Free Starter</h5>
+                    <h2 class="display-4 fw-bold mb-4">$0<span class="fs-5 text-muted fw-normal">/mo</span></h2>
+                    
+                    <ul class="list-unstyled mb-5">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Credits / month</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Basic AI Editor</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Readability Checker</li>
+                        <li class="mb-2 text-muted"><i class="fas fa-times me-2"></i> Competitor Analysis</li>
+                        <li class="mb-2 text-muted"><i class="fas fa-times me-2"></i> Real Keyword Data</li>
+                        <li class="mb-2 text-muted"><i class="fas fa-times me-2"></i> Bulk Generators</li>
+                    </ul>
+
+                    {% if current_user.is_authenticated and current_user.tier == 'free' %}
+                        <button class="btn btn-outline-primary w-100 py-3 disabled">Current Plan</button>
+                    {% else %}
+                        <a href="/signup" class="btn btn-outline-primary w-100 py-3">Get Started</a>
+                    {% endif %}
+                </div>
             </div>
         </div>
 
-        <!-- PRO PLAN -->
+        <!-- Pro Plan -->
         <div class="col-md-4">
-            <div class="card p-4 h-100 border-primary shadow" style="border-top: 5px solid #4f46e5; transform: scale(1.02);">
-                <div class="badge bg-primary position-absolute top-0 end-0 m-3">POPULAR</div>
-                <h4 class="fw-bold text-primary">Pro King</h4>
-                <h2 class="my-3">$29 <small class="text-muted fs-6">/mo</small></h2>
-                <hr>
-                <ul class="list-unstyled text-start mb-4">
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Requests/mo</strong></li>
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Competitor Spy</strong></li>
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Bulk Image SEO</li>
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Priority Email Support</li>
-                </ul>
-                <a href="mailto:support@myseokingtool.com?subject=Upgrade%20to%20Pro" class="btn btn-primary w-100 btn-lg mt-auto">Upgrade Now</a>
+            <div class="card border-primary border-2 shadow mb-4 position-relative">
+                <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary px-3 py-2">
+                    MOST POPULAR
+                </span>
+                <div class="card-body p-5">
+                    <h5 class="fw-bold text-primary text-uppercase mb-4">Pro Marketer</h5>
+                    <h2 class="display-4 fw-bold mb-4">$29<span class="fs-5 text-muted fw-normal">/mo</span></h2>
+                    
+                    <ul class="list-unstyled mb-5">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Credits</strong> / month</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Competitor Spy</strong></li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Real Keyword Volume</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Keyword Clustering</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> All Technical Tools</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Priority Support</li>
+                    </ul>
+
+                    {% if current_user.is_authenticated and current_user.tier == 'pro' %}
+                        <button class="btn btn-primary w-100 py-3 disabled">Current Plan</button>
+                    {% else %}
+                        <!-- In a real app, this would link to Stripe -->
+                        <button class="btn btn-primary w-100 py-3" onclick="alert('Stripe integration would go here!')">Upgrade to Pro</button>
+                    {% endif %}
+                </div>
             </div>
         </div>
 
-        <!-- ENTERPRISE PLAN -->
-        <div class="col-md-4">
-            <div class="card p-4 h-100 border-0 shadow-sm">
-                <h4 class="fw-bold text-dark">Enterprise</h4>
-                <h2 class="my-3">$99 <small class="text-muted fs-6">/mo</small></h2>
-                <hr>
-                <ul class="list-unstyled text-start mb-4">
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Unlimited AI</strong></li>
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> All Pro Features</li>
-                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> API Access</li>
-                </ul>
-                <a href="mailto:support@myseokingtool.com?subject=Enterprise%20Inquiry" class="btn btn-outline-dark w-100 mt-auto">Contact Sales</a>
-            </div>
-        </div>
     </div>
 </div>
 {% endblock %}
