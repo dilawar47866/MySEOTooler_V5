@@ -1,88 +1,123 @@
 {% extends "base.html" %}
+
+{% block title %}Keyword Research - MySEO King{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2><i class="fas fa-project-diagram text-warning"></i> Keyword Cluster Strategist</h2>
-            <p class="text-muted">Don't just find keywords. Build a content authority map.</p>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">AI Keyword Clusters</h2>
+                    <p class="text-muted">Generate topical authority maps from a single seed keyword.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-project-diagram fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="input-group input-group-lg">
+                        <input type="text" id="seedKeyword" class="form-control" placeholder="E.g. Vegan Protein Powder">
+                        <button class="btn btn-primary px-5" onclick="generateClusters()">
+                            <i class="fas fa-magic me-2"></i> Generate Clusters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="loader" class="text-center d-none py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-3 text-muted">AI is brainstorming topic clusters...</p>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsArea" class="d-none">
+                <h5 class="fw-bold mb-3">Strategy Map</h5>
+                <div class="row" id="clusterGrid">
+                    <!-- Clusters inserted here by JS -->
+                </div>
+            </div>
+
         </div>
-    </div>
-
-    <!-- Input Area -->
-    <div class="card shadow-sm p-4 mb-4 border-0">
-        <div class="input-group input-group-lg">
-            <input type="text" id="seedKeyword" class="form-control" placeholder="Enter main topic (e.g. Keto Diet)">
-            <button class="btn btn-warning text-dark fw-bold" onclick="generateClusters()">
-                <i class="fas fa-magic"></i> Generate Strategy
-            </button>
-        </div>
-    </div>
-
-    <!-- Loading -->
-    <div id="loading" class="text-center py-5" style="display:none;">
-        <div class="spinner-border text-warning" style="width: 3rem; height: 3rem;"></div>
-        <h4 class="mt-3">Designing Content Strategy...</h4>
-        <p class="text-muted">Grouping keywords by search intent.</p>
-    </div>
-
-    <!-- Results Grid -->
-    <div id="resultsArea" class="row g-4" style="display:none;">
-        <!-- Clusters will be injected here via JS -->
     </div>
 </div>
 
 <script>
 async function generateClusters() {
-    const kw = document.getElementById('seedKeyword').value;
-    if(!kw) return alert("Enter a topic");
+    const keyword = document.getElementById('seedKeyword').value;
+    if(!keyword) return alert("Enter a keyword");
 
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('resultsArea').style.display = 'none';
-    document.getElementById('resultsArea').innerHTML = '';
+    document.getElementById('loader').classList.remove('d-none');
+    document.getElementById('resultsArea').classList.add('d-none');
 
     try {
         const res = await fetch('/api/generate-clusters', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ keyword: kw })
+            body: JSON.stringify({keyword: keyword})
         });
+        
         const data = await res.json();
-        document.getElementById('loading').style.display = 'none';
-
-        if(data.success) {
-            document.getElementById('resultsArea').style.display = 'flex';
+        
+        if(data.error) {
+            alert(data.error);
+        } else {
+            const grid = document.getElementById('clusterGrid');
+            grid.innerHTML = '';
             
-            data.clusters.forEach((cluster, index) => {
-                let keywordsHtml = cluster.keywords.map(k => `<li class="list-group-item"><i class="fas fa-search text-muted me-2 small"></i>${k}</li>`).join('');
-                
-                let html = `
-                <div class="col-md-6">
-                    <div class="card h-100 shadow-sm border-0">
-                        <div class="card-header bg-white fw-bold text-uppercase text-primary">
-                            <i class="fas fa-bullseye me-2"></i> ${cluster.name}
-                        </div>
-                        <ul class="list-group list-group-flush">
-                            ${keywordsHtml}
-                        </ul>
-                        <div class="card-footer bg-white">
-                            <button class="btn btn-sm btn-outline-primary w-100" onclick="copyToClipboard('${cluster.keywords.join(', ')}')">Copy Keywords</button>
+            data.clusters.forEach(cluster => {
+                let pills = '';
+                cluster.keywords.forEach(k => {
+                    pills += `<span class="badge bg-light text-dark border me-1 mb-1 fw-normal">${k}</span>`;
+                });
+
+                grid.innerHTML += `
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-header bg-primary text-white fw-bold">
+                                <i class="fas fa-folder me-2"></i>${cluster.name}
+                            </div>
+                            <div class="card-body">
+                                <p class="small text-muted mb-2">Related Keywords:</p>
+                                <div>${pills}</div>
+                            </div>
+                            <div class="card-footer bg-white border-0">
+                                <button class="btn btn-sm btn-outline-primary w-100" onclick="sendToEditor('${cluster.name}')">
+                                    <i class="fas fa-pen me-1"></i> Write about this
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>`;
-                document.getElementById('resultsArea').innerHTML += html;
+                `;
             });
-        } else {
-            alert("Error: " + data.error);
+            
+            document.getElementById('resultsArea').classList.remove('d-none');
         }
-    } catch(e) {
-        alert("AI Error. Try again.");
-        document.getElementById('loading').style.display = 'none';
-    }
+    } catch(e) { console.error(e); } 
+    finally { document.getElementById('loader').classList.add('d-none'); }
 }
 
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text);
-    alert("Keywords copied!");
+function sendToEditor(topic) {
+    // Create a new content draft and redirect
+    fetch('/api/save-content', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            title: topic,
+            content: '',
+            html_content: '',
+            keyword: topic
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) window.location.href = `/editor?id=${data.id}`;
+    });
 }
 </script>
 {% endblock %}
