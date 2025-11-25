@@ -171,14 +171,23 @@ def admin_delete_user(user_id):
     return jsonify({'success': True})
 
 # --- TOOL ROUTES ---
-tools = ['content-library', 'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
+
+# 1. Specific Route for Content Library (Fixes 500 Error)
+@app.route('/content-library')
+@login_required
+def content_library():
+    # Fetch the user's articles from the DB
+    contents = Content.query.filter_by(user_id=current_user.id).order_by(Content.updated_at.desc()).all()
+    return render_template('content_library.html', contents=contents)
+
+# 2. Generic Tools (REMOVED 'content-library' from this list)
+tools = ['competitor-analyzer', 'keyword-research', 'sitemap-generator', 
          'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
          'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
          'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
          'faq-schema', 'youtube-script']
 
 for tool in tools:
-    # IMPORTANT: Replaces dashes with underscores for filenames
     app.add_url_rule(f'/{tool}', tool.replace('-', '_'), lambda tool=tool: render_template(f'{tool.replace("-", "_")}.html'))
 
 # --- API ENDPOINTS ---
