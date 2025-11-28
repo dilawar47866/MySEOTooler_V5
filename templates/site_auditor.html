@@ -8,7 +8,7 @@
             
             <div class="input-group input-group-lg mb-4">
                 <input type="text" id="siteUrl" class="form-control" placeholder="example.com">
-                <button class="btn btn-primary" onclick="auditSite()">Audit Site</button>
+                <button class="btn btn-primary" id="auditBtn" onclick="auditSite()">Audit Site</button>
             </div>
 
             <div id="resultArea" class="d-none">
@@ -28,6 +28,11 @@
 <script>
 async function auditSite() {
     const url = document.getElementById('siteUrl').value;
+    if(!url) return alert("Enter URL");
+    
+    const btn = document.getElementById('auditBtn');
+    btn.disabled = true; btn.innerHTML = "Analyzing...";
+    
     try {
         const res = await fetch('/api/audit-site', {
             method: 'POST',
@@ -35,6 +40,7 @@ async function auditSite() {
             body: JSON.stringify({url: url})
         });
         const data = await res.json();
+        
         if(data.success) {
             const scoreEl = document.getElementById('score');
             scoreEl.innerText = data.score;
@@ -42,12 +48,23 @@ async function auditSite() {
             
             const ul = document.getElementById('issuesList');
             ul.innerHTML = '';
-            if(data.issues.length === 0) ul.innerHTML = '<li class="list-group-item text-success">No critical issues found!</li>';
-            data.issues.forEach(i => ul.innerHTML += `<li class="list-group-item">${i}</li>`);
             
+            if(data.issues.length === 0) {
+                ul.innerHTML = '<li class="list-group-item text-success"><i class="fas fa-check-circle me-2"></i> No critical issues found!</li>';
+            } else {
+                data.issues.forEach(i => {
+                    // Display Issue + Fix
+                    ul.innerHTML += `
+                        <li class="list-group-item py-3">
+                            <div class="fw-bold text-danger mb-1"><i class="fas fa-exclamation-circle me-2"></i>${i.issue}</div>
+                            <div class="small text-muted"><i class="fas fa-tools me-1"></i> <strong>Fix:</strong> ${i.fix}</div>
+                        </li>`;
+                });
+            }
             document.getElementById('resultArea').classList.remove('d-none');
         } else { alert(data.error); }
     } catch(e) { console.error(e); }
+    finally { btn.disabled = false; btn.innerHTML = "Audit Site"; }
 }
 </script>
 {% endblock %}
