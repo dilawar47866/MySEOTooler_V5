@@ -20,12 +20,12 @@ from youtube_transcript_api import YouTubeTranscriptApi
 load_dotenv()
 app = Flask(__name__)
 
-# Database Config
+# Database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///myseotoolver5.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
-# Email Config (Hostinger)
+# Email
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
@@ -39,7 +39,6 @@ mail = Mail(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# OpenAI Client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # --- GLOBAL TOOL LIST ---
@@ -265,7 +264,7 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS (AI & TOOLS)
 # ==========================================
 
-# --- YOUTUBE TO BLOG API (ANTI-BLOCK VERSION) ---
+# --- YOUTUBE TO BLOG API (WITH BYPASS) ---
 @app.route('/api/youtube-to-blog', methods=['POST'])
 @login_required
 def api_youtube_to_blog():
@@ -276,6 +275,7 @@ def api_youtube_to_blog():
     video_url = data.get('url')
     
     try:
+        # 1. Extract Video ID
         video_id = ""
         if "youtu.be/" in video_url: video_id = video_url.split("youtu.be/")[1].split("?")[0]
         elif "v=" in video_url: video_id = video_url.split("v=")[1].split("&")[0]
@@ -283,38 +283,63 @@ def api_youtube_to_blog():
             
         if not video_id: return jsonify({'error': 'Invalid URL'}), 400
 
-        # ANTI-BLOCK FETCH (Grab anything available)
+        full_text = ""
+
+        # 2. PRIMARY METHOD: Official API
         try:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            # Try to get any transcript
             transcript = None
+            try: transcript = transcript_list.find_transcript(['en', 'en-US'])
+            except: 
+                for t in transcript_list:
+                    transcript = t; break
             
-            # Iterate available transcripts
-            for t in transcript_list:
-                transcript = t
-                break # Just grab the first one we find
+            if transcript:
+                full_text = " ".join([t['text'] for t in transcript.fetch()])
+        
+        except Exception as e1:
+            print(f"Primary Method Failed: {e1}")
             
-            if not transcript: raise Exception("No transcript found.")
-            
-            transcript_data = transcript.fetch()
-            full_text = " ".join([t['text'] for t in transcript_data])
-            
-        except Exception as e:
-            print(f"YouTube Error: {e}")
-            return jsonify({'error': "YouTube blocked the request or no captions exist."}), 400
+            # 3. FALLBACK METHOD: Invidious (Bypasses Google Block)
+            try:
+                # Use a reliable Invidious instance
+                inv_url = f"https://inv.tux.pizza/api/v1/captions/{video_id}"
+                r = requests.get(inv_url, timeout=10)
+                
+                if r.status_code == 200:
+                    captions = r.json()
+                    if len(captions) > 0:
+                        # Pick the first caption URL
+                        cap_url = f"https://inv.tux.pizza{captions[0]['url']}"
+                        r_cap = requests.get(cap_url)
+                        
+                        # Clean VTT Text
+                        raw = r_cap.text
+                        # Remove timestamps and metadata
+                        lines = raw.splitlines()
+                        text_lines = []
+                        for line in lines:
+                            if '-->' not in line and line.strip() != '' and 'WEBVTT' not in line:
+                                text_lines.append(line)
+                        full_text = " ".join(text_lines)
+            except Exception as e2:
+                print(f"Fallback Failed: {e2}")
 
-        # OpenAI Translates & Formats
+        if not full_text or len(full_text) < 50:
+            return jsonify({'error': "Could not fetch transcript. YouTube blocked the server and fallback failed."}), 400
+
+        # 4. AI Process
         prompt = f"""
         Act as an expert SEO Blogger. 
-        1. Analyze this transcript (it might be raw/auto-generated/foreign).
-        2. Translate to English if needed.
-        3. Convert into a structured Blog Post (Markdown).
-        Transcript: "{full_text[:12000]}"
+        Convert this raw transcript into a structured blog post (Markdown).
+        Transcript: "{full_text[:15000]}"
         """
         
         res = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role":"system","content":"Blog Writer"},{"role":"user","content":prompt}],
-            max_tokens=2500
+            max_tokens=2000
         )
         
         blog_content = res.choices[0].message.content
