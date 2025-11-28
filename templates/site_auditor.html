@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Site Auditor - MySEO King{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2 class="h3 fw-bold mb-4">SEO Site Health Check</h2>
+            
+            <div class="input-group input-group-lg mb-4">
+                <input type="text" id="siteUrl" class="form-control" placeholder="example.com">
+                <button class="btn btn-primary" onclick="auditSite()">Audit Site</button>
+            </div>
+
+            <div id="resultArea" class="d-none">
+                <div class="card text-center mb-4 p-4">
+                    <h5 class="text-muted">Health Score</h5>
+                    <div class="display-1 fw-bold" id="score">0</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header bg-danger text-white fw-bold">Critical Issues</div>
+                    <ul class="list-group list-group-flush" id="issuesList"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+async function auditSite() {
+    const url = document.getElementById('siteUrl').value;
+    try {
+        const res = await fetch('/api/audit-site', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url: url})
+        });
+        const data = await res.json();
+        if(data.success) {
+            const scoreEl = document.getElementById('score');
+            scoreEl.innerText = data.score;
+            scoreEl.className = `display-1 fw-bold ${data.score > 80 ? 'text-success' : 'text-danger'}`;
+            
+            const ul = document.getElementById('issuesList');
+            ul.innerHTML = '';
+            if(data.issues.length === 0) ul.innerHTML = '<li class="list-group-item text-success">No critical issues found!</li>';
+            data.issues.forEach(i => ul.innerHTML += `<li class="list-group-item">${i}</li>`);
+            
+            document.getElementById('resultArea').classList.remove('d-none');
+        } else { alert(data.error); }
+    } catch(e) { console.error(e); }
+}
+</script>
+{% endblock %}
