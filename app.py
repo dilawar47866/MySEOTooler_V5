@@ -12,6 +12,7 @@ from openai import OpenAI
 import markdown
 from io import BytesIO, StringIO
 from sqlalchemy import text
+from youtube_transcript_api import YouTubeTranscriptApi
 
 # ==========================================
 # 1. CONFIGURATION
@@ -41,14 +42,13 @@ login_manager.login_view = 'login'
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # --- GLOBAL TOOL LIST ---
-# Removed youtube-to-blog, Added article-wizard
 TOOL_LIST = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
     'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
     'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
-    'article-wizard'
+    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer'
 ]
 
 # ==========================================
@@ -254,6 +254,10 @@ def payment_success(plan_name):
 @app.route('/tool/<tool_name>')
 @login_required
 def tool_view(tool_name):
+    # Also check permission for Pro tools (like image generator)
+    if tool_name == 'image-generator' and current_user.tier == 'free':
+        flash("Image Generation is a Pro Feature. Please Upgrade!", "warning")
+        return redirect('/pricing')
     return render_template(f'{tool_name.replace("-", "_")}.html')
 
 for t in TOOL_LIST:
@@ -264,49 +268,97 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS (AI & TOOLS)
 # ==========================================
 
-# --- NEW FEATURE: LONG-FORM ARTICLE WIZARD ---
-@app.route('/api/article-wizard', methods=['POST'])
+# --- YOUTUBE TO BLOG API ---
+@app.route('/api/youtube-to-blog', methods=['POST'])
 @login_required
-def api_article_wizard():
+def api_youtube_to_blog():
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Monthly Limit Reached. Upgrade to Pro!'}), 403
+        return jsonify({'error': 'Limit reached.'}), 403
 
-    d = request.get_json()
-    topic = d.get('topic')
-    tone = d.get('tone', 'Professional')
+    data = request.get_json()
+    video_url = data.get('url')
     
     try:
-        # ONE-SHOT MEGA PROMPT for reliability
-        prompt = f"""
-        Act as a world-class SEO Copywriter. 
-        Write a comprehensive, long-form blog post about: "{topic}".
+        video_id = ""
+        if "youtu.be/" in video_url: video_id = video_url.split("youtu.be/")[1].split("?")[0]
+        elif "v=" in video_url: video_id = video_url.split("v=")[1].split("&")[0]
+        elif "shorts/" in video_url: video_id = video_url.split("shorts/")[1].split("?")[0]
+            
+        if not video_id: return jsonify({'error': 'Invalid URL'}), 400
+
+        # PIPED MIRROR NETWORK
+        PIPED_INSTANCES = ["https://pipedapi.kavin.rocks", "https://api.piped.privacy.com.de", "https://pipedapi.moomoo.me"]
+        full_text = ""
+        random.shuffle(PIPED_INSTANCES)
         
-        Tone: {tone}.
+        for mirror in PIPED_INSTANCES:
+            try:
+                r = requests.get(f"{mirror}/streams/{video_id}", timeout=5)
+                if r.status_code == 200:
+                    subs = r.json().get('subtitles', [])
+                    target = next((s for s in subs if 'en' in s.get('code','')), subs[0] if subs else None)
+                    if target:
+                        r_sub = requests.get(target['url'], timeout=5)
+                        lines = r_sub.text.splitlines()
+                        cleaned = [l.strip() for l in lines if '-->' not in l and 'WEBVTT' not in l and l.strip()]
+                        full_text = " ".join(cleaned)
+                        if len(full_text) > 50: break
+            except: continue
+
+        if not full_text: return jsonify({'error': "No captions available."}), 400
+
+        # AI Process
+        prompt = f"Convert transcript to blog post (Markdown): {full_text[:15000]}"
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Writer"},{"role":"user","content":prompt}])
         
-        Structure Requirements:
-        1. Start with a Catchy Title (H1).
-        2. An engaging Introduction (200 words).
-        3. At least 4 main sections using H2 headings.
-        4. Use H3 subheadings where appropriate.
-        5. Include a "Key Takeaways" section with bullet points.
-        6. Write a strong Conclusion.
-        
-        Format strictly in Markdown. Make it SEO-optimized.
-        """
-        
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role":"system","content":"Blog Writer"},{"role":"user","content":prompt}],
-            max_tokens=3000
-        )
-        
-        content = res.choices[0].message.content
         current_user.ai_requests_this_month += 1
         db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
 
-        return jsonify({'success': True, 'content': content, 'html': markdown.markdown(content)})
+    except Exception as e: return jsonify({'error': f"System Error: {str(e)}"}), 500
 
-    except Exception as e: return jsonify({'error': f"AI Error: {str(e)}"}), 500
+# --- NEW: IMAGE GENERATOR ---
+@app.route('/api/generate-image', methods=['POST'])
+@login_required
+def api_generate_image():
+    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro!'}), 403
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    
+    try:
+        res = client.images.generate(model="dall-e-3", prompt=request.get_json().get('prompt'), size="1024x1024", quality="standard", n=1)
+        current_user.ai_requests_this_month += 5 # Images cost more
+        db.session.commit()
+        return jsonify({'success': True, 'image_url': res.data[0].url})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- NEW: SITE AUDITOR ---
+@app.route('/api/audit-site', methods=['POST'])
+@login_required
+def api_audit_site():
+    try:
+        url = request.get_json().get('url')
+        if not url.startswith('http'): url = 'https://' + url
+        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=10)
+        s = BeautifulSoup(r.content, 'html.parser')
+        
+        score = 100; issues = []
+        if not s.title: score-=20; issues.append("Missing Title")
+        if not s.find('meta', attrs={'name':'description'}): score-=20; issues.append("Missing Meta Description")
+        if not s.find('h1'): score-=20; issues.append("Missing H1")
+        
+        return jsonify({'success': True, 'score': max(0,score), 'issues': issues})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- NEW: HUMANIZER ---
+@app.route('/api/humanize-text', methods=['POST'])
+@login_required
+def api_humanize_text():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    try:
+        res = client.chat.completions.create(model="gpt-4o", messages=[{"role":"system","content":"Rewriter"},{"role":"user","content":f"Humanize this text: {request.get_json().get('content')}"}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content})
+    except Exception as e: return jsonify({'error': str(e)}), 500
 
 # --- GENERIC API ---
 @app.route('/api/generate-content', methods=['POST'])
