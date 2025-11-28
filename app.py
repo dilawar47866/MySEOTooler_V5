@@ -272,7 +272,7 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS
 # ==========================================
 
-# --- NEW: SITE AUDITOR (DESCRIPTIVE) ---
+# --- NEW: ADVANCED SITE AUDITOR ---
 @app.route('/api/audit-site', methods=['POST'])
 @login_required
 def api_audit_site():
@@ -280,42 +280,80 @@ def api_audit_site():
         url = request.get_json().get('url')
         if not url.startswith('http'): url = 'https://' + url
         
-        # Timeout 30s + Browser Header
-        r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=30)
+        start_time = datetime.now()
+        # Add timeout and fake user agent
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        
+        r = requests.get(url, headers=headers, timeout=30)
+        load_time = round((datetime.now() - start_time).total_seconds(), 2)
+        
         s = BeautifulSoup(r.content, 'html.parser')
         
-        score = 100; issues = []
-        
-        # Title
-        if not s.title: 
-            score -= 20
-            issues.append({"issue": "Missing Page Title", "fix": "Add a <title> tag inside <head>. Optimal length: 30-60 chars."})
-        elif len(s.title.string) > 60:
-            score -= 5
-            issues.append({"issue": "Title Too Long", "fix": f"Current: {len(s.title.string)} chars. Shorten to < 60 chars to prevent Google from cutting it off."})
-            
-        # Meta Description
-        desc = s.find('meta', attrs={'name':'description'})
-        if not desc: 
-            score -= 20
-            issues.append({"issue": "Missing Meta Description", "fix": "Add <meta name='description' content='...'>. This improves click-through rates (CTR)."})
-        elif len(desc.get('content', '')) > 160:
-            score -= 5
-            issues.append({"issue": "Description Too Long", "fix": "Shorten description to < 160 chars."})
-            
-        # H1 Check
-        h1s = s.find_all('h1')
-        if not h1s: 
-            score -= 20
-            issues.append({"issue": "Missing H1 Tag", "fix": "Add exactly one <h1> tag describing the main topic of the page."})
-        elif len(h1s) > 1: 
-            score -= 10
-            issues.append({"issue": "Multiple H1 Tags", "fix": "Found multiple H1 tags. Use only ONE H1 per page for clear hierarchy."})
-            
-        return jsonify({'success': True, 'score': max(0,score), 'issues': issues})
-    except Exception as e: 
-        return jsonify({'error': f"Crawl failed. Site may block bots. Error: {str(e)}"}), 500
+        score = 100
+        issues = []
+        passed = []
 
+        # 1. Title Analysis
+        title = s.title.string.strip() if s.title else None
+        if not title:
+            score -= 20; issues.append({"type": "critical", "msg": "Missing Title Tag", "fix": "Add a <title> tag."})
+        elif len(title) > 60:
+            score -= 5; issues.append({"type": "warning", "msg": f"Title too long ({len(title)} chars)", "fix": "Keep under 60 chars."})
+        else:
+            passed.append("Title Tag Optimized")
+
+        # 2. Meta Description
+        desc_tag = s.find('meta', attrs={'name': 'description'})
+        desc = desc_tag['content'].strip() if desc_tag else None
+        if not desc:
+            score -= 20; issues.append({"type": "critical", "msg": "Missing Meta Description", "fix": "Add description meta tag."})
+        elif len(desc) > 160:
+            score -= 5; issues.append({"type": "warning", "msg": f"Description too long ({len(desc)} chars)", "fix": "Keep under 160 chars."})
+        else:
+            passed.append("Meta Description Optimized")
+
+        # 3. H1 Analysis
+        h1s = s.find_all('h1')
+        if not h1s:
+            score -= 20; issues.append({"type": "critical", "msg": "Missing H1 Tag", "fix": "Add one H1 tag."})
+        elif len(h1s) > 1:
+            score -= 10; issues.append({"type": "warning", "msg": "Multiple H1 Tags", "fix": "Use only one H1."})
+        else:
+            passed.append("H1 Hierarchy Correct")
+
+        # 4. Image Analysis
+        imgs = s.find_all('img')
+        missing_alt = sum(1 for i in imgs if not i.get('alt'))
+        if missing_alt > 0:
+            score -= 5; issues.append({"type": "warning", "msg": f"{missing_alt} Images missing Alt Text", "fix": "Add alt attributes to images."})
+        else:
+            passed.append("All Images have Alt Text")
+
+        # 5. Link Analysis
+        links = s.find_all('a')
+        
+        # 6. Canonical Check
+        canonical = s.find('link', attrs={'rel': 'canonical'})
+        canonical_url = canonical['href'] if canonical else "Not Set"
+
+        return jsonify({
+            'success': True,
+            'score': max(0, score),
+            'meta': {
+                'url': url,
+                'title': title or "No Title",
+                'description': desc or "No Description",
+                'load_time': f"{load_time}s",
+                'word_count': len(s.get_text().split()),
+                'link_count': len(links),
+                'canonical': canonical_url
+            },
+            'issues': issues,
+            'passed': passed
+        })
+
+    except Exception as e: 
+        return jsonify({'error': f"Audit Failed: {str(e)}"}), 500
 # --- NEW: HUMANIZER ---
 @app.route('/api/humanize-text', methods=['POST'])
 @login_required
