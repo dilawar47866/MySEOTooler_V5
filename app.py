@@ -30,7 +30,7 @@ app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
 app.config['MAIL_USERNAME'] = 'support@myseokingtool.com'
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
-app.config['MAIL_DEFAULT_SENDER'] = ('MySEO King Team', 'support@myseokingtool.com')
+app.config['MAIL_DEFAULT_SENDER'] = ('My SEO King Tool Team', 'support@myseokingtool.com')
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
