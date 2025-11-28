@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}My SEO King Tool{% endblock %}</title>
+    <title>{% block title %}MySEO King Tool{% endblock %}</title>
     
     <!-- Bootstrap 5 & FontAwesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -122,10 +122,22 @@
                 <i class="fas fa-folder-open"></i> Library
             </a>
 
-            <!-- CONTENT GEN (Updated with YouTube Tool) -->
+            <!-- NEW: ADVANCED TOOLS -->
+            <p class="small text-muted text-uppercase px-4 mt-4 mb-2 fw-bold" style="font-size: 0.75rem;">Advanced</p>
+            <a href="/image-generator" class="nav-link {% if 'image-generator' in request.path %}active{% endif %}">
+                <i class="fas fa-paint-brush"></i> AI Images (Pro)
+            </a>
+            <a href="/site-auditor" class="nav-link {% if 'site-auditor' in request.path %}active{% endif %}">
+                <i class="fas fa-stethoscope"></i> Site Audit
+            </a>
+            <a href="/content-humanizer" class="nav-link {% if 'content-humanizer' in request.path %}active{% endif %}">
+                <i class="fas fa-user-check"></i> Humanizer
+            </a>
+
+            <!-- CONTENT GEN -->
             <p class="small text-muted text-uppercase px-4 mt-4 mb-2 fw-bold" style="font-size: 0.75rem;">Content Gen</p>
             <a href="/article-wizard" class="nav-link {% if 'wizard' in request.path %}active{% endif %}">
-    <i class="fas fa-magic text-primary"></i> Article Wizard
+                <i class="fas fa-magic text-primary"></i> Article Wizard
             </a>
             <a href="/content-outline" class="nav-link {% if 'outline' in request.path %}active{% endif %}">
                 <i class="fas fa-list"></i> Outline Gen
