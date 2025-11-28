@@ -1,10 +1,10 @@
-from flask import Flask, request, jsonify, render_template, send_file, redirect, url_for, flash, make_response, session
+from flask import Flask, request, jsonify, render_template, send_file, redirect, url_for, flash, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
 from datetime import datetime
-import re, os, requests, base64, json, validators, csv, random, secrets
+import re, os, requests, base64, json, validators, csv, random
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin
 from dotenv import load_dotenv
@@ -13,7 +13,6 @@ import markdown
 from io import BytesIO, StringIO
 from sqlalchemy import text
 from youtube_transcript_api import YouTubeTranscriptApi
-from authlib.integrations.flask_client import OAuth
 
 # ==========================================
 # 1. CONFIGURATION
@@ -26,7 +25,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
-# Email
+# Email (Hostinger)
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
@@ -42,27 +41,6 @@ login_manager.login_view = 'login'
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- GOOGLE OAUTH (SAFE MODE) ---
-# Only register Google if keys exist, otherwise skip it to prevent crashes
-oauth = OAuth(app)
-google = None
-
-if os.getenv('GOOGLE_CLIENT_ID') and os.getenv('GOOGLE_CLIENT_SECRET'):
-    google = oauth.register(
-        name='google',
-        client_id=os.getenv('GOOGLE_CLIENT_ID'),
-        client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
-        access_token_url='https://accounts.google.com/o/oauth2/token',
-        access_token_params=None,
-        authorize_url='https://accounts.google.com/o/oauth2/auth',
-        authorize_params=None,
-        api_base_url='https://www.googleapis.com/oauth2/v1/',
-        userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
-        client_kwargs={'scope': 'openid email profile'},
-    )
-else:
-    print("⚠️ WARNING: Google Client ID/Secret missing. Google Login disabled.")
-
 # --- GLOBAL TOOL LIST ---
 TOOL_LIST = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
@@ -73,7 +51,14 @@ TOOL_LIST = [
     'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer'
 ]
 
-PIPED_INSTANCES = ["https://pipedapi.kavin.rocks", "https://api.piped.privacy.com.de", "https://pipedapi.moomoo.me"]
+# --- PIPED MIRRORS (YouTube Bypass) ---
+PIPED_INSTANCES = [
+    "https://pipedapi.kavin.rocks",
+    "https://api.piped.privacy.com.de",
+    "https://pipedapi.moomoo.me",
+    "https://pipedapi.smnz.de",
+    "https://pipedapi.adminforge.de"
+]
 
 # ==========================================
 # 2. DATABASE MODELS
@@ -180,7 +165,7 @@ def sitemap_xml():
     return xml, 200, {'Content-Type': 'application/xml'}
 
 # ==========================================
-# 4. AUTH ROUTES
+# 4. AUTH ROUTES (CLEAN - NO GOOGLE)
 # ==========================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -217,40 +202,6 @@ def signup():
             return jsonify({'success': True, 'redirect': '/dashboard'})
         except Exception as e: return jsonify({'error': str(e)}), 500
     return render_template('signup.html')
-
-# --- GOOGLE LOGIN ROUTES (SAFE) ---
-@app.route('/login/google')
-def login_google():
-    # Prevent crash if keys are missing
-    if not google: return "Google Login not configured on server.", 500
-    return google.authorize_redirect(url_for('authorize_google', _external=True))
-
-@app.route('/authorize/google')
-def authorize_google():
-    if not google: return "Google Login Error: Config missing", 500
-    try:
-        token = google.authorize_access_token()
-        user_info = google.get('userinfo').json()
-        email = user_info['email'].lower()
-        name = user_info.get('name', email.split('@')[0])
-        
-        user = User.query.filter_by(email=email).first()
-        
-        if not user:
-            rand_pass = secrets.token_urlsafe(16)
-            hashed = bcrypt.generate_password_hash(rand_pass).decode('utf-8')
-            user = User(username=name, email=email, password_hash=hashed)
-            if User.query.count() == 0: user.is_admin = True
-            db.session.add(user); db.session.commit()
-            try:
-                msg = Message("Welcome!", recipients=[user.email]); msg.body="Welcome to MySEO King"; mail.send(msg)
-            except: pass
-
-        if not user.is_active: return "Account Banned", 403
-        login_user(user)
-        return redirect('/dashboard')
-        
-    except Exception as e: return f"Google Login Error: {str(e)}"
 
 @app.route('/logout')
 @login_required
@@ -325,7 +276,7 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS
 # ==========================================
 
-# --- NEW: PUBLIC AUDIT (WITH REAL DETAILS) ---
+# --- PUBLIC AUDIT ---
 @app.route('/api/public-audit', methods=['POST'])
 def api_public_audit():
     try:
@@ -337,19 +288,16 @@ def api_public_audit():
         s = BeautifulSoup(r.content, 'html.parser')
         
         score = 100; real_issues = []
-        
         if not s.title: score -= 20; real_issues.append("Missing Title Tag")
         elif len(s.title.string) > 60: score -= 5; real_issues.append("Title Too Long")
-            
         if not s.find('meta', attrs={'name':'description'}): score -= 20; real_issues.append("Missing Meta Description")
         if not s.find('h1'): score -= 20; real_issues.append("Missing H1 Heading")
-            
         if score == 100: real_issues.append("No critical errors found")
         
         return jsonify({'success': True, 'score': max(0,score), 'issues': real_issues})
     except: return jsonify({'success': True, 'score': 42, 'issues': ['Server Timeout', 'Connection Error']})
 
-# --- NEW: PRO SITE AUDIT ---
+# --- PRO AUDIT ---
 @app.route('/api/audit-site', methods=['POST'])
 @login_required
 def api_audit_site():
@@ -375,6 +323,7 @@ def api_audit_site():
         
         imgs = s.find_all('img'); miss = sum(1 for i in imgs if not i.get('alt'))
         if miss > 0: score-=5; issues.append({"type":"warning","msg":f"{miss} Images missing Alt","fix":"Add alt text"})
+        else: passed.append("Images Optimized")
         
         return jsonify({
             'success': True, 'score': max(0,score), 
