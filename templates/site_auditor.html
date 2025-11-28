@@ -1,38 +1,167 @@
 {% extends "base.html" %}
-{% block title %}Site Auditor - MySEO King{% endblock %}
+
+{% block title %}Pro Site Auditor - MySEO King{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <h2 class="h3 fw-bold mb-4">SEO Site Health Check</h2>
+        <div class="col-xl-10">
             
-            <div class="input-group input-group-lg mb-4">
-                <input type="text" id="siteUrl" class="form-control" placeholder="example.com">
-                <button class="btn btn-primary" id="auditBtn" onclick="auditSite()">Audit Site</button>
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h2 class="fw-bold display-6">SEO Health Auditor</h2>
+                <p class="text-muted">Deep scan your URL for technical issues, speed, and ranking factors.</p>
             </div>
 
+            <!-- Input Section -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-body p-4">
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-light"><i class="fas fa-globe"></i></span>
+                        <input type="text" id="siteUrl" class="form-control" placeholder="example.com">
+                        <button class="btn btn-primary px-5 fw-bold" id="auditBtn" onclick="runAudit()">
+                            Start Audit
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESULT DASHBOARD (Hidden by default) -->
             <div id="resultArea" class="d-none">
-                <div class="card text-center mb-4 p-4">
-                    <h5 class="text-muted">Health Score</h5>
-                    <div class="display-1 fw-bold" id="score">0</div>
-                </div>
                 
-                <div class="card">
-                    <div class="card-header bg-danger text-white fw-bold">Critical Issues</div>
-                    <ul class="list-group list-group-flush" id="issuesList"></ul>
+                <!-- 1. TOP METRICS -->
+                <div class="row g-4 mb-4">
+                    <!-- Score Circle -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100 text-center">
+                            <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                                <h6 class="text-muted text-uppercase fw-bold mb-3">Overall Health</h6>
+                                <div class="position-relative" style="width: 120px; height: 120px;">
+                                    <svg viewBox="0 0 36 36" class="circular-chart">
+                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                        <path class="circle" id="scoreCircle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                        <text x="18" y="20.35" class="percentage" id="scoreText">0</text>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tech Specs -->
+                    <div class="col-md-8">
+                        <div class="row g-3 h-100">
+                            <div class="col-md-6">
+                                <div class="card border-0 shadow-sm h-100 bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-tachometer-alt fa-2x text-primary mb-2"></i>
+                                        <h3 class="fw-bold mb-0" id="resLoad">0s</h3>
+                                        <small class="text-muted">Load Time</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-0 shadow-sm h-100 bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-file-alt fa-2x text-success mb-2"></i>
+                                        <h3 class="fw-bold mb-0" id="resWords">0</h3>
+                                        <small class="text-muted">Word Count</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-0 shadow-sm h-100 bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-link fa-2x text-warning mb-2"></i>
+                                        <h3 class="fw-bold mb-0" id="resLinks">0</h3>
+                                        <small class="text-muted">Total Links</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-0 shadow-sm h-100 bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-check-circle fa-2x text-info mb-2"></i>
+                                        <h3 class="fw-bold mb-0" id="resPassed">0</h3>
+                                        <small class="text-muted">Tests Passed</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- 2. GOOGLE PREVIEW -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white fw-bold py-3">
+                        <i class="fab fa-google text-primary me-2"></i> Google Search Preview
+                    </div>
+                    <div class="card-body">
+                        <div class="p-3 rounded" style="max-width: 600px;">
+                            <div class="d-flex align-items-center mb-1">
+                                <div class="bg-secondary rounded-circle me-2" style="width: 24px; height: 24px;"></div>
+                                <span class="small text-dark" id="prevUrl">example.com</span>
+                            </div>
+                            <h4 class="text-primary fs-5 mb-1 text-decoration-underline" style="color: #1a0dab !important; cursor: pointer;" id="prevTitle">Page Title</h4>
+                            <p class="small text-secondary mb-0" style="color: #4d5156 !important; font-size: 14px;" id="prevDesc">
+                                This is how your page description will appear in Google search results.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. DETAILED REPORT -->
+                <div class="row g-4">
+                    <!-- Issues -->
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold text-danger py-3">
+                                <i class="fas fa-exclamation-triangle me-2"></i> Issues Found
+                            </div>
+                            <ul class="list-group list-group-flush" id="issuesList">
+                                <!-- Issues injected here -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Passed Tests -->
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold text-success py-3">
+                                <i class="fas fa-check-double me-2"></i> Passed Tests
+                            </div>
+                            <ul class="list-group list-group-flush" id="passedList">
+                                <!-- Passed items injected here -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    /* Circular Progress Bar */
+    .circular-chart { display: block; margin: 0 auto; max-width: 80%; max-height: 250px; }
+    .circle-bg { fill: none; stroke: #eee; stroke-width: 3.8; }
+    .circle { fill: none; stroke-width: 2.8; stroke-linecap: round; animation: progress 1s ease-out forwards; }
+    .percentage { fill: #666; font-family: sans-serif; font-weight: bold; font-size: 0.5em; text-anchor: middle; }
+    @keyframes progress { 0% { stroke-dasharray: 0 100; } }
+    /* Dynamic colors */
+    .stroke-green { stroke: #198754; }
+    .stroke-orange { stroke: #fd7e14; }
+    .stroke-red { stroke: #dc3545; }
+</style>
+
 <script>
-async function auditSite() {
+async function runAudit() {
     const url = document.getElementById('siteUrl').value;
     if(!url) return alert("Enter URL");
-    
+
     const btn = document.getElementById('auditBtn');
-    btn.disabled = true; btn.innerHTML = "Analyzing...";
-    
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+
     try {
         const res = await fetch('/api/audit-site', {
             method: 'POST',
@@ -40,31 +169,64 @@ async function auditSite() {
             body: JSON.stringify({url: url})
         });
         const data = await res.json();
-        
+
         if(data.success) {
-            const scoreEl = document.getElementById('score');
-            scoreEl.innerText = data.score;
-            scoreEl.className = `display-1 fw-bold ${data.score > 80 ? 'text-success' : 'text-danger'}`;
+            // Update Metrics
+            document.getElementById('resLoad').innerText = data.meta.load_time;
+            document.getElementById('resWords').innerText = data.meta.word_count;
+            document.getElementById('resLinks').innerText = data.meta.link_count;
+            document.getElementById('resPassed').innerText = data.passed.length;
+
+            // Update Score Circle
+            const score = data.score;
+            const circle = document.getElementById('scoreCircle');
+            const text = document.getElementById('scoreText');
             
-            const ul = document.getElementById('issuesList');
-            ul.innerHTML = '';
+            circle.setAttribute('stroke-dasharray', `${score}, 100`);
+            text.innerHTML = score;
             
+            // Circle Color
+            circle.classList.remove('stroke-green', 'stroke-orange', 'stroke-red');
+            if(score >= 80) circle.classList.add('stroke-green');
+            else if(score >= 50) circle.classList.add('stroke-orange');
+            else circle.classList.add('stroke-red');
+
+            // Update Google Preview
+            document.getElementById('prevUrl').innerText = data.meta.url;
+            document.getElementById('prevTitle').innerText = data.meta.title;
+            document.getElementById('prevDesc').innerText = data.meta.description;
+
+            // Update Lists
+            const issuesUl = document.getElementById('issuesList');
+            issuesUl.innerHTML = '';
             if(data.issues.length === 0) {
-                ul.innerHTML = '<li class="list-group-item text-success"><i class="fas fa-check-circle me-2"></i> No critical issues found!</li>';
+                issuesUl.innerHTML = '<li class="list-group-item text-success">Perfect! No issues found.</li>';
             } else {
                 data.issues.forEach(i => {
-                    // Display Issue + Fix
-                    ul.innerHTML += `
+                    const badge = i.type === 'critical' ? '<span class="badge bg-danger">Critical</span>' : '<span class="badge bg-warning text-dark">Warning</span>';
+                    issuesUl.innerHTML += `
                         <li class="list-group-item py-3">
-                            <div class="fw-bold text-danger mb-1"><i class="fas fa-exclamation-circle me-2"></i>${i.issue}</div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-dark">${i.msg}</span>
+                                ${badge}
+                            </div>
                             <div class="small text-muted"><i class="fas fa-tools me-1"></i> <strong>Fix:</strong> ${i.fix}</div>
                         </li>`;
                 });
             }
+
+            const passedUl = document.getElementById('passedList');
+            passedUl.innerHTML = '';
+            data.passed.forEach(p => {
+                passedUl.innerHTML += `<li class="list-group-item py-2 text-success"><i class="fas fa-check me-2"></i> ${p}</li>`;
+            });
+
             document.getElementById('resultArea').classList.remove('d-none');
-        } else { alert(data.error); }
-    } catch(e) { console.error(e); }
-    finally { btn.disabled = false; btn.innerHTML = "Audit Site"; }
+        } else {
+            alert(data.error);
+        }
+    } catch(e) { console.error(e); alert("Audit failed. Check console."); }
+    finally { btn.disabled = false; btn.innerHTML = "Start Audit"; }
 }
 </script>
 {% endblock %}
