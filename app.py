@@ -20,12 +20,10 @@ from youtube_transcript_api import YouTubeTranscriptApi
 load_dotenv()
 app = Flask(__name__)
 
-# Database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///myseotoolver5.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
-# Email
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
@@ -49,6 +47,13 @@ TOOL_LIST = [
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
     'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer'
+]
+
+PIPED_INSTANCES = [
+    "https://pipedapi.kavin.rocks",
+    "https://api.piped.privacy.com.de",
+    "https://pipedapi.moomoo.me",
+    "https://pipedapi.smnz.de"
 ]
 
 # ==========================================
@@ -254,9 +259,8 @@ def payment_success(plan_name):
 @app.route('/tool/<tool_name>')
 @login_required
 def tool_view(tool_name):
-    # Also check permission for Pro tools (like image generator)
     if tool_name == 'image-generator' and current_user.tier == 'free':
-        flash("Image Generation is a Pro Feature. Please Upgrade!", "warning")
+        flash("Pro Feature. Please Upgrade!", "warning")
         return redirect('/pricing')
     return render_template(f'{tool_name.replace("-", "_")}.html')
 
@@ -265,89 +269,52 @@ for t in TOOL_LIST:
     if '-' in t: app.add_url_rule(f'/{t}', endpoint=t.replace('-', '_'), view_func=lambda t=t: tool_view(t))
 
 # ==========================================
-# 7. API ENDPOINTS (AI & TOOLS)
+# 7. API ENDPOINTS
 # ==========================================
 
-# --- YOUTUBE TO BLOG API ---
-@app.route('/api/youtube-to-blog', methods=['POST'])
-@login_required
-def api_youtube_to_blog():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Limit reached.'}), 403
-
-    data = request.get_json()
-    video_url = data.get('url')
-    
-    try:
-        video_id = ""
-        if "youtu.be/" in video_url: video_id = video_url.split("youtu.be/")[1].split("?")[0]
-        elif "v=" in video_url: video_id = video_url.split("v=")[1].split("&")[0]
-        elif "shorts/" in video_url: video_id = video_url.split("shorts/")[1].split("?")[0]
-            
-        if not video_id: return jsonify({'error': 'Invalid URL'}), 400
-
-        # PIPED MIRROR NETWORK
-        PIPED_INSTANCES = ["https://pipedapi.kavin.rocks", "https://api.piped.privacy.com.de", "https://pipedapi.moomoo.me"]
-        full_text = ""
-        random.shuffle(PIPED_INSTANCES)
-        
-        for mirror in PIPED_INSTANCES:
-            try:
-                r = requests.get(f"{mirror}/streams/{video_id}", timeout=5)
-                if r.status_code == 200:
-                    subs = r.json().get('subtitles', [])
-                    target = next((s for s in subs if 'en' in s.get('code','')), subs[0] if subs else None)
-                    if target:
-                        r_sub = requests.get(target['url'], timeout=5)
-                        lines = r_sub.text.splitlines()
-                        cleaned = [l.strip() for l in lines if '-->' not in l and 'WEBVTT' not in l and l.strip()]
-                        full_text = " ".join(cleaned)
-                        if len(full_text) > 50: break
-            except: continue
-
-        if not full_text: return jsonify({'error': "No captions available."}), 400
-
-        # AI Process
-        prompt = f"Convert transcript to blog post (Markdown): {full_text[:15000]}"
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Writer"},{"role":"user","content":prompt}])
-        
-        current_user.ai_requests_this_month += 1
-        db.session.commit()
-        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
-
-    except Exception as e: return jsonify({'error': f"System Error: {str(e)}"}), 500
-
-# --- NEW: IMAGE GENERATOR ---
-@app.route('/api/generate-image', methods=['POST'])
-@login_required
-def api_generate_image():
-    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro!'}), 403
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
-    
-    try:
-        res = client.images.generate(model="dall-e-3", prompt=request.get_json().get('prompt'), size="1024x1024", quality="standard", n=1)
-        current_user.ai_requests_this_month += 5 # Images cost more
-        db.session.commit()
-        return jsonify({'success': True, 'image_url': res.data[0].url})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- NEW: SITE AUDITOR ---
+# --- NEW: SITE AUDITOR (DESCRIPTIVE) ---
 @app.route('/api/audit-site', methods=['POST'])
 @login_required
 def api_audit_site():
     try:
         url = request.get_json().get('url')
         if not url.startswith('http'): url = 'https://' + url
-        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=10)
+        
+        # Timeout 30s + Browser Header
+        r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=30)
         s = BeautifulSoup(r.content, 'html.parser')
         
         score = 100; issues = []
-        if not s.title: score-=20; issues.append("Missing Title")
-        if not s.find('meta', attrs={'name':'description'}): score-=20; issues.append("Missing Meta Description")
-        if not s.find('h1'): score-=20; issues.append("Missing H1")
         
+        # Title
+        if not s.title: 
+            score -= 20
+            issues.append({"issue": "Missing Page Title", "fix": "Add a <title> tag inside <head>. Optimal length: 30-60 chars."})
+        elif len(s.title.string) > 60:
+            score -= 5
+            issues.append({"issue": "Title Too Long", "fix": f"Current: {len(s.title.string)} chars. Shorten to < 60 chars to prevent Google from cutting it off."})
+            
+        # Meta Description
+        desc = s.find('meta', attrs={'name':'description'})
+        if not desc: 
+            score -= 20
+            issues.append({"issue": "Missing Meta Description", "fix": "Add <meta name='description' content='...'>. This improves click-through rates (CTR)."})
+        elif len(desc.get('content', '')) > 160:
+            score -= 5
+            issues.append({"issue": "Description Too Long", "fix": "Shorten description to < 160 chars."})
+            
+        # H1 Check
+        h1s = s.find_all('h1')
+        if not h1s: 
+            score -= 20
+            issues.append({"issue": "Missing H1 Tag", "fix": "Add exactly one <h1> tag describing the main topic of the page."})
+        elif len(h1s) > 1: 
+            score -= 10
+            issues.append({"issue": "Multiple H1 Tags", "fix": "Found multiple H1 tags. Use only ONE H1 per page for clear hierarchy."})
+            
         return jsonify({'success': True, 'score': max(0,score), 'issues': issues})
-    except Exception as e: return jsonify({'error': str(e)}), 500
+    except Exception as e: 
+        return jsonify({'error': f"Crawl failed. Site may block bots. Error: {str(e)}"}), 500
 
 # --- NEW: HUMANIZER ---
 @app.route('/api/humanize-text', methods=['POST'])
@@ -360,23 +327,79 @@ def api_humanize_text():
         return jsonify({'success': True, 'content': res.choices[0].message.content})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- GENERIC API ---
+# --- NEW: IMAGE GEN ---
+@app.route('/api/generate-image', methods=['POST'])
+@login_required
+def api_generate_image():
+    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro!'}), 403
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    try:
+        res = client.images.generate(model="dall-e-3", prompt=request.get_json().get('prompt'), size="1024x1024", quality="standard", n=1)
+        current_user.ai_requests_this_month += 5
+        db.session.commit()
+        return jsonify({'success': True, 'image_url': res.data[0].url})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- NEW: ARTICLE WIZARD ---
+@app.route('/api/article-wizard', methods=['POST'])
+@login_required
+def api_article_wizard():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    try:
+        d = request.get_json()
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Write detailed blog post about: {d.get('topic')}. Tone: {d.get('tone')}."}]
+        )
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- YOUTUBE TO BLOG API (PIPED) ---
+@app.route('/api/youtube-to-blog', methods=['POST'])
+@login_required
+def api_youtube_to_blog():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached.'}), 403
+    data = request.get_json(); video_url = data.get('url')
+    try:
+        vid = video_url.split("v=")[1].split("&")[0] if "v=" in video_url else video_url.split("youtu.be/")[1].split("?")[0]
+        
+        full_text = ""
+        mirrors = PIPED_INSTANCES.copy(); random.shuffle(mirrors)
+        
+        for m in mirrors:
+            try:
+                r = requests.get(f"{m}/streams/{vid}", timeout=5)
+                if r.status_code == 200:
+                    subs = r.json().get('subtitles', [])
+                    tgt = next((s for s in subs if 'en' in s.get('code','')), subs[0] if subs else None)
+                    if tgt:
+                        lines = requests.get(tgt['url']).text.splitlines()
+                        clean = [l.strip() for l in lines if '-->' not in l and 'WEBVTT' not in l and l.strip()]
+                        full_text = " ".join(clean)
+                        if len(full_text) > 50: break
+            except: continue
+
+        if not full_text: return jsonify({'error': "No captions found."}), 400
+
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Blog from transcript: {full_text[:15000]}"}]
+        )
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- GENERIC & SAVE ---
 @app.route('/api/generate-content', methods=['POST'])
 @login_required
 def api_generate_content():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Limit reached.'}), 403
     try:
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role":"system","content":"SEO Expert"},{"role":"user","content":request.get_json().get('keyword')}]
-        )
-        current_user.ai_requests_this_month += 1
-        db.session.commit()
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"SEO"},{"role":"user","content":request.get_json().get('keyword')}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
         return jsonify({'success': True, 'content': res.choices[0].message.content, 'html_content': markdown.markdown(res.choices[0].message.content)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- SAVE CONTENT ---
 @app.route('/api/save-content', methods=['POST'])
 @login_required
 def api_save_content():
@@ -388,7 +411,6 @@ def api_save_content():
             c.keyword = d.get('keyword'); c.word_count = len(d.get('content','').split())
             db.session.commit()
             return jsonify({'success': True, 'id': c.id})
-    
     new_c = Content(user_id=current_user.id, title=d.get('title'), content=d.get('content'), html_content=d.get('html_content'), keyword=d.get('keyword'), word_count=len(d.get('content','').split()))
     db.session.add(new_c); current_user.content_count += 1; db.session.commit()
     return jsonify({'success': True, 'id': new_c.id})
