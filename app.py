@@ -12,7 +12,6 @@ from openai import OpenAI
 import markdown
 from io import BytesIO, StringIO
 from sqlalchemy import text
-from youtube_transcript_api import YouTubeTranscriptApi
 
 # ==========================================
 # 1. CONFIGURATION
@@ -25,7 +24,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
-# Email (Hostinger)
+# Email
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
@@ -41,23 +40,14 @@ login_manager.login_view = 'login'
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- GLOBAL TOOL LIST ---
+# --- GLOBAL TOOL LIST (Cleaned) ---
 TOOL_LIST = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
     'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
     'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
-    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer'
-]
-
-# --- PIPED MIRRORS (YouTube Bypass) ---
-PIPED_INSTANCES = [
-    "https://pipedapi.kavin.rocks",
-    "https://api.piped.privacy.com.de",
-    "https://pipedapi.moomoo.me",
-    "https://pipedapi.smnz.de",
-    "https://pipedapi.adminforge.de"
+    'image-generator', 'site-auditor', 'content-humanizer', 'article-wizard'
 ]
 
 # ==========================================
@@ -144,6 +134,12 @@ def pricing(): return render_template('pricing.html')
 @app.route('/profile')
 @login_required
 def profile(): return render_template('profile.html')
+
+# --- FORCE ARTICLE WIZARD ROUTE ---
+@app.route('/article-wizard')
+@login_required
+def article_wizard_page():
+    return render_template('article_wizard.html')
 
 # --- TECHNICAL SEO ROUTES ---
 @app.route('/robots.txt')
@@ -249,6 +245,21 @@ def admin_delete_user(user_id):
         db.session.commit()
     return jsonify({'success': True})
 
+# --- NEW: MANUAL UPGRADE ROUTE ---
+@app.route('/admin/user/<int:user_id>/upgrade', methods=['POST'])
+@login_required
+def admin_upgrade_user(user_id):
+    if not getattr(current_user, 'is_admin', False): return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    new_tier = data.get('tier') # 'free', 'pro king', 'enterprise'
+    
+    user = User.query.get_or_404(user_id)
+    user.tier = new_tier
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': f"User upgraded to {new_tier.upper()}"})
+
 @app.route('/payment/success/<plan_name>')
 @login_required
 def payment_success(plan_name):
@@ -276,7 +287,7 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS
 # ==========================================
 
-# --- NEW: PUBLIC AUDIT (ROBUST FALLBACK) ---
+# --- PUBLIC AUDIT ---
 @app.route('/api/public-audit', methods=['POST'])
 def api_public_audit():
     try:
@@ -292,16 +303,10 @@ def api_public_audit():
         elif len(s.title.string) > 60: score -= 5; real_issues.append("Title Too Long")
         if not s.find('meta', attrs={'name':'description'}): score -= 20; real_issues.append("Missing Meta Description")
         if not s.find('h1'): score -= 20; real_issues.append("Missing H1 Heading")
-        
         if score == 100: real_issues.append("No critical errors found")
         
-        # Prevent score 0 which looks fake
-        final_score = max(35, score)
-        
-        return jsonify({'success': True, 'score': final_score, 'issues': real_issues})
-    except: 
-        # Fallback if crawl fails/blocks
-        return jsonify({'success': True, 'score': 42, 'issues': ['Server Response Timeout', 'Mobile Optimization Issues']})
+        return jsonify({'success': True, 'score': max(35,score), 'issues': real_issues})
+    except: return jsonify({'success': True, 'score': 42, 'issues': ['Server Response Timeout', 'Mobile Optimization Issues']})
 
 # --- PRO AUDIT ---
 @app.route('/api/audit-site', methods=['POST'])
@@ -370,33 +375,7 @@ def api_article_wizard():
         return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-@app.route('/api/youtube-to-blog', methods=['POST'])
-@login_required
-def api_youtube_to_blog():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached.'}), 403
-    data = request.get_json(); video_url = data.get('url')
-    try:
-        vid = video_url.split("v=")[1].split("&")[0] if "v=" in video_url else video_url.split("youtu.be/")[1].split("?")[0]
-        full_text = ""
-        mirrors = PIPED_INSTANCES.copy(); random.shuffle(mirrors)
-        for m in mirrors:
-            try:
-                r = requests.get(f"{m}/streams/{vid}", timeout=5)
-                if r.status_code == 200:
-                    subs = r.json().get('subtitles', [])
-                    tgt = next((s for s in subs if 'en' in s.get('code','')), subs[0] if subs else None)
-                    if tgt:
-                        lines = requests.get(tgt['url']).text.splitlines()
-                        clean = [l.strip() for l in lines if '-->' not in l and 'WEBVTT' not in l and l.strip()]
-                        full_text = " ".join(clean)
-                        if len(full_text) > 50: break
-            except: continue
-        if not full_text: return jsonify({'error': "No captions found."}), 400
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Blog from transcript: {full_text[:15000]}"}])
-        current_user.ai_requests_this_month += 1; db.session.commit()
-        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
+# --- GENERIC ---
 @app.route('/api/generate-content', methods=['POST'])
 @login_required
 def api_generate_content():
@@ -428,7 +407,6 @@ def api_delete(id):
     if c.user_id == current_user.id: db.session.delete(c); db.session.commit()
     return jsonify({'success': True})
 
-# --- HELPER APIs ---
 @app.route('/api/generate-seo-terms', methods=['POST'])
 @login_required
 def api_generate_seo_terms():
