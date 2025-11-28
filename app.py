@@ -20,12 +20,12 @@ from youtube_transcript_api import YouTubeTranscriptApi
 load_dotenv()
 app = Flask(__name__)
 
-# Database
+# Database Config
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///myseotoolver5.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
-# Email
+# Email Config (Hostinger)
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
@@ -39,6 +39,7 @@ mail = Mail(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# OpenAI Client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # --- GLOBAL TOOL LIST ---
@@ -264,7 +265,7 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS (AI & TOOLS)
 # ==========================================
 
-# --- YOUTUBE TO BLOG API (NUCLEAR FALLBACK OPTION) ---
+# --- YOUTUBE TO BLOG API (ANTI-BLOCK VERSION) ---
 @app.route('/api/youtube-to-blog', methods=['POST'])
 @login_required
 def api_youtube_to_blog():
@@ -275,7 +276,6 @@ def api_youtube_to_blog():
     video_url = data.get('url')
     
     try:
-        # Extract ID
         video_id = ""
         if "youtu.be/" in video_url: video_id = video_url.split("youtu.be/")[1].split("?")[0]
         elif "v=" in video_url: video_id = video_url.split("v=")[1].split("&")[0]
@@ -283,40 +283,38 @@ def api_youtube_to_blog():
             
         if not video_id: return jsonify({'error': 'Invalid URL'}), 400
 
-        # NUCLEAR FETCH STRATEGY (Iterate ALL transcripts)
+        # ANTI-BLOCK FETCH (Grab anything available)
         try:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
             transcript = None
             
-            # Try finding any English variant first
-            try:
-                transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
-            except:
-                # If no English, iterate through EVERYTHING found
-                for t in transcript_list:
-                    if t.is_translatable:
-                        transcript = t.translate('en') # Force translate to English
-                        break
-                    else:
-                        transcript = t # Take whatever exists
-                        break
+            # Iterate available transcripts
+            for t in transcript_list:
+                transcript = t
+                break # Just grab the first one we find
             
-            if not transcript: raise Exception("No accessible transcripts found.")
+            if not transcript: raise Exception("No transcript found.")
             
             transcript_data = transcript.fetch()
             full_text = " ".join([t['text'] for t in transcript_data])
             
         except Exception as e:
             print(f"YouTube Error: {e}")
-            return jsonify({'error': "This video has no captions available for AI to read. Try a different video."}), 400
+            return jsonify({'error': "YouTube blocked the request or no captions exist."}), 400
 
-        # AI Process
-        prompt = f"Act as an expert SEO Blogger. Convert this transcript into a structured blog post (Markdown). Transcript: {full_text[:15000]}"
+        # OpenAI Translates & Formats
+        prompt = f"""
+        Act as an expert SEO Blogger. 
+        1. Analyze this transcript (it might be raw/auto-generated/foreign).
+        2. Translate to English if needed.
+        3. Convert into a structured Blog Post (Markdown).
+        Transcript: "{full_text[:12000]}"
+        """
         
         res = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role":"system","content":"Blog Writer"},{"role":"user","content":prompt}],
-            max_tokens=2000
+            max_tokens=2500
         )
         
         blog_content = res.choices[0].message.content
