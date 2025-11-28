@@ -9,29 +9,31 @@
     <!-- Styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;500;700;800&display=swap" rel="stylesheet">
     
     <style>
-        body { font-family: 'Outfit', sans-serif; background: #0f172a; color: white; overflow-x: hidden; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #1e293b; overflow-x: hidden; }
         
-        /* HERO GRADIENT */
-        .hero-section {
-            background: radial-gradient(circle at 50% 0%, #6366f1 0%, #0f172a 70%);
-            padding: 120px 0 80px;
+        /* HERO SECTION */
+        .hero-wrapper {
             position: relative;
+            background: radial-gradient(circle at 50% 0%, #4f46e5 0%, #0f172a 100%);
+            color: white;
+            padding: 140px 0 100px;
+            overflow: hidden;
         }
-
-        /* GLASS CARD */
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
+        
+        /* GLASS CARDS */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
-
-        /* SCANNER INPUT */
-        .url-input {
+        
+        .scanner-input {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
@@ -39,27 +41,43 @@
             padding: 1.2rem;
             font-size: 1.1rem;
         }
-        .url-input:focus { background: rgba(255, 255, 255, 0.15); border-color: #6366f1; outline: none; color: white; }
+        .scanner-input:focus { background: rgba(255, 255, 255, 0.15); border-color: #4f46e5; color: white; box-shadow: none; }
+        .scanner-input::placeholder { color: rgba(255,255,255,0.5); }
 
-        /* GLOW BUTTON */
         .btn-glow {
-            background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
-            border: none; color: white; font-weight: 800;
-            transition: transform 0.2s, box-shadow 0.2s;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed);
+            border: none; color: white; transition: transform 0.2s;
         }
-        .btn-glow:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4); color: white; }
+        .btn-glow:hover { transform: translateY(-2px); color: white; box-shadow: 0 10px 20px rgba(79, 70, 229, 0.4); }
 
-        /* AUDIT RESULT STYLES (THE HOOK) */
-        .audit-card {
-            background: #fff;
-            color: #1e293b;
-            border-radius: 16px;
-            overflow: hidden;
-            text-align: left;
-            max-width: 700px;
-            margin: 0 auto;
-            position: relative;
+        /* FEATURE CARDS */
+        .feature-card {
+            padding: 2rem; border-radius: 16px; background: #fff; border: 1px solid #e2e8f0; transition: all 0.3s; height: 100%;
         }
+        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -15px rgba(0,0,0,0.1); border-color: #4f46e5; }
+        .icon-box { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 1.5rem; margin-bottom: 1.5rem; }
+
+        /* PRICING */
+        .pricing-card { border-radius: 20px; border: 1px solid #e2e8f0; transition: all 0.3s; background: white; }
+        .pricing-card:hover { border-color: #6366f1; transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .pricing-popular { border: 2px solid #4f46e5; position: relative; }
+        .badge-popular { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: #4f46e5; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+
+        /* AUDIT RESULT STYLES */
+        .audit-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .blur-overlay { position: relative; filter: blur(6px); user-select: none; pointer-events: none; }
+        .lock-overlay {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 10; width: 90%; max-width: 400px;
+        }
+        
+        /* Score Circle */
         .score-circle {
             width: 80px; height: 80px;
             border-radius: 50%;
@@ -67,40 +85,11 @@
             display: flex; align-items: center; justify-content: center;
             font-weight: 900; font-size: 2rem;
             border: 5px solid #e2e8f0;
+            color: #333;
         }
         .score-danger { border-color: #ef4444; color: #ef4444; }
         .score-warning { border-color: #f59e0b; color: #f59e0b; }
         .score-success { border-color: #22c55e; color: #22c55e; }
-
-        /* THE BLUR TRAP */
-        .blur-trap {
-            filter: blur(5px);
-            user-select: none;
-            pointer-events: none;
-            opacity: 0.6;
-        }
-        .unlock-overlay {
-            position: absolute; bottom: 20px; left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            z-index: 10;
-        }
-        
-        /* FEATURE GRID */
-        .feature-box {
-            background: #1e293b;
-            padding: 2rem;
-            border-radius: 16px;
-            border: 1px solid #334155;
-            transition: 0.3s;
-            height: 100%;
-        }
-        .feature-box:hover { border-color: #6366f1; transform: translateY(-5px); }
-        .icon-wrap { font-size: 2rem; margin-bottom: 1rem; color: #818cf8; }
-        
-        /* PRICING */
-        .pricing-card { border-radius: 20px; border: 1px solid #e2e8f0; transition: all 0.3s; background: white; }
-        .pricing-card:hover { border-color: #6366f1; transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -110,181 +99,149 @@
         <div class="container">
             <a class="navbar-brand fw-bold fs-4" href="#"><i class="fas fa-crown text-warning"></i> MySEO King</a>
             <div>
-                <a href="/login" class="btn btn-link text-white text-decoration-none fw-bold me-3">Login</a>
-                <a href="/signup" class="btn btn-white bg-white text-dark fw-bold px-4 rounded-pill">Sign Up Free</a>
+                <a href="/login" class="btn btn-outline-light me-2 border-0 fw-bold">Login</a>
+                <a href="/signup" class="btn btn-light fw-bold px-4 rounded-pill">Get Started</a>
             </div>
         </div>
     </nav>
 
-    <!-- HERO -->
-    <div class="hero-section text-center">
-        <div class="container">
-            <div class="mb-4">
-                <span class="badge bg-indigo bg-opacity-25 border border-white border-opacity-25 px-3 py-2 rounded-pill text-warning">
-                    🔥 New: Article Wizard 2.0
-                </span>
-            </div>
-            <h1 class="display-3 fw-black mb-4">
-                Your Competitors Are Using AI.<br>
-                <span class="text-transparent bg-clip-text bg-gradient-to-r" style="background-image: linear-gradient(90deg, #818cf8, #ec4899);">Why Aren't You?</span>
-            </h1>
-            <p class="lead text-white-50 mb-5 px-lg-5 mx-auto" style="max-width: 800px;">
-                Generate ranking content, spy on competitors, and fix technical errors instantly. 
-                The only SEO tool you need to hit #1 on Google.
-            </p>
+    <!-- HERO SECTION -->
+    <div class="hero-wrapper">
+        <div class="container text-center">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <span class="badge bg-white bg-opacity-10 border border-white border-opacity-25 px-3 py-2 rounded-pill mb-4">
+                        🚀 #1 AI SEO Suite used by 5,000+ Marketers
+                    </span>
+                    <h1 class="display-3 fw-extrabold mb-4">Rank #1 on Google <br><span class="text-info">Without an Agency</span></h1>
+                    <p class="lead text-white-50 mb-5 px-lg-5">
+                        Automate your SEO workflow. Generate content, spy on competitors, and audit your site health in seconds.
+                    </p>
 
-            <!-- SCANNER BAIT -->
-            <div class="glass-panel p-3 mb-5 mx-auto" style="max-width: 800px;">
-                <div class="row g-2">
-                    <div class="col-md-9">
-                        <input type="text" id="scanUrl" class="form-control url-input" placeholder="Enter your website URL (e.g. mybusiness.com)">
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-glow w-100 h-100 fs-5 rounded-3" id="scanBtn" onclick="runPublicAudit()">
-                            Check My Site
-                        </button>
-                    </div>
-                </div>
-                <div class="text-start ps-3 mt-2 small text-white-50">
-                    <i class="fas fa-eye text-success me-1"></i> 128 people scanning right now
-                </div>
-            </div>
-
-            <!-- LOADER -->
-            <div id="loader" class="d-none my-5">
-                <div class="spinner-border text-light mb-3" style="width: 3rem; height: 3rem;"></div>
-                <h4 class="fw-light">Analyzing 200+ Ranking Factors...</h4>
-            </div>
-
-            <!-- AUDIT RESULT (THE HOOK) -->
-            <div id="resultCard" class="audit-card shadow-lg d-none animate__animated animate__fadeInUp">
-                
-                <!-- Header -->
-                <div class="p-4 border-bottom">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <div id="scoreCircle" class="score-circle score-warning me-3">0</div>
-                            <div>
-                                <h5 class="mb-0 fw-bold">SEO Health Score</h5>
-                                <span class="text-muted small" id="urlDisplay">example.com</span>
+                    <!-- LIVE SCANNER -->
+                    <div class="glass-card p-2 mb-5 mx-auto">
+                        <div class="row g-2">
+                            <div class="col-md-9">
+                                <input type="text" id="scanUrl" class="form-control scanner-input" placeholder="Enter your website URL (e.g. mybusiness.com)">
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-glow w-100 h-100 fw-bold fs-5 rounded-3" id="scanBtn" onclick="runPublicAudit()">Analyze Now</button>
                             </div>
                         </div>
-                        <div class="text-end">
-                            <span class="badge bg-danger px-3 py-2">ACTION REQUIRED</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- BODY: The Real Error -->
-                <div class="p-4 bg-danger bg-opacity-10">
-                    <h6 class="text-danger fw-bold text-uppercase mb-3"><i class="fas fa-exclamation-triangle me-2"></i> Critical Issue Found</h6>
-                    <div class="bg-white p-3 rounded border border-danger border-opacity-25 shadow-sm">
-                        <h5 class="fw-bold text-danger mb-1" id="realIssueText">Missing Meta Description</h5>
-                        <p class="small text-muted mb-0">Google cannot understand your page. This is hurting your CTR massively.</p>
-                    </div>
-                </div>
-
-                <!-- BODY: The Blurred "More" -->
-                <div class="p-4 position-relative bg-light" style="min-height: 250px;">
-                    
-                    <div class="blur-trap">
-                        <!-- Fake data for blur effect -->
-                        <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
-                            <span class="fw-bold text-dark">Slow Mobile Speed (LCP)</span>
-                            <span class="badge bg-warning text-dark">Warning</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
-                            <span class="fw-bold text-dark">Broken Internal Link (404)</span>
-                            <span class="badge bg-danger">Critical</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
-                            <span class="fw-bold text-dark">Duplicate H1 Tags</span>
-                            <span class="badge bg-danger">Critical</span>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <span class="fw-bold text-dark">Image Alt Text Missing</span>
-                            <span class="badge bg-warning text-dark">Warning</span>
+                        <div class="text-start ps-3 mt-2">
+                            <small class="text-white-50"><i class="fas fa-bolt text-warning me-1"></i> Free scans remaining: <span id="scansLeft" class="text-white fw-bold">3</span></small>
                         </div>
                     </div>
 
-                    <!-- The Unlock Button -->
-                    <div class="unlock-overlay text-center">
-                        <div class="bg-white p-4 rounded-4 shadow-lg border">
-                            <h4 class="fw-bold mb-2">Unlock Full Report</h4>
-                            <p class="text-muted small mb-3">We found 5+ errors blocking your traffic.</p>
-                            <a href="/signup" class="btn btn-primary w-100 py-3 fw-bold rounded-pill">Fix My SEO Free</a>
+                    <!-- SCAN RESULTS (HIDDEN INITIALLY) -->
+                    <div id="loader" class="d-none my-5">
+                        <div class="spinner-border text-light mb-3" style="width: 3rem; height: 3rem;"></div>
+                        <h4 class="fw-light">Crawling site structure...</h4>
+                    </div>
+
+                    <div id="resultCard" class="glass-card p-5 text-start d-none mx-auto" style="max-width: 700px;">
+                        <div class="d-flex justify-content-between align-items-center border-bottom border-white border-opacity-10 pb-4 mb-4">
+                            <div class="d-flex align-items-center">
+                                <div id="scoreCircle" class="score-circle me-3">0</div>
+                                <div>
+                                    <h5 class="text-white-50 text-uppercase mb-1">Health Score</h5>
+                                    <span id="urlDisplay" class="text-white fw-bold small"></span>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="bg-danger bg-opacity-25 text-danger border border-danger px-3 py-1 rounded-pill fw-bold mb-2">
+                                    <i class="fas fa-exclamation-circle"></i> Critical Issues
+                                </div>
+                                <p class="small text-white-50 mb-0">Scan ID: #<span id="scanId"></span></p>
+                            </div>
+                        </div>
+
+                        <div class="position-relative">
+                            <!-- REAL ISSUES INJECTED HERE -->
+                            <div id="issuesContainer"></div>
+
+                            <!-- BLURRED FAKE ISSUES -->
+                            <div class="blur-overlay mt-2">
+                                <div class="audit-item"><span>Mobile Usability Error</span><span class="text-warning fw-bold">Warning</span></div>
+                                <div class="audit-item"><span>Slow Largest Contentful Paint</span><span class="text-warning fw-bold">Warning</span></div>
+                                <div class="audit-item"><span>Broken Internal Links (404)</span><span class="text-danger fw-bold">Critical</span></div>
+                                <p class="text-white-50 mt-3">...and 8 more technical issues found.</p>
+                            </div>
+
+                            <!-- LOCK -->
+                            <div class="lock-overlay text-center">
+                                <div class="bg-dark p-4 rounded-4 shadow-lg border border-white border-opacity-10">
+                                    <i class="fas fa-lock fa-3x text-warning mb-3"></i>
+                                    <h3>Unlock Full Report</h3>
+                                    <p class="text-white-50 mb-4">Fix these critical errors to improve your ranking instantly.</p>
+                                    <a href="/signup" class="btn btn-primary btn-lg w-100 fw-bold">Fix My SEO Now</a>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                 </div>
             </div>
-
         </div>
     </div>
 
-    <!-- FEATURES GRID -->
-    <div class="py-5 bg-dark">
+    <!-- FEATURES SECTION -->
+    <section class="py-5 bg-light">
         <div class="container py-5">
             <div class="text-center mb-5">
-                <h6 class="text-primary fw-bold text-uppercase">Why We Are Better</h6>
-                <h2 class="fw-bold display-5 text-white">Replace 5 expensive tools with 1</h2>
+                <h6 class="text-primary fw-bold text-uppercase">Features</h6>
+                <h2 class="fw-bold display-5">Everything you need to rank #1</h2>
             </div>
-
+            
             <div class="row g-4">
-                <!-- Feature 1 -->
                 <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-magic"></i></div>
-                        <h4 class="text-white fw-bold">Article Wizard</h4>
-                        <p class="text-white-50">Generate full 1,500-word articles with headings, intro, and conclusion in 1 click.</p>
+                    <div class="feature-card">
+                        <div class="icon-box bg-primary bg-opacity-10 text-primary"><i class="fas fa-pen-nib"></i></div>
+                        <h4 class="fw-bold">AI Article Wizard</h4>
+                        <p class="text-muted">Generate complete, human-like 1,500+ word blog posts in one click. SEO optimized automatically.</p>
                     </div>
                 </div>
-                <!-- Feature 2 -->
                 <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-user-secret"></i></div>
-                        <h4 class="text-white fw-bold">Competitor Spy</h4>
-                        <p class="text-white-50">See exactly what keywords your competitors use and steal their strategy instantly.</p>
+                    <div class="feature-card">
+                        <div class="icon-box bg-success bg-opacity-10 text-success"><i class="fas fa-user-secret"></i></div>
+                        <h4 class="fw-bold">Competitor Spy</h4>
+                        <p class="text-muted">Steal your competitors' keyword strategy. See their headings, word counts, and missing gaps.</p>
                     </div>
                 </div>
-                <!-- Feature 3 -->
                 <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fab fa-youtube"></i></div>
-                        <h4 class="text-white fw-bold">YouTube Repurposer</h4>
-                        <p class="text-white-50">Turn any video into a blog post. Our AI extracts the value so you get unique content fast.</p>
+                    <div class="feature-card">
+                        <div class="icon-box bg-danger bg-opacity-10 text-danger"><i class="fas fa-video"></i></div>
+                        <h4 class="fw-bold">YouTube to Blog</h4>
+                        <p class="text-muted">Turn any YouTube video into a high-quality blog post instantly. Repurpose content like a pro.</p>
                     </div>
                 </div>
-                <!-- Feature 4 -->
                 <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-robot"></i></div>
-                        <h4 class="text-white fw-bold">Humanizer</h4>
-                        <p class="text-white-50">Bypass AI detectors. We rewrite robotic text to sound like a professional human writer.</p>
+                    <div class="feature-card">
+                        <div class="icon-box bg-warning bg-opacity-10 text-warning"><i class="fas fa-stethoscope"></i></div>
+                        <h4 class="fw-bold">Site Health Audit</h4>
+                        <p class="text-muted">Find broken links, missing tags, and speed issues that are killing your Google rankings.</p>
                     </div>
                 </div>
-                <!-- Feature 5 -->
                 <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-images"></i></div>
-                        <h4 class="text-white fw-bold">AI Images</h4>
-                        <p class="text-white-50">Stop paying for stock photos. Generate unique, copyright-free images for your blogs.</p>
+                    <div class="feature-card">
+                        <div class="icon-box bg-info bg-opacity-10 text-info"><i class="fas fa-paint-brush"></i></div>
+                        <h4 class="fw-bold">AI Image Gen</h4>
+                        <p class="text-muted">Create unique, royalty-free featured images for your blog posts using DALL-E 3 technology.</p>
                     </div>
                 </div>
-                <!-- Feature 6 -->
                 <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-search-dollar"></i></div>
-                        <h4 class="text-white fw-bold">Keyword Data</h4>
-                        <p class="text-white-50">Find low-competition keywords that are easy to rank for. Dominate your niche.</p>
+                    <div class="feature-card">
+                        <div class="icon-box bg-secondary bg-opacity-10 text-dark"><i class="fas fa-robot"></i></div>
+                        <h4 class="fw-bold">Content Humanizer</h4>
+                        <p class="text-muted">Rewrite AI text to bypass detectors. Make your content sound 100% human and authentic.</p>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- PRICING -->
-    <div class="py-5 bg-white text-dark">
+    <!-- PRICING SECTION -->
+    <section class="py-5">
         <div class="container py-5">
             <div class="text-center mb-5">
                 <h6 class="text-primary fw-bold text-uppercase">Pricing</h6>
@@ -292,125 +249,143 @@
                 <p class="text-muted">Start for free. No credit card required.</p>
             </div>
 
-            <div class="row justify-content-center g-4">
+            <div class="row justify-content-center align-items-center">
                 <!-- FREE -->
                 <div class="col-md-4">
-                    <div class="card pricing-card p-4 h-100">
-                        <h5 class="fw-bold text-muted">Starter</h5>
-                        <h2 class="display-4 fw-bold mb-4">$0</h2>
-                        <ul class="list-unstyled mb-4">
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Credits / mo</li>
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Basic Writer</li>
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Keyword Research</li>
-                        </ul>
-                        <a href="/signup" class="btn btn-outline-dark w-100 fw-bold rounded-pill">Start Free</a>
+                    <div class="card pricing-card p-4 h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="fw-bold text-muted text-uppercase mb-4">Starter</h5>
+                            <h2 class="display-4 fw-bold mb-4">$0</h2>
+                            <ul class="list-unstyled mb-4">
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> 50 AI Credits / mo</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Basic Writer</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Keyword Research</li>
+                            </ul>
+                            <a href="/signup" class="btn btn-outline-dark w-100 fw-bold rounded-pill">Start Free</a>
+                        </div>
                     </div>
                 </div>
 
                 <!-- PRO KING -->
                 <div class="col-md-4">
-                    <div class="card pricing-card p-4 h-100 border-primary border-2 shadow-lg position-relative">
+                    <div class="card pricing-card pricing-popular p-4 h-100 shadow bg-white">
                         <div class="position-absolute top-0 start-50 translate-middle badge bg-primary px-3 py-2 rounded-pill">POPULAR</div>
-                        <h5 class="fw-bold text-primary mt-2">Pro King</h5>
-                        <h2 class="display-4 fw-bold mb-4">$29<span class="fs-6 text-muted">/mo</span></h2>
-                        <ul class="list-unstyled mb-4">
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Credits</strong></li>
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Article Wizard</strong></li>
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Competitor Spy</li>
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Humanizer & Images</li>
-                        </ul>
-                        <a href="/signup" class="btn btn-primary w-100 fw-bold rounded-pill">Get Pro</a>
+                        <div class="card-body">
+                            <h5 class="fw-bold text-primary text-uppercase mb-4">Pro King</h5>
+                            <h2 class="display-4 fw-bold mb-4">$29<span class="fs-6 text-muted fw-normal">/mo</span></h2>
+                            <ul class="list-unstyled mb-4">
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>500 AI Credits</strong></li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Article Wizard</strong></li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Competitor Spy</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> YouTube to Blog</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Humanizer & Images</li>
+                            </ul>
+                            <a href="/signup" class="btn btn-primary w-100 fw-bold rounded-pill shadow">Get Pro King</a>
+                        </div>
                     </div>
                 </div>
 
                 <!-- ENTERPRISE -->
                 <div class="col-md-4">
-                    <div class="card pricing-card p-4 h-100">
-                        <h5 class="fw-bold text-dark">Enterprise</h5>
-                        <h2 class="display-4 fw-bold mb-4">$99<span class="fs-6 text-muted">/mo</span></h2>
-                        <ul class="list-unstyled mb-4">
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Unlimited AI</strong></li>
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> API Access</li>
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Dedicated Support</li>
-                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i> All Pro Features</li>
-                        </ul>
-                        <a href="mailto:sales@myseokingtool.com" class="btn btn-outline-dark w-100 fw-bold rounded-pill">Contact Sales</a>
+                    <div class="card pricing-card p-4 h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="fw-bold text-dark text-uppercase mb-4">Enterprise</h5>
+                            <h2 class="display-4 fw-bold mb-4">$99<span class="fs-6 text-muted fw-normal">/mo</span></h2>
+                            <ul class="list-unstyled mb-4">
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> <strong>Unlimited AI</strong></li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> API Access</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Dedicated Support</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i> All Pro Features</li>
+                            </ul>
+                            <a href="mailto:sales@myseokingtool.com" class="btn btn-outline-dark w-100 fw-bold rounded-pill">Contact Sales</a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- FOOTER -->
-    <footer class="py-4 bg-dark text-center text-white-50 border-top border-white border-opacity-10">
+    <footer class="bg-white py-4 text-center border-top mt-auto">
         <div class="container">
-            <p class="mb-0">&copy; 2024 MySEO King. Questions? <a href="mailto:support@myseokingtool.com" class="text-white">support@myseokingtool.com</a></p>
+            <div class="mb-3">
+                <span class="text-muted small">Questions? Email us: </span>
+                <a href="mailto:support@myseokingtool.com" class="fw-bold text-primary text-decoration-none">support@myseokingtool.com</a>
+            </div>
+            <p class="text-muted small mb-0">&copy; 2024 MySEO King. All rights reserved.</p>
         </div>
     </footer>
 
     <script>
-        // COOKIE LOGIC
+        // SCANNER LOGIC
         let scans = localStorage.getItem('scanCount') ? parseInt(localStorage.getItem('scanCount')) : 3;
         document.getElementById('scansLeft').innerText = scans;
 
         async function runPublicAudit() {
-            const url = document.getElementById('scanUrl').value;
-            if(!url) return alert("Please enter a website URL");
-            if(scans <= 0) { window.location.href = "/signup"; return; }
+            const urlInput = document.getElementById('scanUrl').value;
+            if(!urlInput) return alert("Please enter a website URL");
+            
+            // Clean URL for display
+            let cleanUrl = urlInput.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-            // UI Loading
+            if(scans <= 0) {
+                window.location.href = "/signup"; 
+                return;
+            }
+
             document.getElementById('scanBtn').disabled = true;
             document.getElementById('loader').classList.remove('d-none');
             document.getElementById('resultCard').classList.add('d-none');
 
-            // Use Promise.race to handle timeout
-            const timeout = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout')), 10000)
-            );
-
+            // Timeout Promise
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000));
             const fetchAudit = fetch('/api/public-audit', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({url: url})
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: urlInput})
             });
 
-            try {
-                // Race between fetch and 10s timeout
-                const res = await Promise.race([fetchAudit, timeout]);
-                const data = await res.json();
+            setTimeout(async () => {
+                try {
+                    const res = await Promise.race([fetchAudit, timeout]);
+                    const data = await res.json();
 
-                document.getElementById('loader').classList.add('d-none');
-                document.getElementById('resultCard').classList.remove('d-none');
-                document.getElementById('scoreDisplay').innerText = data.score;
-                document.getElementById('urlDisplay').innerText = url;
-                document.getElementById('scanId').innerText = Math.floor(Math.random() * 10000);
+                    renderResult(data.score, data.issues, cleanUrl);
 
-                // --- CRITICAL ISSUE INJECTOR ---
-                const issueBox = document.getElementById('realIssueText');
-                if(data.issues && data.issues.length > 0) {
-                    issueBox.innerText = data.issues[0]; 
-                } else {
-                    issueBox.innerText = "Content Optimization Needed"; 
+                } catch(e) {
+                    // FALLBACK IF FAILS
+                    renderResult(42, ['Server Response Timeout', 'Mobile Optimization Issues'], cleanUrl);
                 }
+            }, 2000);
+        }
 
-                // Color Coding
-                const circle = document.getElementById('scoreCircle');
-                circle.className = `score-circle ${data.score > 80 ? 'score-success' : data.score > 50 ? 'score-warning' : 'score-danger'}`;
+        function renderResult(score, issues, url) {
+            document.getElementById('loader').classList.add('d-none');
+            document.getElementById('resultCard').classList.remove('d-none');
+            document.getElementById('scanBtn').disabled = false;
 
-                scans--;
-                localStorage.setItem('scanCount', scans);
-                document.getElementById('scansLeft').innerText = scans;
-                document.getElementById('resultCard').scrollIntoView({behavior: "smooth"});
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('urlDisplay').innerText = url;
+            document.getElementById('scanId').innerText = Math.floor(Math.random() * 10000);
 
-            } catch(e) {
-                // If fails (timeout or network), SHOW FAKE BAD SCORE (Bait)
-                document.getElementById('loader').classList.add('d-none');
-                document.getElementById('resultCard').classList.remove('d-none');
-                document.getElementById('scoreDisplay').innerText = "45"; // Force bad score
-                document.getElementById('realIssueText').innerText = "Server Connection Issue (Site too slow)";
-                document.getElementById('scoreCircle').className = 'score-circle score-danger';
-                document.getElementById('scanBtn').disabled = false;
+            // Score Color
+            const circle = document.getElementById('scoreCircle');
+            circle.className = `score-circle ${score > 80 ? 'score-success' : score > 50 ? 'score-warning' : 'score-danger'}`;
+
+            // Inject Issues
+            const container = document.getElementById('issuesContainer');
+            container.innerHTML = '';
+            if (issues.length > 0) {
+                container.innerHTML += `<div class="audit-item bg-danger bg-opacity-10 border border-danger border-opacity-25"><span class="fw-bold text-white"><i class="fas fa-times-circle text-danger me-2"></i> ${issues[0]}</span><span class="text-danger fw-bold">Critical</span></div>`;
+                if(issues.length > 1) {
+                    container.innerHTML += `<div class="audit-item bg-danger bg-opacity-10 border border-danger border-opacity-25"><span class="fw-bold text-white"><i class="fas fa-times-circle text-danger me-2"></i> ${issues[1]}</span><span class="text-danger fw-bold">Critical</span></div>`;
+                }
+            } else {
+                container.innerHTML = `<div class="audit-item bg-success bg-opacity-10 border border-success border-opacity-25"><span class="fw-bold text-white"><i class="fas fa-check-circle text-success me-2"></i> No Critical Errors Found</span><span class="text-success fw-bold">Pass</span></div>`;
             }
+
+            scans--;
+            localStorage.setItem('scanCount', scans);
+            document.getElementById('scansLeft').innerText = scans;
+            document.getElementById('resultCard').scrollIntoView({behavior: "smooth"});
         }
     </script>
 </body>
