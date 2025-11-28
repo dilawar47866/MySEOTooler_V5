@@ -13,3 +13,4 @@ validators==0.22.0
 gunicorn==21.2.0
 psycopg2-binary==2.9.9
 youtube-transcript-api==0.6.1
+httpx==0.24.1
