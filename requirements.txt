@@ -15,3 +15,4 @@ fake-useragent
 gunicorn
 psycopg2-binary
 Flask-Mail==0.9.1
+youtube-transcript-api==0.6.1
