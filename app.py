@@ -13,7 +13,7 @@ import markdown
 from io import BytesIO, StringIO
 from sqlalchemy import text
 from youtube_transcript_api import YouTubeTranscriptApi
-from authlib.integrations.flask_client import OAuth # NEW IMPORT
+from authlib.integrations.flask_client import OAuth
 
 # ==========================================
 # 1. CONFIGURATION
@@ -42,20 +42,26 @@ login_manager.login_view = 'login'
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- GOOGLE OAUTH SETUP ---
+# --- GOOGLE OAUTH (SAFE MODE) ---
+# Only register Google if keys exist, otherwise skip it to prevent crashes
 oauth = OAuth(app)
-google = oauth.register(
-    name='google',
-    client_id=os.getenv('GOOGLE_CLIENT_ID'),
-    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
-    access_token_url='https://accounts.google.com/o/oauth2/token',
-    access_token_params=None,
-    authorize_url='https://accounts.google.com/o/oauth2/auth',
-    authorize_params=None,
-    api_base_url='https://www.googleapis.com/oauth2/v1/',
-    userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
-    client_kwargs={'scope': 'openid email profile'},
-)
+google = None
+
+if os.getenv('GOOGLE_CLIENT_ID') and os.getenv('GOOGLE_CLIENT_SECRET'):
+    google = oauth.register(
+        name='google',
+        client_id=os.getenv('GOOGLE_CLIENT_ID'),
+        client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+        access_token_url='https://accounts.google.com/o/oauth2/token',
+        access_token_params=None,
+        authorize_url='https://accounts.google.com/o/oauth2/auth',
+        authorize_params=None,
+        api_base_url='https://www.googleapis.com/oauth2/v1/',
+        userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
+        client_kwargs={'scope': 'openid email profile'},
+    )
+else:
+    print("⚠️ WARNING: Google Client ID/Secret missing. Google Login disabled.")
 
 # --- GLOBAL TOOL LIST ---
 TOOL_LIST = [
@@ -174,7 +180,7 @@ def sitemap_xml():
     return xml, 200, {'Content-Type': 'application/xml'}
 
 # ==========================================
-# 4. AUTH ROUTES (GOOGLE + EMAIL)
+# 4. AUTH ROUTES
 # ==========================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -212,47 +218,39 @@ def signup():
         except Exception as e: return jsonify({'error': str(e)}), 500
     return render_template('signup.html')
 
-# --- GOOGLE LOGIN ROUTES ---
+# --- GOOGLE LOGIN ROUTES (SAFE) ---
 @app.route('/login/google')
 def login_google():
-    if not os.getenv('GOOGLE_CLIENT_ID'): return "Google Auth not configured", 500
+    # Prevent crash if keys are missing
+    if not google: return "Google Login not configured on server.", 500
     return google.authorize_redirect(url_for('authorize_google', _external=True))
 
 @app.route('/authorize/google')
 def authorize_google():
+    if not google: return "Google Login Error: Config missing", 500
     try:
         token = google.authorize_access_token()
         user_info = google.get('userinfo').json()
         email = user_info['email'].lower()
         name = user_info.get('name', email.split('@')[0])
         
-        # Check if user exists
         user = User.query.filter_by(email=email).first()
         
         if not user:
-            # Create new user with random password
             rand_pass = secrets.token_urlsafe(16)
             hashed = bcrypt.generate_password_hash(rand_pass).decode('utf-8')
             user = User(username=name, email=email, password_hash=hashed)
-            
             if User.query.count() == 0: user.is_admin = True
-            db.session.add(user)
-            db.session.commit()
-            
-            # Send Welcome Email
+            db.session.add(user); db.session.commit()
             try:
-                msg = Message("Welcome to MySEO King! 👑", recipients=[user.email])
-                msg.body = f"Hi {user.username},\n\nAccount created via Google.\n\nCheers,\nTeam"
-                mail.send(msg)
+                msg = Message("Welcome!", recipients=[user.email]); msg.body="Welcome to MySEO King"; mail.send(msg)
             except: pass
 
         if not user.is_active: return "Account Banned", 403
-        
         login_user(user)
         return redirect('/dashboard')
         
-    except Exception as e:
-        return f"Google Login Error: {str(e)}"
+    except Exception as e: return f"Google Login Error: {str(e)}"
 
 @app.route('/logout')
 @login_required
@@ -335,36 +333,21 @@ def api_public_audit():
         if not url: return jsonify({'error': 'Enter URL'}), 400
         if not url.startswith('http'): url = 'https://' + url
         
-        # Fast crawl for public users
         r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=15)
         s = BeautifulSoup(r.content, 'html.parser')
         
-        score = 100
-        real_issues = []
+        score = 100; real_issues = []
         
-        # Run real checks to get specific error messages
-        if not s.title: 
-            score -= 20; real_issues.append("Missing Title Tag")
-        elif len(s.title.string) > 60: 
-            score -= 5; real_issues.append("Title Too Long")
+        if not s.title: score -= 20; real_issues.append("Missing Title Tag")
+        elif len(s.title.string) > 60: score -= 5; real_issues.append("Title Too Long")
             
-        if not s.find('meta', attrs={'name':'description'}): 
-            score -= 20; real_issues.append("Missing Meta Description")
+        if not s.find('meta', attrs={'name':'description'}): score -= 20; real_issues.append("Missing Meta Description")
+        if not s.find('h1'): score -= 20; real_issues.append("Missing H1 Heading")
             
-        if not s.find('h1'): 
-            score -= 20; real_issues.append("Missing H1 Heading")
-            
-        if score == 100:
-            real_issues.append("No critical errors found")
+        if score == 100: real_issues.append("No critical errors found")
         
-        return jsonify({
-            'success': True, 
-            'score': max(0,score),
-            'issues': real_issues # Send list to frontend to display 1 or 2
-        })
-    except: 
-        # Fallback if scan fails
-        return jsonify({'success': True, 'score': 42, 'issues': ['Server Timeout (Site too slow)', 'Connection Error']})
+        return jsonify({'success': True, 'score': max(0,score), 'issues': real_issues})
+    except: return jsonify({'success': True, 'score': 42, 'issues': ['Server Timeout', 'Connection Error']})
 
 # --- NEW: PRO SITE AUDIT ---
 @app.route('/api/audit-site', methods=['POST'])
@@ -381,7 +364,6 @@ def api_audit_site():
         
         score = 100; issues = []; passed = []
         
-        # Detailed Checks
         if not s.title: score-=20; issues.append({"type":"critical","msg":"Missing Title","fix":"Add <title>"})
         else: passed.append("Title Exists")
         
@@ -401,7 +383,6 @@ def api_audit_site():
         })
     except Exception as e: return jsonify({'error': f"Failed: {str(e)}"}), 500
 
-# --- API ENDPOINTS FROM PREVIOUS STEPS (Images, Humanizer, YouTube) ---
 @app.route('/api/generate-image', methods=['POST'])
 @login_required
 def api_generate_image():
@@ -437,12 +418,29 @@ def api_article_wizard():
 @app.route('/api/youtube-to-blog', methods=['POST'])
 @login_required
 def api_youtube_to_blog():
-    # ... (Paste the Piped/Fallback logic from previous step if needed, otherwise generic is fine)
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached.'}), 403
+    data = request.get_json(); video_url = data.get('url')
     try:
-        # Simplified for brevity in this complete code block, use full Piped logic from previous response
-        return jsonify({'error': "Use Full Piped Logic Block provided previously"}), 400
-    except: return jsonify({'error': "Error"}), 500
+        vid = video_url.split("v=")[1].split("&")[0] if "v=" in video_url else video_url.split("youtu.be/")[1].split("?")[0]
+        full_text = ""
+        mirrors = PIPED_INSTANCES.copy(); random.shuffle(mirrors)
+        for m in mirrors:
+            try:
+                r = requests.get(f"{m}/streams/{vid}", timeout=5)
+                if r.status_code == 200:
+                    subs = r.json().get('subtitles', [])
+                    tgt = next((s for s in subs if 'en' in s.get('code','')), subs[0] if subs else None)
+                    if tgt:
+                        lines = requests.get(tgt['url']).text.splitlines()
+                        clean = [l.strip() for l in lines if '-->' not in l and 'WEBVTT' not in l and l.strip()]
+                        full_text = " ".join(clean)
+                        if len(full_text) > 50: break
+            except: continue
+        if not full_text: return jsonify({'error': "No captions found."}), 400
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Blog from transcript: {full_text[:15000]}"}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate-content', methods=['POST'])
 @login_required
