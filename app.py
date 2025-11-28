@@ -4,7 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
 from datetime import datetime
-import re, os, requests, base64, json, validators, csv
+import re, os, requests, base64, json, validators, csv, random
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin
 from dotenv import load_dotenv
@@ -49,6 +49,16 @@ TOOL_LIST = [
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
     'youtube-to-blog'
+]
+
+# --- FALLBACK MIRRORS (For YouTube) ---
+INVIDIOUS_INSTANCES = [
+    "https://vid.puffyan.us",
+    "https://inv.tux.pizza",
+    "https://invidious.projectsegfau.lt",
+    "https://invidious.fdn.fr",
+    "https://invidious.drg.li",
+    "https://inv.bp.projectsegfau.lt"
 ]
 
 # ==========================================
@@ -264,7 +274,7 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS (AI & TOOLS)
 # ==========================================
 
-# --- YOUTUBE TO BLOG API (WITH BYPASS) ---
+# --- YOUTUBE TO BLOG API (ROTATING MIRROR BYPASS) ---
 @app.route('/api/youtube-to-blog', methods=['POST'])
 @login_required
 def api_youtube_to_blog():
@@ -275,7 +285,7 @@ def api_youtube_to_blog():
     video_url = data.get('url')
     
     try:
-        # 1. Extract Video ID
+        # Extract ID
         video_id = ""
         if "youtu.be/" in video_url: video_id = video_url.split("youtu.be/")[1].split("?")[0]
         elif "v=" in video_url: video_id = video_url.split("v=")[1].split("&")[0]
@@ -285,51 +295,63 @@ def api_youtube_to_blog():
 
         full_text = ""
 
-        # 2. PRIMARY METHOD: Official API
+        # 1. TRY OFFICIAL API FIRST
         try:
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-            # Try to get any transcript
+            t_list = YouTubeTranscriptApi.list_transcripts(video_id)
             transcript = None
-            try: transcript = transcript_list.find_transcript(['en', 'en-US'])
+            try: transcript = t_list.find_transcript(['en','en-US'])
             except: 
-                for t in transcript_list:
-                    transcript = t; break
+                for t in t_list: transcript = t; break
             
             if transcript:
                 full_text = " ".join([t['text'] for t in transcript.fetch()])
-        
-        except Exception as e1:
-            print(f"Primary Method Failed: {e1}")
+        except:
+            pass # If fails, go to Fallback
+
+        # 2. FALLBACK: ROTATING INVIDIOUS MIRRORS
+        if not full_text:
+            # Shuffle mirrors to prevent hitting same one repeatedly
+            mirrors = INVIDIOUS_INSTANCES.copy()
+            random.shuffle(mirrors)
             
-            # 3. FALLBACK METHOD: Invidious (Bypasses Google Block)
-            try:
-                # Use a reliable Invidious instance
-                inv_url = f"https://inv.tux.pizza/api/v1/captions/{video_id}"
-                r = requests.get(inv_url, timeout=10)
-                
-                if r.status_code == 200:
-                    captions = r.json()
-                    if len(captions) > 0:
-                        # Pick the first caption URL
-                        cap_url = f"https://inv.tux.pizza{captions[0]['url']}"
-                        r_cap = requests.get(cap_url)
-                        
-                        # Clean VTT Text
-                        raw = r_cap.text
-                        # Remove timestamps and metadata
-                        lines = raw.splitlines()
-                        text_lines = []
-                        for line in lines:
-                            if '-->' not in line and line.strip() != '' and 'WEBVTT' not in line:
-                                text_lines.append(line)
-                        full_text = " ".join(text_lines)
-            except Exception as e2:
-                print(f"Fallback Failed: {e2}")
+            for mirror in mirrors:
+                try:
+                    print(f"Trying mirror: {mirror}")
+                    # Fetch captions info
+                    r = requests.get(f"{mirror}/api/v1/captions/{video_id}", timeout=5)
+                    if r.status_code == 200:
+                        captions = r.json()
+                        if len(captions) > 0:
+                            # Pick first available caption
+                            cap_path = captions[0]['url']
+                            if not cap_path.startswith('http'):
+                                cap_url = f"{mirror}{cap_path}"
+                            else:
+                                cap_url = cap_path
+                                
+                            # Download VTT
+                            r_cap = requests.get(cap_url, timeout=5)
+                            raw_vtt = r_cap.text
+                            
+                            # Clean VTT (Remove timestamps)
+                            lines = raw_vtt.splitlines()
+                            cleaned = []
+                            for line in lines:
+                                if '-->' not in line and 'WEBVTT' not in line and line.strip() != '':
+                                    cleaned.append(line.strip())
+                            
+                            full_text = " ".join(cleaned)
+                            
+                            if len(full_text) > 50:
+                                break # Success! Stop looping
+                except:
+                    continue # Try next mirror
 
+        # 3. CHECK RESULT
         if not full_text or len(full_text) < 50:
-            return jsonify({'error': "Could not fetch transcript. YouTube blocked the server and fallback failed."}), 400
+            return jsonify({'error': "Unable to fetch captions. YouTube blocked our server and all fallback mirrors failed."}), 400
 
-        # 4. AI Process
+        # 4. AI PROCESS
         prompt = f"""
         Act as an expert SEO Blogger. 
         Convert this raw transcript into a structured blog post (Markdown).
