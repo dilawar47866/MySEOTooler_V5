@@ -20,12 +20,12 @@ from youtube_transcript_api import YouTubeTranscriptApi
 load_dotenv()
 app = Flask(__name__)
 
-# Database Config
+# Database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///myseotoolver5.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
-# Email Config (Hostinger)
+# Email
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
@@ -39,10 +39,9 @@ mail = Mail(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# OpenAI Client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- GLOBAL TOOL LIST (Defined at top to prevent NameError) ---
+# --- GLOBAL TOOL LIST ---
 TOOL_LIST = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
     'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
@@ -250,7 +249,7 @@ def payment_success(plan_name):
     return redirect('/dashboard')
 
 # ==========================================
-# 6. DYNAMIC TOOL ROUTER
+# 6. TOOL ROUTER
 # ==========================================
 @app.route('/tool/<tool_name>')
 @login_required
@@ -265,73 +264,59 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS (AI & TOOLS)
 # ==========================================
 
-# --- YOUTUBE TO BLOG API (HYPER-ROBUST) ---
+# --- YOUTUBE TO BLOG API (NUCLEAR FALLBACK OPTION) ---
 @app.route('/api/youtube-to-blog', methods=['POST'])
 @login_required
 def api_youtube_to_blog():
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Monthly Limit Reached. Upgrade to Pro!'}), 403
+        return jsonify({'error': 'Limit reached.'}), 403
 
     data = request.get_json()
     video_url = data.get('url')
     
     try:
-        # 1. Extract Video ID
+        # Extract ID
         video_id = ""
         if "youtu.be/" in video_url: video_id = video_url.split("youtu.be/")[1].split("?")[0]
         elif "v=" in video_url: video_id = video_url.split("v=")[1].split("&")[0]
         elif "shorts/" in video_url: video_id = video_url.split("shorts/")[1].split("?")[0]
             
-        if not video_id: return jsonify({'error': 'Invalid YouTube URL format'}), 400
+        if not video_id: return jsonify({'error': 'Invalid URL'}), 400
 
-        # 2. AGGRESSIVE TRANSCRIPT FETCH
+        # NUCLEAR FETCH STRATEGY (Iterate ALL transcripts)
         try:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-            
             transcript = None
             
-            # Strategy A: Direct English
+            # Try finding any English variant first
             try:
                 transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
             except:
-                # Strategy B: Auto-Generated English
-                try:
-                    transcript = transcript_list.find_generated_transcript(['en'])
-                except:
-                    # Strategy C: ANY Language -> Translate to English
-                    for t in transcript_list:
-                        if t.is_translatable:
-                            transcript = t.translate('en')
-                            break
-                        else:
-                            transcript = t # Last resort
-                            break
-
-            if not transcript: raise Exception("No captions found.")
-
-            # Fetch text
+                # If no English, iterate through EVERYTHING found
+                for t in transcript_list:
+                    if t.is_translatable:
+                        transcript = t.translate('en') # Force translate to English
+                        break
+                    else:
+                        transcript = t # Take whatever exists
+                        break
+            
+            if not transcript: raise Exception("No accessible transcripts found.")
+            
             transcript_data = transcript.fetch()
             full_text = " ".join([t['text'] for t in transcript_data])
             
         except Exception as e:
-            print(f"Transcript Error: {e}")
-            return jsonify({'error': "This video has no captions available for AI to read."}), 400
+            print(f"YouTube Error: {e}")
+            return jsonify({'error': "This video has no captions available for AI to read. Try a different video."}), 400
 
-        # 3. Truncate
-        full_text = full_text[:12000] 
-
-        # 4. AI Processing
-        prompt = f"""
-        Act as an expert SEO Blogger. 
-        Turn this YouTube transcript into a structured blog post.
-        Format in Markdown.
-        Transcript: "{full_text}"
-        """
+        # AI Process
+        prompt = f"Act as an expert SEO Blogger. Convert this transcript into a structured blog post (Markdown). Transcript: {full_text[:15000]}"
         
         res = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "system", "content": "You are a professional blog writer."}, {"role": "user", "content": prompt}],
-            max_tokens=2500
+            messages=[{"role":"system","content":"Blog Writer"},{"role":"user","content":prompt}],
+            max_tokens=2000
         )
         
         blog_content = res.choices[0].message.content
@@ -382,7 +367,7 @@ def api_delete(id):
     if c.user_id == current_user.id: db.session.delete(c); db.session.commit()
     return jsonify({'success': True})
 
-# --- Helper APIs ---
+# --- HELPER APIs ---
 @app.route('/api/generate-seo-terms', methods=['POST'])
 @login_required
 def api_generate_seo_terms():
