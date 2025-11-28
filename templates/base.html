@@ -20,7 +20,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-light);
-            overflow-x: hidden; /* Prevent horizontal scroll */
+            overflow-x: hidden;
         }
         
         /* FIXED SIDEBAR */
@@ -32,7 +32,7 @@
             left: 0;
             background: white;
             border-right: 1px solid #e5e7eb;
-            z-index: 1030; /* High z-index to stay on top */
+            z-index: 1030;
             display: flex;
             flex-direction: column;
             transition: transform 0.3s ease-in-out;
@@ -56,7 +56,7 @@
             align-items: center;
             transition: all 0.2s;
             font-size: 0.95rem;
-            white-space: nowrap; /* Prevent text wrapping */
+            white-space: nowrap;
         }
         .nav-link i { width: 24px; margin-right: 10px; text-align: center; }
         .nav-link:hover, .nav-link.active {
@@ -81,8 +81,6 @@
             .sidebar { transform: translateX(-100%); }
             .main-content { margin-left: 0; width: 100%; padding: 1rem; }
             .mobile-toggle { display: flex !important; margin-bottom: 1.5rem; }
-            
-            /* When sidebar is active on mobile */
             .sidebar.active { transform: translateX(0); }
         }
         
@@ -104,7 +102,7 @@
 
         <div class="flex-grow-1 sidebar-scroll">
             
-            <!-- ADMIN SECTION (Only for you) -->
+            <!-- ADMIN SECTION -->
             {% if current_user.is_admin %}
             <p class="small text-danger text-uppercase px-4 mb-2 fw-bold" style="font-size: 0.75rem;">Admin</p>
             <a href="/admin" class="nav-link text-danger {% if request.endpoint == 'admin' %}active bg-danger-subtle{% endif %}">
@@ -124,6 +122,27 @@
                 <i class="fas fa-folder-open"></i> Library
             </a>
 
+            <!-- CONTENT GEN (Updated with YouTube Tool) -->
+            <p class="small text-muted text-uppercase px-4 mt-4 mb-2 fw-bold" style="font-size: 0.75rem;">Content Gen</p>
+            <a href="/youtube-to-blog" class="nav-link {% if 'youtube-to-blog' in request.path %}active{% endif %}">
+                <i class="fab fa-youtube text-danger"></i> YouTube to Blog
+            </a>
+            <a href="/content-outline" class="nav-link {% if 'outline' in request.path %}active{% endif %}">
+                <i class="fas fa-list"></i> Outline Gen
+            </a>
+            <a href="/content-brief" class="nav-link {% if 'brief' in request.path %}active{% endif %}">
+                <i class="fas fa-file-contract"></i> Content Brief
+            </a>
+            <a href="/social-posts" class="nav-link {% if 'social' in request.path %}active{% endif %}">
+                <i class="fab fa-twitter"></i> Social Posts
+            </a>
+            <a href="/youtube-script" class="nav-link {% if 'youtube' in request.path %}active{% endif %}">
+                <i class="fas fa-video"></i> Video Script
+            </a>
+            <a href="/email-subject" class="nav-link {% if 'email' in request.path %}active{% endif %}">
+                <i class="fas fa-envelope"></i> Email Subjects
+            </a>
+
             <!-- RESEARCH TOOLS -->
             <p class="small text-muted text-uppercase px-4 mt-4 mb-2 fw-bold" style="font-size: 0.75rem;">Research</p>
             <a href="/competitor-analyzer" class="nav-link {% if 'competitor' in request.path %}active{% endif %}">
@@ -137,24 +156,6 @@
             </a>
             <a href="/lsi-keywords" class="nav-link {% if 'lsi' in request.path %}active{% endif %}">
                 <i class="fas fa-project-diagram"></i> LSI Keywords
-            </a>
-
-            <!-- CONTENT TOOLS -->
-            <p class="small text-muted text-uppercase px-4 mt-4 mb-2 fw-bold" style="font-size: 0.75rem;">Content Gen</p>
-            <a href="/content-outline" class="nav-link {% if 'outline' in request.path %}active{% endif %}">
-                <i class="fas fa-list"></i> Outline Gen
-            </a>
-            <a href="/content-brief" class="nav-link {% if 'brief' in request.path %}active{% endif %}">
-                <i class="fas fa-file-contract"></i> Content Brief
-            </a>
-            <a href="/social-posts" class="nav-link {% if 'social' in request.path %}active{% endif %}">
-                <i class="fab fa-twitter"></i> Social Posts
-            </a>
-            <a href="/youtube-script" class="nav-link {% if 'youtube' in request.path %}active{% endif %}">
-                <i class="fab fa-youtube"></i> YouTube Script
-            </a>
-            <a href="/email-subject" class="nav-link {% if 'email' in request.path %}active{% endif %}">
-                <i class="fas fa-envelope"></i> Email Subjects
             </a>
 
             <!-- TECHNICAL SEO -->
@@ -252,7 +253,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        // Mobile Menu Toggle
         const menuBtn = document.getElementById('mobileMenuBtn');
         const sidebar = document.getElementById('sidebar');
         
@@ -260,7 +260,6 @@
             menuBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 sidebar.classList.toggle('active');
-                // Toggle icon
                 const icon = menuBtn.querySelector('i');
                 if(sidebar.classList.contains('active')) {
                     sidebar.style.transform = 'translateX(0)';
@@ -273,7 +272,6 @@
                 }
             });
 
-            // Close sidebar when clicking outside
             document.addEventListener('click', (e) => {
                 if(window.innerWidth < 768 && sidebar.classList.contains('active')) {
                     if (!sidebar.contains(e.target) && !menuBtn.contains(e.target)) {
