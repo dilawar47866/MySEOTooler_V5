@@ -12,7 +12,7 @@ from openai import OpenAI
 import markdown
 from io import BytesIO, StringIO
 from sqlalchemy import text
-# NEW IMPORT
+# NEW IMPORT FOR YOUTUBE
 from youtube_transcript_api import YouTubeTranscriptApi
 
 # ==========================================
@@ -21,10 +21,12 @@ from youtube_transcript_api import YouTubeTranscriptApi
 load_dotenv()
 app = Flask(__name__)
 
+# Database Config
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///myseotoolver5.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
+# Email Config (Hostinger)
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
@@ -38,6 +40,7 @@ mail = Mail(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# OpenAI Client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # ==========================================
@@ -55,13 +58,19 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     
+    # Cascade Delete
     contents = db.relationship('Content', backref='author', lazy=True, cascade="all, delete-orphan")
     
     def check_password(self, password): 
         return bcrypt.check_password_hash(self.password_hash, password)
     
     def get_limits(self):
-        limits = {'free': 50, 'pro': 500, 'pro king': 500, 'enterprise': 9999}
+        limits = {
+            'free': 50, 
+            'pro': 500, 
+            'pro king': 500,
+            'enterprise': 9999
+        }
         return {'ai_requests_per_month': limits.get(self.tier.lower(), 50)}
 
 class Content(db.Model):
@@ -80,7 +89,7 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # ==========================================
-# 3. ROUTES
+# 3. PERMISSION SETTINGS
 # ==========================================
 PRO_TOOLS = [
     'competitor-analyzer', 'image-seo', 'sitemap-generator', 
@@ -89,12 +98,17 @@ PRO_TOOLS = [
     'serp-analysis', 'plagiarism-checker', 'meta-tags', 'youtube-to-blog'
 ]
 
+# ==========================================
+# 4. CORE PAGE ROUTES
+# ==========================================
 @app.route('/')
 def landing(): 
-    if current_user.is_authenticated: return redirect(url_for('dashboard'))
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
     return render_template('landing.html')
 
 app.add_url_rule('/', endpoint='home', view_func=landing)
+app.add_url_rule('/', endpoint='index', view_func=landing)
 
 @app.route('/dashboard')
 @login_required
@@ -126,60 +140,115 @@ def content_library():
     return render_template('content_library.html', contents=contents)
 
 @app.route('/pricing')
-def pricing(): return render_template('pricing.html')
+def pricing(): 
+    return render_template('pricing.html')
 
 @app.route('/profile')
 @login_required
-def profile(): return render_template('profile.html')
+def profile():
+    return render_template('profile.html')
 
-# AUTH ROUTES
+# --- TECHNICAL SEO ROUTES ---
+@app.route('/robots.txt')
+def robots_txt():
+    lines = [
+        "User-agent: *",
+        "Disallow: /dashboard",
+        "Disallow: /editor",
+        "Disallow: /profile",
+        f"Sitemap: {request.url_root}sitemap.xml"
+    ]
+    return "\n".join(lines), 200, {'Content-Type': 'text/plain'}
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    base_url = request.url_root.rstrip('/')
+    pages = ['/', '/pricing', '/login', '/signup']
+    tool_list = [
+        'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
+        'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
+        'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
+        'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
+        'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis'
+    ]
+    for slug in tool_list:
+        pages.append(f'/tool/{slug}')
+
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    for page in pages:
+        xml += f'  <url>\n    <loc>{base_url}{page}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>{0.8 if page == "/" else 0.6}</priority>\n  </url>\n'
+    xml += '</urlset>'
+    return xml, 200, {'Content-Type': 'application/xml'}
+
+# ==========================================
+# 5. AUTHENTICATION ROUTES
+# ==========================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         data = request.get_json() if request.is_json else request.form
         user = User.query.filter_by(email=data.get('email').lower()).first()
+        
         if user and user.check_password(data.get('password')):
-            if not user.is_active: return jsonify({'error': 'Account is banned.'}), 403
+            if not user.is_active:
+                return jsonify({'error': 'Account is banned. Contact support.'}), 403
             login_user(user)
             return jsonify({'success': True, 'redirect': '/dashboard'})
+            
         return jsonify({'error': 'Invalid credentials'}), 401
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if current_user.is_authenticated: return redirect('/dashboard')
+    
     if request.method == 'POST':
         try:
             data = request.get_json() if request.is_json else request.form
-            if not data.get('username'): return jsonify({'error': 'Username required'}), 400
-            if User.query.filter_by(email=data.get('email').lower()).first(): return jsonify({'error': 'Email exists'}), 400
+            if not data.get('username') or len(data.get('username')) < 3:
+                return jsonify({'error': 'Username required (min 3 chars)'}), 400
+            if User.query.filter_by(username=data.get('username')).first():
+                return jsonify({'error': 'Username taken'}), 400
+            if User.query.filter_by(email=data.get('email').lower()).first(): 
+                return jsonify({'error': 'Email already exists'}), 400
             
             hashed = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
             user = User(username=data.get('username'), email=data.get('email').lower(), password_hash=hashed)
+            
             if User.query.count() == 0: user.is_admin = True
             
-            db.session.add(user); db.session.commit(); login_user(user)
+            db.session.add(user)
+            db.session.commit()
+            login_user(user)
 
-            # Email
+            # --- SEND WELCOME EMAIL ---
             try:
                 msg = Message("Welcome to MySEO King! 👑", recipients=[user.email])
-                msg.body = f"Hi {user.username},\n\nWelcome to the #1 AI SEO Tool.\nStart creating now!\n\nCheers,\nMySEO King Team"
+                msg.body = f"Hi {user.username},\n\nWelcome to the #1 AI SEO Tool. We are excited to help you rank higher.\n\nGet started by creating your first project in the AI Editor.\n\nCheers,\nMySEO King Team"
                 mail.send(msg)
-            except Exception as e: print(f"Email failed: {e}")
+            except Exception as e:
+                print(f"Email failed: {e}")
 
             return jsonify({'success': True, 'redirect': '/dashboard'})
-        except Exception as e: return jsonify({'error': str(e)}), 500
+        except Exception as e: 
+            return jsonify({'error': str(e)}), 500
+            
     return render_template('signup.html')
 
 @app.route('/logout')
 @login_required
-def logout(): logout_user(); return redirect('/')
+def logout(): 
+    logout_user() 
+    return redirect('/')
 
-# ADMIN & PAYMENT
+# ==========================================
+# 6. ADMIN ROUTES & PAYMENT
+# ==========================================
 @app.route('/admin')
 @login_required
 def admin():
-    if not getattr(current_user, 'is_admin', False): return redirect('/dashboard')
+    if not getattr(current_user, 'is_admin', False): 
+        return redirect('/dashboard')
     users = User.query.order_by(User.id.desc()).all()
     total_content = Content.query.count()
     return render_template('admin.html', users=users, total_content=total_content)
@@ -188,11 +257,16 @@ def admin():
 @login_required
 def admin_export_users():
     if not getattr(current_user, 'is_admin', False): return "Unauthorized", 403
-    si = StringIO(); cw = csv.writer(si)
-    cw.writerow(['ID', 'Username', 'Email', 'Tier', 'Join Date', 'Usage'])
-    for u in User.query.all(): cw.writerow([u.id, u.username, u.email, u.tier, u.last_reset_date, u.ai_requests_this_month])
+    
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['ID', 'Username', 'Email', 'Tier', 'Join Date', 'AI Usage'])
+    users = User.query.all()
+    for u in users:
+        cw.writerow([u.id, u.username, u.email, u.tier, u.last_reset_date, u.ai_requests_this_month])
+        
     output = make_response(si.getvalue())
-    output.headers["Content-Disposition"] = "attachment; filename=users.csv"
+    output.headers["Content-Disposition"] = "attachment; filename=users_list.csv"
     output.headers["Content-type"] = "text/csv"
     return output
 
@@ -201,17 +275,17 @@ def admin_export_users():
 def admin_toggle_user(user_id):
     if not getattr(current_user, 'is_admin', False): return jsonify({'error': 'Unauthorized'}), 403
     user = User.query.get_or_404(user_id)
-    if user.id == current_user.id: return jsonify({'error': 'Cannot ban self'}), 400
+    if user.id == current_user.id: return jsonify({'error': 'Cannot ban yourself'}), 400
     user.is_active = not user.is_active
     db.session.commit()
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'status': user.is_active})
 
 @app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
 @login_required
 def admin_delete_user(user_id):
     if not getattr(current_user, 'is_admin', False): return jsonify({'error': 'Unauthorized'}), 403
     user = User.query.get_or_404(user_id)
-    if user.id == current_user.id: return jsonify({'error': 'Cannot delete self'}), 400
+    if user.id == current_user.id: return jsonify({'error': 'Cannot delete yourself'}), 400
     db.session.delete(user)
     db.session.commit()
     return jsonify({'success': True})
@@ -219,17 +293,30 @@ def admin_delete_user(user_id):
 @app.route('/payment/success/<plan_name>')
 @login_required
 def payment_success(plan_name):
-    if plan_name == 'pro': current_user.tier = 'pro king'
-    elif plan_name == 'enterprise': current_user.tier = 'enterprise'
+    if plan_name == 'pro':
+        current_user.tier = 'pro king'
+    elif plan_name == 'enterprise':
+        current_user.tier = 'enterprise'
+    
     db.session.commit()
-    flash(f"Upgraded to {plan_name.upper()}!", "success")
+    flash(f"Payment Successful! You are now on the {plan_name.upper()} plan.", "success")
     return redirect('/dashboard')
 
-# TOOL VIEWS
+# ==========================================
+# 7. TOOL ROUTES
+# ==========================================
 @app.route('/tool/<tool_name>')
 @login_required
 def tool_view(tool_name):
-    # We also support youtube-to-blog
+    all_tools = PRO_TOOLS + ['keyword-research', 'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 'headline-analyzer', 'internal-linking', 'readability-checker', 'youtube-to-blog']
+    
+    if tool_name not in all_tools:
+        return "Tool not found", 404
+
+    if tool_name in PRO_TOOLS and current_user.tier == 'free':
+        flash("Upgrade to Pro to use this tool!", "warning")
+        return redirect('/pricing')
+        
     return render_template(f'{tool_name.replace("-", "_")}.html')
 
 tool_list = [
@@ -238,41 +325,80 @@ tool_list = [
     'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
-    'youtube-to-blog' # Added new tool
+    'youtube-to-blog'
 ]
 
 for t in tool_list:
     app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
-    if '-' in t: app.add_url_rule(f'/{t}', endpoint=t.replace('-', '_'), view_func=lambda t=t: tool_view(t))
+    if '-' in t:
+        app.add_url_rule(f'/{t}', endpoint=t.replace('-', '_'), view_func=lambda t=t: tool_view(t))
+
 
 # ==========================================
-# API ENDPOINTS
+# 8. API ENDPOINTS
 # ==========================================
 
-# --- YOUTUBE TO BLOG API ---
+# --- YOUTUBE TO BLOG API (SMART FETCHER) ---
 @app.route('/api/youtube-to-blog', methods=['POST'])
 @login_required
 def api_youtube_to_blog():
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Limit reached.'}), 403
+        return jsonify({'error': 'Limit reached. Upgrade to Pro!'}), 403
 
     data = request.get_json()
     video_url = data.get('url')
     
     try:
-        # Extract ID
+        # 1. Extract Video ID
         video_id = ""
-        if "v=" in video_url: video_id = video_url.split("v=")[1].split("&")[0]
-        elif "youtu.be/" in video_url: video_id = video_url.split("youtu.be/")[1].split("?")[0]
+        if "youtu.be/" in video_url:
+            video_id = video_url.split("youtu.be/")[1].split("?")[0]
+        elif "v=" in video_url:
+            video_id = video_url.split("v=")[1].split("&")[0]
+        elif "shorts/" in video_url:
+            video_id = video_url.split("shorts/")[1].split("?")[0]
             
-        if not video_id: return jsonify({'error': 'Invalid URL'}), 400
+        if not video_id:
+            return jsonify({'error': 'Invalid YouTube URL format'}), 400
 
-        # Get Transcript
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-        full_text = " ".join([t['text'] for t in transcript_list])[:15000] 
+        # 2. Smart Transcript Fetcher
+        try:
+            # List all available transcripts
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            
+            # Try to fetch English (Manual or Auto-generated)
+            transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
+            transcript_data = transcript.fetch()
+            full_text = " ".join([t['text'] for t in transcript_data])
+            
+        except Exception as e:
+            # Fallback to ANY generated transcript (even if not labeled explicitly 'en')
+            try:
+                generated = transcript_list.find_generated_transcript(['en'])
+                transcript_data = generated.fetch()
+                full_text = " ".join([t['text'] for t in transcript_data])
+            except:
+                return jsonify({'error': "No English captions found. Please use a video with CC enabled."}), 400
 
-        # OpenAI Process
-        prompt = f"Convert this YouTube transcript into a blog post with H1, H2, bullet points. Transcript: {full_text}"
+        # 3. Truncate
+        full_text = full_text[:12000] 
+
+        # 4. OpenAI
+        prompt = f"""
+        Act as an expert SEO Copywriter. 
+        Convert the following YouTube Video Transcript into a high-quality, engaging Blog Post.
+        
+        Rules:
+        - Use a Catchy H1 Title.
+        - Write a strong Introduction.
+        - Use H2 and H3 subheadings.
+        - Use Bullet points.
+        - Remove filler words.
+        - Format in Markdown.
+        
+        Transcript:
+        "{full_text}"
+        """
         
         res = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -281,33 +407,17 @@ def api_youtube_to_blog():
         )
         
         blog_content = res.choices[0].message.content
+        
         current_user.ai_requests_this_month += 1
         db.session.commit()
 
         return jsonify({'success': True, 'content': blog_content, 'html': markdown.markdown(blog_content)})
 
-    except Exception as e: return jsonify({'error': f"Video must have captions. Error: {str(e)}"}), 500
+    except Exception as e:
+        print(f"YouTube Error: {str(e)}") 
+        return jsonify({'error': f"Error processing video: {str(e)}"}), 500
 
-# --- GENERIC API ---
-@app.route('/api/generate-content', methods=['POST'])
-@login_required
-def api_generate_content():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Limit reached.'}), 403
-    try:
-        data = request.get_json()
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "system", "content": "You are an SEO expert."}, {"role": "user", "content": data.get('keyword')}],
-            max_tokens=1500
-        )
-        text = res.choices[0].message.content
-        current_user.ai_requests_this_month += 1
-        db.session.commit()
-        return jsonify({'success': True, 'content': text, 'html_content': markdown.markdown(text)})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- SAVE CONTENT ---
+# --- Save Content ---
 @app.route('/api/save-content', methods=['POST'])
 @login_required
 def api_save_content():
@@ -318,6 +428,11 @@ def api_save_content():
             if c and c.user_id == current_user.id:
                 c.title = d.get('title'); c.content = d.get('content'); c.html_content = d.get('html_content')
                 c.keyword = d.get('keyword'); c.word_count = len(d.get('content', '').split())
+                score = 0
+                if c.word_count > 800: score += 40
+                if c.keyword and c.keyword.lower() in c.title.lower(): score += 30
+                c.seo_score = min(score + 30, 100)
+                
                 db.session.commit()
                 return jsonify({'success': True, 'id': c.id})
         
@@ -332,41 +447,299 @@ def api_save_content():
         return jsonify({'success': True, 'id': new_c.id})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- OTHER APIS ---
+# --- Generate AI Content ---
+@app.route('/api/generate-content', methods=['POST'])
+@login_required
+def api_generate_content():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Monthly Limit Reached. Upgrade to Pro!'}), 403
+
+    try:
+        data = request.get_json()
+        sys_prompt = "You are a helpful SEO expert writer."
+        if data.get('mode') == 'human': sys_prompt = "You are an opinionated human writer. Write at an 8th-grade level."
+        
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": data.get('keyword')}],
+            max_tokens=1500
+        )
+        text = res.choices[0].message.content
+        
+        current_user.ai_requests_this_month += 1
+        db.session.commit()
+        
+        return jsonify({'success': True, 'content': text, 'html_content': markdown.markdown(text)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- SEO Terms Generator ---
+@app.route('/api/generate-seo-terms', methods=['POST'])
+@login_required
+def api_generate_seo_terms():
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword')
+        if not keyword: return jsonify({'error': 'Keyword missing'}), 400
+        
+        prompt = f"List 20 single-word or two-word semantic keywords (LSI) that are essential for an in-depth article about '{keyword}'. Return ONLY a JSON array of strings. Example: ['term1', 'term2']"
+        
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": "You are an SEO expert JSON generator."}, {"role": "user", "content": prompt}],
+            max_tokens=500
+        )
+        content = res.choices[0].message.content.replace('```json', '').replace('```', '').strip()
+        terms = json.loads(content)
+        return jsonify({'success': True, 'terms': terms})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- PAA Questions Generator ---
+@app.route('/api/generate-questions', methods=['POST'])
+@login_required
+def api_generate_questions():
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword')
+        if not keyword: return jsonify({'error': 'Keyword missing'}), 400
+        
+        prompt = f"List 5 common 'People Also Ask' questions related to '{keyword}'. Return ONLY a JSON array of strings."
+        
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": "You are an SEO expert JSON generator."}, {"role": "user", "content": prompt}],
+            max_tokens=500
+        )
+        content = res.choices[0].message.content.replace('```json', '').replace('```', '').strip()
+        questions = json.loads(content)
+        return jsonify({'success': True, 'questions': questions})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- Internal Link Suggester ---
+@app.route('/api/suggest-internal-links', methods=['POST'])
+@login_required
+def api_suggest_internal_links():
+    try:
+        data = request.get_json()
+        search = data.get('keyword', '')
+        current_id = data.get('current_id')
+        
+        query = Content.query.filter(
+            Content.user_id == current_user.id,
+            Content.title.ilike(f'%{search}%')
+        )
+        if current_id:
+            try:
+                query = query.filter(Content.id != int(current_id))
+            except: pass
+        results = query.limit(5).all()
+        
+        if not results:
+            base_query = Content.query.filter(Content.user_id == current_user.id)
+            if current_id:
+                try:
+                    base_query = base_query.filter(Content.id != int(current_id))
+                except: pass
+            results = base_query.order_by(Content.updated_at.desc()).limit(5).all()
+
+        links = [{'id': c.id, 'title': c.title} for c in results]
+        return jsonify({'success': True, 'links': links})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- READABILITY HELPER & API ---
+def count_syllables(word):
+    word = word.lower()
+    count = 0
+    vowels = "aeiouy"
+    if word[0] in vowels: count += 1
+    for i in range(1, len(word)):
+        if word[i] in vowels and word[i - 1] not in vowels:
+            count += 1
+    if word.endswith("e"): count -= 1
+    if count == 0: count += 1
+    return count
+
+@app.route('/api/check-readability', methods=['POST'])
+@login_required
+def api_check_readability():
+    try:
+        data = request.get_json()
+        text = data.get('content', '')
+        if not text: return jsonify({'error': 'No text provided'}), 400
+
+        sentences = re.split(r'[.!?]+', text)
+        sentences = [s for s in sentences if len(s.strip()) > 0]
+        num_sentences = len(sentences) or 1
+        words = re.findall(r'\b\w+\b', text)
+        num_words = len(words) or 1
+        num_syllables = sum(count_syllables(w) for w in words)
+
+        score = 0.39 * (num_words / num_sentences) + 11.8 * (num_syllables / num_words) - 15.59
+        grade = round(score, 1)
+
+        difficulty = "Very Easy"
+        color = "success"
+        if grade > 6: difficulty = "Easy (6th Grade)"
+        if grade > 8: difficulty = "Standard (8th Grade)"
+        if grade > 10: 
+            difficulty = "Difficult (10th Grade)"
+            color = "warning"
+        if grade > 12: 
+            difficulty = "Very Difficult (College)"
+            color = "danger"
+
+        return jsonify({
+            'success': True,
+            'stats': {
+                'grade': grade,
+                'difficulty': difficulty,
+                'sentences': num_sentences,
+                'words': num_words,
+                'color': color
+            }
+        })
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- SCHEMA GENERATOR API ---
+@app.route('/api/generate-schema', methods=['POST'])
+@login_required
+def api_generate_schema():
+    try:
+        d = request.get_json()
+        schema_type = d.get('type')
+        result = {}
+        
+        if schema_type == 'article':
+            result = {
+                "@context": "https://schema.org",
+                "@type": "Article",
+                "headline": d.get('headline'),
+                "image": [d.get('image')],
+                "author": {"@type": "Person", "name": d.get('author')},
+                "publisher": {"@type": "Organization", "name": "MySEO King"},
+                "datePublished": datetime.now().strftime('%Y-%m-%d')
+            }
+        elif schema_type == 'faq':
+            pairs = d.get('faq_content', '').split('\n\n')
+            questions = []
+            for p in pairs:
+                parts = p.split('\n')
+                if len(parts) >= 2:
+                    questions.append({
+                        "@type": "Question",
+                        "name": parts[0],
+                        "acceptedAnswer": {"@type": "Answer", "text": parts[1]}
+                    })
+            result = {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": questions
+            }
+
+        return jsonify({'success': True, 'json': json.dumps(result, indent=4)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- Keyword Clusters ---
+@app.route('/api/generate-clusters', methods=['POST'])
+@login_required
+def api_generate_clusters():
+    if current_user.tier == 'free': return jsonify({'error': 'Pro Feature'}), 403
+    try:
+        data = request.get_json()
+        prompt = f"Generate a keyword cluster strategy for: '{data.get('keyword')}'. Create 4 clusters. Output strictly JSON: [{{'name': '...', 'keywords': ['...']}}]"
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": "You are a JSON generator."}, {"role": "user", "content": prompt}],
+            max_tokens=1000
+        )
+        content = res.choices[0].message.content.replace('```json', '').replace('```', '').strip()
+        clusters = json.loads(content)
+        current_user.ai_requests_this_month += 1
+        db.session.commit()
+        return jsonify({'success': True, 'clusters': clusters})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- Competitor Analysis ---
+@app.route('/api/analyze-competitor', methods=['POST'])
+@login_required
+def api_analyze_competitor():
+    if current_user.tier == 'free': return jsonify({'error': 'Pro Feature'}), 403
+    try:
+        url = request.get_json().get('url')
+        if not validators.url(url): return jsonify({'error': 'Invalid URL'}), 400
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code == 406: return jsonify({'error': 'Blocked by WAF'}), 406
+        
+        soup = BeautifulSoup(r.content, 'html.parser')
+        images = [{'src': urljoin(url, i.get('src')), 'alt': i.get('alt', '')} for i in soup.find_all('img') if i.get('src')]
+        for s in soup(["script", "style"]): s.extract()
+        
+        return jsonify({'success': True, 'analysis': {
+            'title': soup.title.string if soup.title else "No Title",
+            'h1_tags': [h.text.strip() for h in soup.find_all('h1')],
+            'word_count': len(soup.get_text().split()),
+            'images': images, 'total_images': len(images)
+        }})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- Delete Content ---
 @app.route('/api/delete-content/<int:id>', methods=['POST'])
 @login_required
 def api_delete(id):
     c = Content.query.get_or_404(id)
-    if c.user_id == current_user.id: db.session.delete(c); db.session.commit()
-    return jsonify({'success': True})
+    if c.user_id == current_user.id:
+        db.session.delete(c)
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'error': 'Auth'}), 403
 
-@app.route('/sitemap.xml')
-def sitemap_xml():
-    base = request.url_root.rstrip('/')
-    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    for p in ['/', '/pricing', '/login', '/signup']: xml += f'<url><loc>{base}{p}</loc></url>\n'
-    xml += '</urlset>'
-    return xml, 200, {'Content-Type': 'application/xml'}
-
-@app.route('/robots.txt')
-def robots_txt(): return "User-agent: *\nDisallow: /dashboard", 200, {'Content-Type': 'text/plain'}
-
-# --- READABILITY API ---
-@app.route('/api/check-readability', methods=['POST'])
+# --- Export ---
+@app.route('/api/export/<int:id>/<fmt>')
 @login_required
-def api_check_readability():
-    return jsonify({'success': True, 'stats': {'grade': 8, 'difficulty': 'Standard', 'sentences': 10, 'words': 100, 'color': 'success'}})
+def api_export(id, fmt):
+    c = Content.query.get_or_404(id)
+    if c.user_id != current_user.id: return "Auth Error", 403
+    data = c.content if fmt == 'txt' else c.html_content
+    mime = 'text/plain' if fmt == 'txt' else 'text/html'
+    filename = re.sub(r'[\\/*?:"<>|]', "", c.title) or "document"
+    return send_file(BytesIO(data.encode()), mimetype=mime, as_attachment=True, download_name=f"{filename}.{fmt}")
 
-# --- DB FIX ---
+# --- TEMPORARY DATABASE FIXER ROUTE ---
 @app.route('/fix-db')
 def fix_db():
     try:
         with db.engine.connect() as conn:
             conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'free';"))
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS content_count INTEGER DEFAULT 0;"))
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS ai_requests_this_month INTEGER DEFAULT 0;"))
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS last_reset_date TIMESTAMP DEFAULT NOW();"))
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;"))
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;"))
+            conn.execute(text("ALTER TABLE \"content\" ADD COLUMN IF NOT EXISTS html_content TEXT;"))
+            conn.execute(text("ALTER TABLE \"content\" ADD COLUMN IF NOT EXISTS seo_score INTEGER DEFAULT 0;"))
+            conn.execute(text("ALTER TABLE \"content\" ADD COLUMN IF NOT EXISTS word_count INTEGER DEFAULT 0;"))
             conn.commit()
-        return "DB Fixed"
-    except: return "Error"
+        return "Database successfully upgraded! Your users are safe."
+    except Exception as e:
+        return f"Error upgrading database: {str(e)}"
+
+# --- TEST EMAIL ROUTE (DEBUGGING) ---
+@app.route('/test-email')
+def test_email():
+    try:
+        msg = Message("Test Email", recipients=['dilawarahsanrizvi7@gmail.com'])
+        msg.body = "If you see this, the email system is working!"
+        mail.send(msg)
+        return "<h1>SUCCESS! Email sent. Check your inbox/spam.</h1>"
+    except Exception as e:
+        return f"<h1>FAILED</h1><p>Error: {str(e)}</p>"
+
+# ==========================================
+# 9. INITIALIZATION
+# ==========================================
+with app.app_context():
+    try: db.create_all()
+    except: pass
 
 if __name__ == '__main__':
-    with app.app_context(): db.create_all()
     app.run(debug=True, port=int(os.environ.get('PORT', 5001)))
