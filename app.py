@@ -15,17 +15,17 @@ from sqlalchemy import text
 from youtube_transcript_api import YouTubeTranscriptApi
 
 # ==========================================
-# 1. CONFIGURATION & GLOBAL VARS
+# 1. CONFIGURATION
 # ==========================================
 load_dotenv()
 app = Flask(__name__)
 
-# Database
+# Database Config
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///myseotoolver5.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
-# Email
+# Email Config (Hostinger)
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
 app.config['MAIL_PORT'] = 465
 app.config['MAIL_USE_SSL'] = True
@@ -39,6 +39,7 @@ mail = Mail(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# OpenAI Client
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # --- GLOBAL TOOL LIST (Defined at top to prevent NameError) ---
@@ -146,8 +147,6 @@ def robots_txt():
 def sitemap_xml():
     base_url = request.url_root.rstrip('/')
     pages = ['/', '/pricing', '/login', '/signup']
-    
-    # Use the global TOOL_LIST here
     for slug in TOOL_LIST:
         pages.append(f'/tool/{slug}')
 
@@ -258,7 +257,6 @@ def payment_success(plan_name):
 def tool_view(tool_name):
     return render_template(f'{tool_name.replace("-", "_")}.html')
 
-# Register URLs using global list
 for t in TOOL_LIST:
     app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
     if '-' in t: app.add_url_rule(f'/{t}', endpoint=t.replace('-', '_'), view_func=lambda t=t: tool_view(t))
@@ -267,32 +265,84 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS (AI & TOOLS)
 # ==========================================
 
+# --- YOUTUBE TO BLOG API (HYPER-ROBUST) ---
 @app.route('/api/youtube-to-blog', methods=['POST'])
 @login_required
 def api_youtube_to_blog():
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Limit reached.'}), 403
-    data = request.get_json(); video_url = data.get('url')
+        return jsonify({'error': 'Monthly Limit Reached. Upgrade to Pro!'}), 403
+
+    data = request.get_json()
+    video_url = data.get('url')
+    
     try:
-        vid_id = video_url.split("v=")[1].split("&")[0] if "v=" in video_url else video_url.split("youtu.be/")[1].split("?")[0]
-        # Robust Transcript Fetch
+        # 1. Extract Video ID
+        video_id = ""
+        if "youtu.be/" in video_url: video_id = video_url.split("youtu.be/")[1].split("?")[0]
+        elif "v=" in video_url: video_id = video_url.split("v=")[1].split("&")[0]
+        elif "shorts/" in video_url: video_id = video_url.split("shorts/")[1].split("?")[0]
+            
+        if not video_id: return jsonify({'error': 'Invalid YouTube URL format'}), 400
+
+        # 2. AGGRESSIVE TRANSCRIPT FETCH
         try:
-            t_list = YouTubeTranscriptApi.list_transcripts(vid_id)
-            try: transcript = t_list.find_transcript(['en','en-US'])
-            except: transcript = t_list.find_generated_transcript(['en'])
-            text_data = " ".join([t['text'] for t in transcript.fetch()])
-        except: return jsonify({'error': 'No English captions found.'}), 400
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            
+            transcript = None
+            
+            # Strategy A: Direct English
+            try:
+                transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
+            except:
+                # Strategy B: Auto-Generated English
+                try:
+                    transcript = transcript_list.find_generated_transcript(['en'])
+                except:
+                    # Strategy C: ANY Language -> Translate to English
+                    for t in transcript_list:
+                        if t.is_translatable:
+                            transcript = t.translate('en')
+                            break
+                        else:
+                            transcript = t # Last resort
+                            break
+
+            if not transcript: raise Exception("No captions found.")
+
+            # Fetch text
+            transcript_data = transcript.fetch()
+            full_text = " ".join([t['text'] for t in transcript_data])
+            
+        except Exception as e:
+            print(f"Transcript Error: {e}")
+            return jsonify({'error': "This video has no captions available for AI to read."}), 400
+
+        # 3. Truncate
+        full_text = full_text[:12000] 
+
+        # 4. AI Processing
+        prompt = f"""
+        Act as an expert SEO Blogger. 
+        Turn this YouTube transcript into a structured blog post.
+        Format in Markdown.
+        Transcript: "{full_text}"
+        """
         
-        # AI Process
         res = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role":"system","content":"Blog Writer"},{"role":"user","content":f"Turn into blog: {text_data[:15000]}"}]
+            messages=[{"role": "system", "content": "You are a professional blog writer."}, {"role": "user", "content": prompt}],
+            max_tokens=2500
         )
+        
+        blog_content = res.choices[0].message.content
         current_user.ai_requests_this_month += 1
         db.session.commit()
-        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
-    except Exception as e: return jsonify({'error': str(e)}), 500
 
+        return jsonify({'success': True, 'content': blog_content, 'html': markdown.markdown(blog_content)})
+
+    except Exception as e: return jsonify({'error': f"System Error: {str(e)}"}), 500
+
+# --- GENERIC API ---
 @app.route('/api/generate-content', methods=['POST'])
 @login_required
 def api_generate_content():
@@ -308,6 +358,7 @@ def api_generate_content():
         return jsonify({'success': True, 'content': res.choices[0].message.content, 'html_content': markdown.markdown(res.choices[0].message.content)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- SAVE CONTENT ---
 @app.route('/api/save-content', methods=['POST'])
 @login_required
 def api_save_content():
@@ -361,9 +412,11 @@ def api_schema(): return jsonify({'success':True, 'json': json.dumps({"@context"
 @app.route('/api/analyze-competitor', methods=['POST'])
 @login_required
 def api_competitor():
-    r = requests.get(request.get_json().get('url'), headers={'User-Agent':'Mozilla/5.0'})
-    s = BeautifulSoup(r.content, 'html.parser')
-    return jsonify({'success':True, 'analysis': {'title':s.title.string, 'word_count':len(s.get_text().split()), 'h1_tags':[h.text for h in s.find_all('h1')], 'images':[], 'total_images':0}})
+    try:
+        r = requests.get(request.get_json().get('url'), headers={'User-Agent':'Mozilla/5.0'})
+        s = BeautifulSoup(r.content, 'html.parser')
+        return jsonify({'success':True, 'analysis': {'title':s.title.string, 'word_count':len(s.get_text().split()), 'h1_tags':[h.text for h in s.find_all('h1')], 'images':[], 'total_images':0}})
+    except: return jsonify({'error': 'Failed to analyze URL'})
 
 @app.route('/api/generate-clusters', methods=['POST'])
 @login_required
@@ -377,6 +430,13 @@ def test_email():
         msg = Message("Test", recipients=['dilawarahsanrizvi7@gmail.com']); msg.body = "Working"; mail.send(msg)
         return "Sent"
     except Exception as e: return f"Err: {e}"
+
+@app.route('/fix-db')
+def fix_db():
+    try:
+        with db.engine.connect() as conn: conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'free';")); conn.commit()
+        return "DB Fixed"
+    except: return "Err"
 
 if __name__ == '__main__':
     with app.app_context(): db.create_all()
