@@ -46,10 +46,24 @@
             transition: transform 0.2s;
         }
         .btn-glow:hover { transform: translateY(-2px); color: white; box-shadow: 0 10px 20px rgba(79, 70, 229, 0.4); }
-        .blur-overlay { position: relative; filter: blur(6px); user-select: none; pointer-events: none; }
+        
+        /* BLUR EFFECT FOR BAIT */
+        .blur-overlay { position: relative; filter: blur(5px); user-select: none; pointer-events: none; transition: filter 0.5s; }
+        
+        /* Important: We want the first few items visible, then fade into blur */
+        .audit-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         .lock-overlay {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); z-index: 10; width: 80%;
+            position: absolute; top: 55%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 10; width: 90%; max-width: 400px;
         }
     </style>
 </head>
@@ -73,8 +87,9 @@
                         <span class="badge bg-primary border border-white border-opacity-25 px-3 py-2 rounded-pill">🚀 New: AI Site Auditor</span>
                     </div>
                     <h1 class="display-3 fw-extrabold mb-4">Is your website <span class="text-primary">invisible to Google?</span></h1>
-                    <p class="lead text-white-50 mb-5 px-lg-5">Stop guessing. Enter your URL below to get an instant SEO Health Score.</p>
+                    <p class="lead text-white-50 mb-5 px-lg-5">Stop guessing. Enter your URL below to see exactly what is broken.</p>
 
+                    <!-- SCANNER -->
                     <div class="glass-card p-2 mb-5">
                         <div class="row g-2">
                             <div class="col-md-9">
@@ -89,12 +104,16 @@
                         </div>
                     </div>
 
+                    <!-- LOADER -->
                     <div id="loader" class="d-none my-5">
                         <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
-                        <h4 class="fw-light">Crawling website...</h4>
+                        <h4 class="fw-light">Crawling site structure...</h4>
                     </div>
 
+                    <!-- RESULT CARD -->
                     <div id="resultCard" class="glass-card p-5 text-start d-none mx-auto" style="max-width: 700px;">
+                        
+                        <!-- Header: Score -->
                         <div class="d-flex justify-content-between align-items-center border-bottom border-white border-opacity-10 pb-4 mb-4">
                             <div>
                                 <h5 class="text-white-50 text-uppercase mb-1">SEO Health Score</h5>
@@ -102,19 +121,43 @@
                             </div>
                             <div class="text-end">
                                 <div class="bg-danger bg-opacity-25 text-danger border border-danger px-3 py-1 rounded-pill fw-bold mb-2">
-                                    <i class="fas fa-exclamation-circle"></i> Critical Issues
+                                    <i class="fas fa-exclamation-circle"></i> Critical Issues Found
                                 </div>
                                 <p class="small text-white-50 mb-0">Scan ID: #<span id="scanId"></span></p>
                             </div>
                         </div>
 
+                        <!-- THE BAIT: Real Issues (Visible) then Blur -->
                         <div class="position-relative">
-                            <div class="blur-overlay" id="blurContent"></div>
+                            
+                            <!-- 1. Real Issues Container -->
+                            <div id="issuesContainer">
+                                <!-- JavaScript will inject issues here -->
+                            </div>
+
+                            <!-- 2. Blurred Fake Issues (To imply more data) -->
+                            <div class="blur-overlay mt-2">
+                                <div class="audit-item">
+                                    <span>Mobile Usability Error</span>
+                                    <span class="text-warning fw-bold">Warning</span>
+                                </div>
+                                <div class="audit-item">
+                                    <span>Slow Largest Contentful Paint</span>
+                                    <span class="text-warning fw-bold">Warning</span>
+                                </div>
+                                <div class="audit-item">
+                                    <span>Broken Internal Links (404)</span>
+                                    <span class="text-danger fw-bold">Critical</span>
+                                </div>
+                                <p class="text-white-50 mt-3">...and 8 more technical issues found.</p>
+                            </div>
+
+                            <!-- 3. Lock Overlay -->
                             <div class="lock-overlay text-center">
                                 <div class="bg-dark p-4 rounded-4 shadow-lg border border-white border-opacity-10">
                                     <i class="fas fa-lock fa-3x text-warning mb-3"></i>
-                                    <h3>Unlock Full Report</h3>
-                                    <p class="text-white-50 mb-4">We found critical errors. Create a free account to fix them.</p>
+                                    <h3>Unlock Full Audit</h3>
+                                    <p class="text-white-50 mb-4">Create a free account to see exactly how to fix these errors.</p>
                                     <a href="/signup" class="btn btn-primary btn-lg w-100 fw-bold">Fix My SEO Now</a>
                                 </div>
                             </div>
@@ -132,38 +175,80 @@
 
         async function runPublicAudit() {
             const url = document.getElementById('scanUrl').value;
-            if(!url) return alert("Enter URL");
-            if(scans <= 0) { window.location.href = "/signup"; return; }
+            if(!url) return alert("Please enter a website URL");
 
+            if(scans <= 0) {
+                window.location.href = "/signup"; 
+                return;
+            }
+
+            // Show Loader
             document.getElementById('scanBtn').disabled = true;
             document.getElementById('loader').classList.remove('d-none');
             document.getElementById('resultCard').classList.add('d-none');
 
+            // Wait 2s for "effect", then fetch real data
             setTimeout(async () => {
                 try {
                     const res = await fetch('/api/public-audit', {
-                        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: url})
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({url: url})
                     });
                     const data = await res.json();
 
                     document.getElementById('loader').classList.add('d-none');
                     document.getElementById('resultCard').classList.remove('d-none');
+                    
+                    // Set Score
                     document.getElementById('scoreDisplay').innerText = data.score;
                     document.getElementById('scanId').innerText = Math.floor(Math.random() * 10000);
 
-                    const issues = data.issues.length > 0 ? data.issues : ["Page Load Speed", "Broken Links"];
-                    document.getElementById('blurContent').innerHTML = `
-                        <div class="d-flex justify-content-between p-3 bg-white bg-opacity-10 rounded mb-2"><span>${issues[0]}</span><span class="text-danger fw-bold">Critical</span></div>
-                        ${issues.length > 1 ? `<div class="d-flex justify-content-between p-3 bg-white bg-opacity-10 rounded mb-2"><span>${issues[1]}</span><span class="text-danger fw-bold">Critical</span></div>` : ''}
-                        <div class="d-flex justify-content-between p-3 bg-white bg-opacity-10 rounded mb-2"><span>Mobile Usability</span><span class="text-warning fw-bold">Warning</span></div>
-                        <p class="text-white-50 mt-3">...and 5 more technical issues found.</p>
-                    `;
+                    // INJECT REAL ISSUES (VISIBLE PART)
+                    const container = document.getElementById('issuesContainer');
+                    container.innerHTML = ''; // Clear previous
 
+                    // If issues found, show top 2
+                    if (data.issues.length > 0) {
+                        // Take first issue
+                        container.innerHTML += `
+                            <div class="audit-item bg-danger bg-opacity-10 border border-danger border-opacity-25">
+                                <span class="fw-bold text-white"><i class="fas fa-times-circle text-danger me-2"></i> ${data.issues[0]}</span>
+                                <span class="text-danger fw-bold">Critical</span>
+                            </div>
+                        `;
+                        // Take second issue if exists
+                        if (data.issues.length > 1) {
+                            container.innerHTML += `
+                                <div class="audit-item bg-danger bg-opacity-10 border border-danger border-opacity-25">
+                                    <span class="fw-bold text-white"><i class="fas fa-times-circle text-danger me-2"></i> ${data.issues[1]}</span>
+                                    <span class="text-danger fw-bold">Critical</span>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        // If site is perfect (Rare)
+                        container.innerHTML = `
+                            <div class="audit-item bg-success bg-opacity-10 border border-success border-opacity-25">
+                                <span class="fw-bold text-white"><i class="fas fa-check-circle text-success me-2"></i> No Critical Errors Found</span>
+                                <span class="text-success fw-bold">Pass</span>
+                            </div>
+                        `;
+                    }
+
+                    // Decrement Scans
                     scans--;
                     localStorage.setItem('scanCount', scans);
                     document.getElementById('scansLeft').innerText = scans;
+                    
+                    // Scroll down
                     document.getElementById('resultCard').scrollIntoView({behavior: "smooth"});
-                } catch(e) { alert("Error scanning site."); document.getElementById('loader').classList.add('d-none'); document.getElementById('scanBtn').disabled = false; }
+
+                } catch(e) {
+                    alert("Could not scan site. Please try again.");
+                    document.getElementById('loader').classList.add('d-none');
+                    document.getElementById('scanBtn').disabled = false;
+                }
             }, 2000);
         }
     </script>
