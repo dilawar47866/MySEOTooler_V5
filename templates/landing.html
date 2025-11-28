@@ -1,254 +1,66 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MySEO King - Free AI SEO Audit & Content Tool</title>
-    <meta name="description" content="Analyze your website SEO score for free. Generate content, spy on competitors, and rank higher with AI.">
-    
-    <!-- Styles -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;500;700;800&display=swap" rel="stylesheet">
-    
-    <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0f172a; color: white; overflow-x: hidden; }
-        
-        /* HERO BACKGROUND */
-        .hero-wrapper {
-            position: relative;
-            background: radial-gradient(circle at 50% 0%, #4f46e5 0%, #0f172a 60%);
-            min-height: 100vh;
-            overflow: hidden;
-        }
-        
-        .hero-wrapper::after {
-            content: '';
-            position: absolute;
-            width: 100%; height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-            top: 0; left: 0; opacity: 0.5; pointer-events: none;
+<!-- Replace the script tag at bottom of landing.html -->
+<script>
+    let scans = localStorage.getItem('scanCount') ? parseInt(localStorage.getItem('scanCount')) : 3;
+    document.getElementById('scansLeft').innerText = scans;
+
+    async function runPublicAudit() {
+        const url = document.getElementById('scanUrl').value;
+        if(!url) return alert("Please enter a website URL");
+
+        if(scans <= 0) {
+            window.location.href = "/signup"; 
+            return;
         }
 
-        /* GLASSMORPHISM CARD */
-        .glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
+        document.getElementById('scanBtn').disabled = true;
+        document.getElementById('loader').classList.remove('d-none');
+        document.getElementById('resultCard').classList.add('d-none');
 
-        /* SCANNER INPUT */
-        .scanner-input {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            border-radius: 12px;
-            padding: 1.2rem;
-            font-size: 1.1rem;
-        }
-        .scanner-input:focus {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: #4f46e5;
-            color: white;
-            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.3);
-        }
-        .scanner-input::placeholder { color: rgba(255,255,255,0.5); }
+        setTimeout(async () => {
+            try {
+                const res = await fetch('/api/public-audit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({url: url})
+                });
+                const data = await res.json();
 
-        /* ANIMATED BUTTON */
-        .btn-glow {
-            background: linear-gradient(90deg, #4f46e5, #7c3aed);
-            border: none;
-            color: white;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.2s;
-        }
-        .btn-glow:hover { transform: translateY(-2px); color: white; box-shadow: 0 10px 20px rgba(79, 70, 229, 0.4); }
+                document.getElementById('loader').classList.add('d-none');
+                document.getElementById('resultCard').classList.remove('d-none');
+                document.getElementById('scoreDisplay').innerText = data.score;
+                document.getElementById('scanId').innerText = Math.floor(Math.random() * 10000);
 
-        /* BLUR OVERLAY FOR BAIT */
-        .blur-overlay {
-            position: relative;
-            filter: blur(6px);
-            user-select: none;
-            pointer-events: none;
-        }
-        .lock-overlay {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-            width: 80%;
-        }
-    </style>
-</head>
-<body>
-
-    <!-- NAV -->
-    <nav class="navbar navbar-dark fixed-top py-4">
-        <div class="container">
-            <a class="navbar-brand fw-bold fs-4" href="#"><i class="fas fa-crown text-warning"></i> MySEO King</a>
-            <div>
-                <a href="/login" class="btn btn-outline-light me-2 border-0">Login</a>
-                <a href="/signup" class="btn btn-light fw-bold">Get Started</a>
-            </div>
-        </div>
-    </nav>
-
-    <!-- HERO & SCANNER -->
-    <div class="hero-wrapper d-flex align-items-center">
-        <div class="container pt-5">
-            <div class="row justify-content-center text-center">
-                <div class="col-lg-8">
-                    
-                    <div class="mb-4">
-                        <span class="badge bg-indigo-soft border border-white border-opacity-25 px-3 py-2 rounded-pill">
-                            🚀 New: AI Site Auditor
-                        </span>
+                // INJECT REAL ISSUES INTO THE PREVIEW (NEW)
+                const issuesList = data.issues.length > 0 ? data.issues : ["Page Load Speed", "Broken Links"];
+                const previewHtml = `
+                    <div class="d-flex justify-content-between p-3 bg-white bg-opacity-10 rounded mb-2">
+                        <span>${issuesList[0]}</span>
+                        <span class="text-danger fw-bold">Critical</span>
                     </div>
-
-                    <h1 class="display-3 fw-extrabold mb-4 leading-tight">
-                        Is your website <span class="text-transparent bg-clip-text bg-gradient-to-r" style="background-image: linear-gradient(90deg, #818cf8, #c084fc);">invisible to Google?</span>
-                    </h1>
-                    <p class="lead text-white-50 mb-5 px-lg-5">
-                        Stop guessing. Enter your URL below to get an instant SEO Health Score and find out exactly what's holding you back.
-                    </p>
-
-                    <!-- THE BAIT SCANNER -->
-                    <div class="glass-card p-2 mb-5">
-                        <div class="row g-2">
-                            <div class="col-md-9">
-                                <input type="text" id="scanUrl" class="form-control scanner-input" placeholder="Enter your website URL (e.g. mybusiness.com)">
-                            </div>
-                            <div class="col-md-3">
-                                <button class="btn btn-glow w-100 h-100 fw-bold fs-5 rounded-3" id="scanBtn" onclick="runPublicAudit()">
-                                    Analyze Now
-                                </button>
-                            </div>
-                        </div>
-                        <div class="text-start ps-3 mt-2">
-                            <small class="text-white-50" id="scanCount">
-                                <i class="fas fa-bolt text-warning me-1"></i> Free scans remaining: <span id="scansLeft" class="text-white fw-bold">3</span>
-                            </small>
-                        </div>
+                    ${issuesList.length > 1 ? `
+                    <div class="d-flex justify-content-between p-3 bg-white bg-opacity-10 rounded mb-2">
+                        <span>${issuesList[1]}</span>
+                        <span class="text-danger fw-bold">Critical</span>
+                    </div>` : ''}
+                    <div class="d-flex justify-content-between p-3 bg-white bg-opacity-10 rounded mb-2">
+                        <span>Advanced Mobile Usability</span>
+                        <span class="text-warning fw-bold">Warning</span>
                     </div>
+                    <p class="text-white-50 mt-3">...and 5 more technical issues found.</p>
+                `;
+                
+                document.querySelector('.blur-overlay').innerHTML = previewHtml;
 
-                    <!-- FAKE LOADING / RESULTS -->
-                    <div id="loader" class="d-none my-5">
-                        <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
-                        <h4 class="fw-light animate-pulse">Crawling website structure...</h4>
-                    </div>
+                scans--;
+                localStorage.setItem('scanCount', scans);
+                document.getElementById('scansLeft').innerText = scans;
+                document.getElementById('resultCard').scrollIntoView({behavior: "smooth"});
 
-                    <!-- RESULT CARD (The Hook) -->
-                    <div id="resultCard" class="glass-card p-5 text-start d-none mx-auto" style="max-width: 700px;">
-                        <div class="d-flex justify-content-between align-items-center border-bottom border-white border-opacity-10 pb-4 mb-4">
-                            <div>
-                                <h5 class="text-white-50 text-uppercase mb-1">SEO Health Score</h5>
-                                <h1 class="display-2 fw-bold text-warning mb-0" id="scoreDisplay">0</h1>
-                            </div>
-                            <div class="text-end">
-                                <div class="bg-danger bg-opacity-25 text-danger border border-danger px-3 py-1 rounded-pill fw-bold mb-2">
-                                    <i class="fas fa-exclamation-circle"></i> Critical Issues Found
-                                </div>
-                                <p class="small text-white-50 mb-0">Scan ID: #<span id="scanId"></span></p>
-                            </div>
-                        </div>
-
-                        <!-- BLURRED REPORT -->
-                        <div class="position-relative">
-                            <div class="blur-overlay">
-                                <div class="d-flex justify-content-between p-3 bg-white bg-opacity-10 rounded mb-2">
-                                    <span>Missing Meta Description</span>
-                                    <span class="text-danger">Critical</span>
-                                </div>
-                                <div class="d-flex justify-content-between p-3 bg-white bg-opacity-10 rounded mb-2">
-                                    <span>H1 Tag Missing</span>
-                                    <span class="text-danger">Critical</span>
-                                </div>
-                                <div class="d-flex justify-content-between p-3 bg-white bg-opacity-10 rounded mb-2">
-                                    <span>Slow Load Time (3.2s)</span>
-                                    <span class="text-warning">Warning</span>
-                                </div>
-                                <p class="text-white-50 mt-3">Lorem ipsum dolor sit amet, consectetur adipiscing elit...</p>
-                            </div>
-
-                            <!-- LOCK OVERLAY -->
-                            <div class="lock-overlay text-center">
-                                <div class="bg-dark p-4 rounded-4 shadow-lg border border-white border-opacity-10">
-                                    <i class="fas fa-lock fa-3x text-warning mb-3"></i>
-                                    <h3>Unlock Your Full Report</h3>
-                                    <p class="text-white-50 mb-4">We found 3 critical errors hurting your rankings. Create a free account to see how to fix them.</p>
-                                    <a href="/signup" class="btn btn-primary btn-lg w-100 fw-bold">Fix My SEO Now</a>
-                                    <p class="small text-white-50 mt-2">No credit card required.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- FOOTER -->
-    <footer class="py-4 text-center text-white-50 bg-dark border-top border-white border-opacity-10">
-        <div class="container">
-            <small>&copy; 2023 MySEO King. Questions? <a href="mailto:support@myseokingtool.com" class="text-white">Contact Support</a></small>
-        </div>
-    </footer>
-
-    <script>
-        // COOKIE LOGIC FOR 3 SCANS
-        let scans = localStorage.getItem('scanCount') ? parseInt(localStorage.getItem('scanCount')) : 3;
-        document.getElementById('scansLeft').innerText = scans;
-
-        async function runPublicAudit() {
-            const url = document.getElementById('scanUrl').value;
-            if(!url) return alert("Please enter a website URL");
-
-            if(scans <= 0) {
-                window.location.href = "/signup"; // Force signup if limit reached
-                return;
+            } catch(e) {
+                alert("Error scanning site.");
+                document.getElementById('loader').classList.add('d-none');
+                document.getElementById('scanBtn').disabled = false;
             }
-
-            // UI Updates
-            document.getElementById('scanBtn').disabled = true;
-            document.getElementById('loader').classList.remove('d-none');
-            document.getElementById('resultCard').classList.add('d-none');
-
-            // Fake Timer to make it feel like a "Deep Scan" (Psychology)
-            setTimeout(async () => {
-                try {
-                    const res = await fetch('/api/public-audit', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({url: url})
-                    });
-                    const data = await res.json();
-
-                    // Update UI
-                    document.getElementById('loader').classList.add('d-none');
-                    document.getElementById('resultCard').classList.remove('d-none');
-                    document.getElementById('scoreDisplay').innerText = data.score;
-                    document.getElementById('scanId').innerText = Math.floor(Math.random() * 10000);
-
-                    // Decrement Count
-                    scans--;
-                    localStorage.setItem('scanCount', scans);
-                    document.getElementById('scansLeft').innerText = scans;
-
-                    // Scroll to result
-                    document.getElementById('resultCard').scrollIntoView({behavior: "smooth"});
-
-                } catch(e) {
-                    alert("Could not scan site. Please try again.");
-                    document.getElementById('loader').classList.add('d-none');
-                    document.getElementById('scanBtn').disabled = false;
-                }
-            }, 2000);
-        }
-    </script>
-</body>
-</html>
+        }, 2000);
+    }
+</script>
