@@ -12,6 +12,7 @@ from openai import OpenAI
 import markdown
 from io import BytesIO, StringIO
 from sqlalchemy import text
+from youtube_transcript_api import YouTubeTranscriptApi
 
 # ==========================================
 # 1. CONFIGURATION
@@ -40,14 +41,23 @@ login_manager.login_view = 'login'
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- GLOBAL TOOL LIST (Cleaned) ---
+# --- GLOBAL TOOL LIST ---
 TOOL_LIST = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
     'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
     'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
-    'image-generator', 'site-auditor', 'content-humanizer', 'article-wizard'
+    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 'article-wizard'
+]
+
+# --- PIPED MIRRORS ---
+PIPED_INSTANCES = [
+    "https://pipedapi.kavin.rocks",
+    "https://api.piped.privacy.com.de",
+    "https://pipedapi.moomoo.me",
+    "https://pipedapi.smnz.de",
+    "https://pipedapi.adminforge.de"
 ]
 
 # ==========================================
@@ -245,7 +255,7 @@ def admin_delete_user(user_id):
         db.session.commit()
     return jsonify({'success': True})
 
-# --- NEW: MANUAL UPGRADE ROUTE ---
+# --- MANUAL UPGRADE ROUTE ---
 @app.route('/admin/user/<int:user_id>/upgrade', methods=['POST'])
 @login_required
 def admin_upgrade_user(user_id):
@@ -343,17 +353,28 @@ def api_audit_site():
         })
     except Exception as e: return jsonify({'error': f"Failed: {str(e)}"}), 500
 
+# --- IMAGE GEN (UPDATED WITH SIZES) ---
 @app.route('/api/generate-image', methods=['POST'])
 @login_required
 def api_generate_image():
     if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro!'}), 403
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
     try:
-        res = client.images.generate(model="dall-e-3", prompt=request.get_json().get('prompt'), size="1024x1024", quality="standard", n=1)
+        # Get Size from Frontend
+        d = request.get_json()
+        size = d.get('size', '1024x1024')
+        
+        # DALL-E 3 supports only specific sizes, ensure validation
+        allowed_sizes = ['1024x1024', '1024x1792', '1792x1024']
+        if size not in allowed_sizes: size = '1024x1024'
+
+        res = client.images.generate(model="dall-e-3", prompt=d.get('prompt'), size=size, quality="standard", n=1)
+        
         current_user.ai_requests_this_month += 5; db.session.commit()
         return jsonify({'success': True, 'image_url': res.data[0].url})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- HUMANIZER ---
 @app.route('/api/humanize-text', methods=['POST'])
 @login_required
 def api_humanize_text():
@@ -364,6 +385,7 @@ def api_humanize_text():
         return jsonify({'success': True, 'content': res.choices[0].message.content})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
+# --- ARTICLE WIZARD ---
 @app.route('/api/article-wizard', methods=['POST'])
 @login_required
 def api_article_wizard():
@@ -371,6 +393,34 @@ def api_article_wizard():
     try:
         d = request.get_json()
         res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Blog about: {d.get('topic')}"}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- YOUTUBE TO BLOG API ---
+@app.route('/api/youtube-to-blog', methods=['POST'])
+@login_required
+def api_youtube_to_blog():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached.'}), 403
+    data = request.get_json(); video_url = data.get('url')
+    try:
+        vid = video_url.split("v=")[1].split("&")[0] if "v=" in video_url else video_url.split("youtu.be/")[1].split("?")[0]
+        full_text = ""
+        mirrors = PIPED_INSTANCES.copy(); random.shuffle(mirrors)
+        for m in mirrors:
+            try:
+                r = requests.get(f"{m}/streams/{vid}", timeout=5)
+                if r.status_code == 200:
+                    subs = r.json().get('subtitles', [])
+                    tgt = next((s for s in subs if 'en' in s.get('code','')), subs[0] if subs else None)
+                    if tgt:
+                        lines = requests.get(tgt['url']).text.splitlines()
+                        clean = [l.strip() for l in lines if '-->' not in l and 'WEBVTT' not in l and l.strip()]
+                        full_text = " ".join(clean)
+                        if len(full_text) > 50: break
+            except: continue
+        if not full_text: return jsonify({'error': "No captions found."}), 400
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Blog from transcript: {full_text[:15000]}"}])
         current_user.ai_requests_this_month += 1; db.session.commit()
         return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
     except Exception as e: return jsonify({'error': str(e)}), 500
