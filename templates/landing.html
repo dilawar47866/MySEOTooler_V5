@@ -66,7 +66,6 @@
         .score-warning { border-color: #f59e0b; color: #f59e0b; }
         .score-success { border-color: #22c55e; color: #22c55e; }
 
-        /* FEATURES & PRICING */
         .feature-box {
             background: #1e293b; padding: 2rem; border-radius: 16px; border: 1px solid #334155; transition: 0.3s; height: 100%;
         }
@@ -82,7 +81,6 @@
 </head>
 <body>
 
-    <!-- NAV -->
     <nav class="navbar navbar-dark fixed-top py-4">
         <div class="container">
             <a class="navbar-brand fw-bold fs-4" href="#"><i class="fas fa-crown text-warning"></i> MySEO King</a>
@@ -93,7 +91,6 @@
         </div>
     </nav>
 
-    <!-- HERO -->
     <div class="hero-section text-center">
         <div class="container">
             <div class="mb-4">
@@ -127,20 +124,21 @@
             <!-- LOADER -->
             <div id="loader" class="d-none my-5">
                 <div class="spinner-border text-light mb-3" style="width: 3rem; height: 3rem;"></div>
-                <h4 class="fw-light">Analyzing 200+ Ranking Factors...</h4>
+                <h4 class="fw-light">Crawling site structure...</h4>
             </div>
 
-            <!-- AUDIT RESULT (HOOK) -->
+            <!-- AUDIT RESULT -->
             <div id="resultCard" class="audit-card shadow-lg d-none animate__animated animate__fadeInUp">
                 
                 <div class="p-4 border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <div id="scoreCircle" class="score-circle me-3">?</div>
+                            <!-- FIXED ID HERE -->
+                            <div id="finalScoreCircle" class="score-circle me-3">0</div>
                             <div class="text-start">
                                 <h6 class="text-muted text-uppercase mb-0 small fw-bold">Health Score</h6>
-                                <!-- FIXED ID & COLOR -->
-                                <div id="urlDisplay" class="text-primary fw-bold fs-5">scanning...</div>
+                                <!-- FIXED ID HERE -->
+                                <div id="finalUrlDisplay" class="text-primary fw-bold fs-5">example.com</div>
                             </div>
                         </div>
                         <div class="text-end">
@@ -150,11 +148,10 @@
                 </div>
 
                 <div class="p-4 position-relative bg-light" style="min-height: 300px;">
-                    
-                    <!-- REAL ISSUES INJECTED HERE -->
+                    <!-- ISSUES -->
                     <div id="issuesContainer"></div>
 
-                    <!-- BLURRED FAKE ISSUES -->
+                    <!-- FAKE BLUR -->
                     <div class="blur-trap mt-2">
                         <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
                             <span class="fw-bold text-dark">Slow Mobile Speed (LCP)</span>
@@ -170,11 +167,10 @@
                         </div>
                     </div>
 
-                    <!-- LOCK -->
                     <div class="lock-overlay text-center">
                         <div class="bg-dark p-4 rounded-4 shadow-lg border border-white border-opacity-10">
                             <i class="fas fa-lock fa-3x text-warning mb-3"></i>
-                            <h3>Unlock Full Report</h3>
+                            <h3 class="fw-bold text-dark">Unlock Full Report</h3>
                             <p class="text-white-50 mb-4">Fix these critical errors to improve your ranking instantly.</p>
                             <a href="/signup" class="btn btn-primary btn-lg w-100 fw-bold">Fix My SEO Now</a>
                         </div>
@@ -185,58 +181,20 @@
         </div>
     </div>
 
-    <!-- FEATURES GRID -->
+    <!-- FEATURES -->
     <div class="py-5 bg-dark">
         <div class="container py-5">
             <div class="text-center mb-5">
                 <h6 class="text-primary fw-bold text-uppercase">Why We Are Better</h6>
                 <h2 class="fw-bold display-5 text-white">Replace 5 expensive tools with 1</h2>
             </div>
-
             <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-magic"></i></div>
-                        <h4 class="text-white fw-bold">Article Wizard</h4>
-                        <p class="text-white-50">Generate full 1,500-word articles with headings, intro, and conclusion in 1 click.</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-user-secret"></i></div>
-                        <h4 class="text-white fw-bold">Competitor Spy</h4>
-                        <p class="text-white-50">Steal your competitors' keyword strategy. See their headings, word counts, and missing gaps.</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <!-- REPLACED YOUTUBE WITH RANK TRACKING PLACEHOLDER -->
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-chart-line"></i></div>
-                        <h4 class="text-white fw-bold">Rank Tracking</h4>
-                        <p class="text-white-50">Monitor your keyword positions and watch them climb as you optimize your content.</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-robot"></i></div>
-                        <h4 class="text-white fw-bold">Humanizer</h4>
-                        <p class="text-white-50">Bypass AI detectors. We rewrite robotic text to sound like a professional human writer.</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-images"></i></div>
-                        <h4 class="text-white fw-bold">AI Images</h4>
-                        <p class="text-white-50">Stop paying for stock photos. Generate unique, copyright-free images for your blogs.</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="feature-box">
-                        <div class="icon-wrap"><i class="fas fa-search-dollar"></i></div>
-                        <h4 class="text-white fw-bold">Keyword Data</h4>
-                        <p class="text-white-50">Find low-competition keywords that are easy to rank for. Dominate your niche.</p>
-                    </div>
-                </div>
+                <div class="col-md-4"><div class="feature-box"><div class="icon-wrap"><i class="fas fa-magic"></i></div><h4 class="text-white fw-bold">Article Wizard</h4><p class="text-white-50">Generate full 1,500-word articles with headings, intro, and conclusion in 1 click.</p></div></div>
+                <div class="col-md-4"><div class="feature-box"><div class="icon-wrap"><i class="fas fa-user-secret"></i></div><h4 class="text-white fw-bold">Competitor Spy</h4><p class="text-white-50">Steal your competitors' keyword strategy. See their headings and content gaps instantly.</p></div></div>
+                <div class="col-md-4"><div class="feature-box"><div class="icon-wrap"><i class="fas fa-chart-line"></i></div><h4 class="text-white fw-bold">Rank Tracking</h4><p class="text-white-50">Monitor keyword positions and watch them climb as you optimize content.</p></div></div>
+                <div class="col-md-4"><div class="feature-box"><div class="icon-wrap"><i class="fas fa-robot"></i></div><h4 class="text-white fw-bold">Humanizer</h4><p class="text-white-50">Bypass AI detectors. Rewrite text to sound 100% human and authentic.</p></div></div>
+                <div class="col-md-4"><div class="feature-box"><div class="icon-wrap"><i class="fas fa-images"></i></div><h4 class="text-white fw-bold">AI Images</h4><p class="text-white-50">Generate unique, royalty-free featured images for your blog posts.</p></div></div>
+                <div class="col-md-4"><div class="feature-box"><div class="icon-wrap"><i class="fas fa-search-dollar"></i></div><h4 class="text-white fw-bold">Keyword Data</h4><p class="text-white-50">Find low-competition keywords that are easy to rank for.</p></div></div>
             </div>
         </div>
     </div>
@@ -248,7 +206,6 @@
                 <h6 class="text-primary fw-bold text-uppercase">Pricing</h6>
                 <h2 class="fw-bold display-5">Simple, Transparent Pricing</h2>
             </div>
-
             <div class="row justify-content-center g-4">
                 <!-- FREE -->
                 <div class="col-md-4">
@@ -263,8 +220,7 @@
                         <a href="/signup" class="btn btn-outline-dark w-100 fw-bold rounded-pill">Start Free</a>
                     </div>
                 </div>
-
-                <!-- PRO KING -->
+                <!-- PRO -->
                 <div class="col-md-4">
                     <div class="card pricing-card p-4 h-100 border-primary border-2 shadow-lg position-relative">
                         <div class="position-absolute top-0 start-50 translate-middle badge bg-primary px-3 py-2 rounded-pill">POPULAR</div>
@@ -279,7 +235,6 @@
                         <a href="/signup" class="btn btn-primary w-100 fw-bold rounded-pill shadow">Get Pro King</a>
                     </div>
                 </div>
-
                 <!-- ENTERPRISE -->
                 <div class="col-md-4">
                     <div class="card pricing-card p-4 h-100">
@@ -298,11 +253,8 @@
         </div>
     </div>
 
-    <!-- FOOTER -->
     <footer class="py-4 bg-dark text-center text-white-50 border-top border-white border-opacity-10">
-        <div class="container">
-            <p class="mb-0">&copy; 2023 MySEO King. Support: <a href="mailto:support@myseokingtool.com" class="text-white">support@myseokingtool.com</a></p>
-        </div>
+        <div class="container"><p class="mb-0">&copy; 2023 MySEO King. <a href="mailto:support@myseokingtool.com" class="text-white">support@myseokingtool.com</a></p></div>
     </footer>
 
     <script>
@@ -311,86 +263,58 @@
 
         async function runPublicAudit() {
             const urlInput = document.getElementById('scanUrl').value;
-            if(!urlInput) return alert("Please enter a website URL");
-            
-            // 1. Clean URL for Display
-            let displayUrl = urlInput.replace(/^https?:\/\//, '').replace(/\/$/, '');
+            if(!urlInput) return alert("Enter URL");
+            let displayUrl = urlInput.replace(/^https?:\/\//, '').replace(/\/$/, ''); 
 
             if(scans <= 0) { window.location.href = "/signup"; return; }
 
-            // 2. UI Loading
             document.getElementById('scanBtn').disabled = true;
             document.getElementById('loader').classList.remove('d-none');
             document.getElementById('resultCard').classList.add('d-none');
 
-            // 3. Timeout Logic (Wait max 10s)
             const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000));
             const fetchAudit = fetch('/api/public-audit', {
                 method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({url: urlInput})
             });
 
-            // 4. Minimum 2s Wait for Effect
             setTimeout(async () => {
                 try {
                     const res = await Promise.race([fetchAudit, timeout]);
                     const data = await res.json();
-                    
-                    // Success Path
                     renderResult(data.score, data.issues, displayUrl);
-
                 } catch(e) {
-                    // Failure Path (Network error, Timeout, etc)
-                    // This guarantees we show *something* even if scan fails
-                    renderResult(45, ['Slow Response Time (Server)', 'Mobile Optimization Issues'], displayUrl);
+                    // FALLBACK WITH REAL-LOOKING DATA
+                    renderResult(45, ['Server Response Timeout', 'Mobile Optimization Issues'], displayUrl);
                 }
             }, 2000);
         }
 
         function renderResult(score, issues, url) {
-            // Hide Loader
             document.getElementById('loader').classList.add('d-none');
             document.getElementById('resultCard').classList.remove('d-none');
             document.getElementById('scanBtn').disabled = false;
 
-            // Update Values
-            document.getElementById('scoreDisplay').innerText = score;
-            document.getElementById('urlDisplay').innerText = url; // <--- THIS IS FIXED
-            document.getElementById('scanId').innerText = Math.floor(Math.random() * 10000);
+            // UPDATING THE CORRECT IDs NOW
+            document.getElementById('finalScoreCircle').innerText = score;
+            document.getElementById('finalUrlDisplay').innerText = url; 
+            
+            const circle = document.getElementById('finalScoreCircle');
+            circle.className = `score-circle me-3 ${score > 80 ? 'score-success' : score > 50 ? 'score-warning' : 'score-danger'}`;
 
-            // Score Color Logic
-            const circle = document.getElementById('scoreCircle');
-            circle.innerText = score;
-            circle.className = `score-circle ${score > 80 ? 'score-success' : score > 50 ? 'score-warning' : 'score-danger'}`;
-
-            // Inject Issues
             const container = document.getElementById('issuesContainer');
             container.innerHTML = '';
             
-            // Always show at least 2 issues (Real or Default)
             let list = (issues && issues.length > 0) ? issues : ["Page Load Speed", "Broken Links"];
             
-            container.innerHTML += `
-                <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
-                    <span class="fw-bold text-dark"><i class="fas fa-times-circle text-danger me-2"></i> ${list[0]}</span>
-                    <span class="badge bg-danger">Critical</span>
-                </div>
-            `;
+            container.innerHTML += `<div class="audit-item bg-danger bg-opacity-10 border border-danger border-opacity-25"><span class="fw-bold text-dark"><i class="fas fa-times-circle text-danger me-2"></i> ${list[0]}</span><span class="badge bg-danger">Critical</span></div>`;
             
             if (list.length > 1) {
-                container.innerHTML += `
-                    <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
-                        <span class="fw-bold text-dark"><i class="fas fa-times-circle text-danger me-2"></i> ${list[1]}</span>
-                        <span class="badge bg-danger">Critical</span>
-                    </div>
-                `;
+                container.innerHTML += `<div class="audit-item bg-danger bg-opacity-10 border border-danger border-opacity-25"><span class="fw-bold text-dark"><i class="fas fa-times-circle text-danger me-2"></i> ${list[1]}</span><span class="badge bg-danger">Critical</span></div>`;
             }
 
-            // Update Cookies
             scans--;
             localStorage.setItem('scanCount', scans);
             document.getElementById('scansLeft').innerText = scans;
-            
-            // Scroll
             document.getElementById('resultCard').scrollIntoView({behavior: "smooth"});
         }
     </script>
