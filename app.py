@@ -41,16 +41,15 @@ login_manager.login_view = 'login'
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- GLOBAL TOOL LIST (Removed conflicting tools) ---
-# These are handled by the dynamic router. 
-# Article Wizard and Alt Text are handled manually below.
+# --- GLOBAL TOOL LIST ---
 TOOL_LIST = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
-    'robots-generator', 'image-seo', 'social-posts', 
+    'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
     'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
-    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer'
+    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 
+    'article-wizard', 'bulk-writer' # Added Bulk Writer
 ]
 
 # --- PIPED MIRRORS ---
@@ -147,6 +146,23 @@ def pricing(): return render_template('pricing.html')
 @login_required
 def profile(): return render_template('profile.html')
 
+# --- FORCE ROUTES ---
+@app.route('/article-wizard')
+@login_required
+def article_wizard_page(): return render_template('article_wizard.html')
+
+@app.route('/alt-text-generator')
+@login_required
+def alt_text_generator_page(): return render_template('alt_text_generator.html')
+
+@app.route('/bulk-writer')
+@login_required
+def bulk_writer_page():
+    if current_user.tier == 'free':
+        flash("Bulk Writing is a Pro Feature!", "warning")
+        return redirect('/pricing')
+    return render_template('bulk_writer.html')
+
 # --- TECHNICAL SEO ROUTES ---
 @app.route('/robots.txt')
 def robots_txt():
@@ -157,14 +173,10 @@ def robots_txt():
 def sitemap_xml():
     base_url = request.url_root.rstrip('/')
     pages = ['/', '/pricing', '/login', '/signup']
-    # Use TOOL_LIST + Manual ones
-    all_tools = TOOL_LIST + ['article-wizard', 'alt-text-generator']
-    for slug in all_tools:
-        pages.append(f'/tool/{slug}')
-
+    for slug in TOOL_LIST: pages.append(f'/tool/{slug}')
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     for page in pages:
-        xml += f'  <url>\n    <loc>{base_url}{page}</loc>\n    <changefreq>weekly</changefreq>\n  </url>\n'
+        xml += f'<url><loc>{base_url}{page}</loc><changefreq>weekly</changefreq></url>\n'
     xml += '</urlset>'
     return xml, 200, {'Content-Type': 'application/xml'}
 
@@ -190,19 +202,15 @@ def signup():
         try:
             data = request.get_json() if request.is_json else request.form
             if User.query.filter_by(email=data.get('email').lower()).first(): return jsonify({'error': 'Email exists'}), 400
-            
             hashed = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
             user = User(username=data.get('username'), email=data.get('email').lower(), password_hash=hashed)
             if User.query.count() == 0: user.is_admin = True
-            
             db.session.add(user); db.session.commit(); login_user(user)
-
             try:
                 msg = Message("Welcome to MySEO King! 👑", recipients=[user.email])
                 msg.body = f"Hi {user.username},\n\nWelcome to MySEO King.\n\nCheers,\nTeam"
                 mail.send(msg)
             except: pass
-
             return jsonify({'success': True, 'redirect': '/dashboard'})
         except Exception as e: return jsonify({'error': str(e)}), 500
     return render_template('signup.html')
@@ -272,27 +280,15 @@ def payment_success(plan_name):
     return redirect('/dashboard')
 
 # ==========================================
-# 6. TOOL ROUTER (FIXED)
+# 6. TOOL ROUTER
 # ==========================================
-
-# SPECIFIC ROUTES (MUST BE FIRST)
-@app.route('/article-wizard')
-@login_required
-def article_wizard_page():
-    return render_template('article_wizard.html')
-
-@app.route('/alt-text-generator')
-@login_required
-def alt_text_generator_page():
-    return render_template('alt_text_generator.html')
-
-# DYNAMIC ROUTER (FOR EVERYTHING ELSE)
 @app.route('/tool/<tool_name>')
 @login_required
 def tool_view(tool_name):
-    # Handle Manual Redirects just in case
+    # Handle Redirects
     if tool_name == 'article-wizard': return redirect('/article-wizard')
     if tool_name == 'alt-text-generator': return redirect('/alt-text-generator')
+    if tool_name == 'bulk-writer': return redirect('/bulk-writer')
     
     if tool_name == 'image-generator' and current_user.tier == 'free':
         flash("Pro Feature!", "warning")
@@ -303,14 +299,35 @@ def tool_view(tool_name):
     except:
         return "Tool not found", 404
 
-# Register URLs only for non-manual tools
 for t in TOOL_LIST:
-    app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
+    if t not in ['article-wizard', 'alt-text-generator', 'bulk-writer']:
+        app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
     if '-' in t: app.add_url_rule(f'/{t}', endpoint=t.replace('-', '_'), view_func=lambda t=t: tool_view(t))
 
 # ==========================================
 # 7. API ENDPOINTS
 # ==========================================
+
+# --- NEW: PUBLISH TO WORDPRESS (RESTORED) ---
+@app.route('/api/publish-wordpress', methods=['POST'])
+@login_required
+def api_publish_wordpress():
+    data = request.get_json()
+    wp_url = data.get('url').rstrip('/')
+    creds = f"{data.get('username')}:{data.get('password')}"
+    token = base64.b64encode(creds.encode()).decode('utf-8')
+    headers = {'Authorization': f'Basic {token}', 'Content-Type': 'application/json'}
+    payload = {
+        'title': data.get('title'),
+        'content': data.get('content'),
+        'status': 'draft' # Safe default
+    }
+    try:
+        r = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=payload)
+        if r.status_code == 201: 
+            return jsonify({'success': True, 'link': r.json().get('link')})
+        return jsonify({'error': f"WP Error {r.status_code}: {r.text}"}), 400
+    except Exception as e: return jsonify({'error': str(e)}), 500
 
 # --- PUBLIC AUDIT ---
 @app.route('/api/public-audit', methods=['POST'])
@@ -319,18 +336,14 @@ def api_public_audit():
         url = request.get_json().get('url')
         if not url: return jsonify({'error': 'Enter URL'}), 400
         if not url.startswith('http'): url = 'https://' + url
-        
         r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=15)
         s = BeautifulSoup(r.content, 'html.parser')
-        
         score = 100; real_issues = []
         if not s.title: score -= 20; real_issues.append("Missing Title Tag")
         elif len(s.title.string) > 60: score -= 5; real_issues.append("Title Too Long")
         if not s.find('meta', attrs={'name':'description'}): score -= 20; real_issues.append("Missing Meta Description")
         if not s.find('h1'): score -= 20; real_issues.append("Missing H1 Heading")
-        
         if score == 100: real_issues.append("No critical errors found")
-        
         return jsonify({'success': True, 'score': max(35,score), 'issues': real_issues})
     except: return jsonify({'success': True, 'score': 42, 'issues': ['Server Response Timeout', 'Mobile Optimization Issues']})
 
@@ -342,10 +355,9 @@ def api_audit_site():
         url = request.get_json().get('url')
         if not url.startswith('http'): url = 'https://' + url
         start = datetime.now()
-        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=30)
+        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=30)
         load = round((datetime.now()-start).total_seconds(), 2)
         s = BeautifulSoup(r.content, 'html.parser')
-        
         score = 100; issues = []; passed = []
         if not s.title: score-=20; issues.append({"type":"critical","msg":"Missing Title","fix":"Add <title>"})
         else: passed.append("Title Exists")
@@ -356,7 +368,6 @@ def api_audit_site():
         imgs = s.find_all('img'); miss = sum(1 for i in imgs if not i.get('alt'))
         if miss > 0: score-=5; issues.append({"type":"warning","msg":f"{miss} Images missing Alt","fix":"Add alt text"})
         else: passed.append("Images Optimized")
-        
         return jsonify({
             'success': True, 'score': max(0,score), 
             'meta': {'url':url, 'title':s.title.string if s.title else "None", 'description':"...", 'load_time':f"{load}s", 'word_count':len(s.get_text().split()), 'link_count':len(s.find_all('a')), 'canonical':""},
@@ -370,10 +381,7 @@ def api_generate_image():
     if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro!'}), 403
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
     try:
-        d = request.get_json()
-        size = d.get('size', '1024x1024')
-        if size not in ['1024x1024', '1024x1792', '1792x1024']: size = '1024x1024'
-        res = client.images.generate(model="dall-e-3", prompt=d.get('prompt'), size=size, quality="standard", n=1)
+        res = client.images.generate(model="dall-e-3", prompt=request.get_json().get('prompt'), size="1024x1024", quality="standard", n=1)
         current_user.ai_requests_this_month += 5; db.session.commit()
         return jsonify({'success': True, 'image_url': res.data[0].url})
     except Exception as e: return jsonify({'error': str(e)}), 500
