@@ -48,7 +48,8 @@ TOOL_LIST = [
     'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
-    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 'article-wizard'
+    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 
+    'article-wizard', 'bulk-writer', 'gbp-tool' # Added Google Business Tool
 ]
 
 # --- PIPED MIRRORS ---
@@ -148,13 +149,11 @@ def profile(): return render_template('profile.html')
 # --- FORCE ROUTES FOR CRITICAL TOOLS ---
 @app.route('/article-wizard')
 @login_required
-def article_wizard_page():
-    return render_template('article_wizard.html')
+def article_wizard_page(): return render_template('article_wizard.html')
 
 @app.route('/alt-text-generator')
 @login_required
-def alt_text_generator_page():
-    return render_template('alt_text_generator.html')
+def alt_text_generator_page(): return render_template('alt_text_generator.html')
 
 @app.route('/bulk-writer')
 @login_required
@@ -292,14 +291,14 @@ def payment_success(plan_name):
 @app.route('/tool/<tool_name>')
 @login_required
 def tool_view(tool_name):
+    if tool_name == 'image-generator' and current_user.tier == 'free':
+        flash("Pro Feature!", "warning")
+        return redirect('/pricing')
+    
     # Handle Manual Redirects
     if tool_name == 'article-wizard': return redirect('/article-wizard')
     if tool_name == 'alt-text-generator': return redirect('/alt-text-generator')
     if tool_name == 'bulk-writer': return redirect('/bulk-writer')
-    
-    if tool_name == 'image-generator' and current_user.tier == 'free':
-        flash("Pro Feature!", "warning")
-        return redirect('/pricing')
     
     try:
         return render_template(f'{tool_name.replace("-", "_")}.html')
@@ -315,24 +314,31 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS
 # ==========================================
 
-# --- KEYWORD CLUSTERS (FIXED) ---
-@app.route('/api/generate-clusters', methods=['POST'])
+# --- NEW: GOOGLE BUSINESS PROFILE TOOL ---
+@app.route('/api/gbp-generate', methods=['POST'])
 @login_required
-def api_generate_clusters():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached.'}), 403
-    try:
-        data = request.get_json()
-        prompt = f"Generate 4 keyword clusters for '{data.get('keyword')}'. Format: JSON. [{{\"name\": \"C1\", \"keywords\": [\"k1\"]}}]"
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON Gen"},{"role":"user","content":prompt}])
-        
-        clean = res.choices[0].message.content.replace('```json','').replace('```','').strip()
-        try:
-            clusters = json.loads(clean)
-            if isinstance(clusters, dict) and 'clusters' in clusters: clusters = clusters['clusters']
-        except:
-            clusters = [{"name": "General", "keywords": [f"Best {data.get('keyword')}"]}]
+def api_gbp_generate():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Limit reached'}), 403
 
-        return jsonify({'success': True, 'clusters': clusters})
+    d = request.get_json()
+    mode = d.get('mode') 
+    business = d.get('business')
+    
+    prompts = {
+        'post': f"Write a Google Business Profile 'Update' post for {business}. Topic: {d.get('topic')}. Include a CTA and emojis. Keep it under 150 words.",
+        'review': f"Write a polite, professional response to this customer review for {business}: '{d.get('topic')}'. Review Rating: {d.get('stars')} stars.",
+        'bio': f"Write a SEO-optimized Google Business Description for {business}. Keywords: {d.get('topic')}. Max 750 characters."
+    }
+    
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role":"system","content":"Local SEO Expert"},{"role":"user","content":prompts[mode]}]
+        )
+        current_user.ai_requests_this_month += 1
+        db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
 # --- PUBLIC AUDIT ---
@@ -521,6 +527,20 @@ def api_competitor():
         s = BeautifulSoup(r.content, 'html.parser')
         return jsonify({'success':True, 'analysis': {'title':s.title.string, 'word_count':len(s.get_text().split()), 'h1_tags':[h.text for h in s.find_all('h1')], 'images':[], 'total_images':0}})
     except: return jsonify({'error': 'Failed to analyze URL'})
+
+@app.route('/api/generate-clusters', methods=['POST'])
+@login_required
+def api_clusters():
+    try:
+        d = request.get_json()
+        prompt = f"Generate 4 keyword clusters for '{d.get('keyword')}'. Format JSON: [{{'name':'C1', 'keywords':['k1']}}]"
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":prompt}])
+        clean = res.choices[0].message.content.replace('```json','').replace('```','').strip()
+        clusters = json.loads(clean)
+        if isinstance(clusters, dict) and 'clusters' in clusters: clusters = clusters['clusters']
+        return jsonify({'success':True, 'clusters': clusters})
+    except: 
+        return jsonify({'success':True, 'clusters': [{"name": "General", "keywords": [f"Best {d.get('keyword')}"]}]})
 
 @app.route('/test-email')
 def test_email():
