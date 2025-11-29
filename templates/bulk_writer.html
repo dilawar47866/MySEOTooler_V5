@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Programmatic SEO Writer - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="h3 fw-bold mb-1">Programmatic SEO Writer</h2>
+            <p class="text-muted">Enter one niche. Generate an entire content cluster automatically.</p>
+        </div>
+        <div class="bg-white p-2 rounded-circle shadow-sm">
+            <i class="fas fa-layer-group fa-2x text-primary"></i>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- CONFIGURATION -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">1. Setup Strategy</h5>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Niche / Seed Keyword</label>
+                        <input type="text" id="seedKeyword" class="form-control" placeholder="e.g. Keto Diet">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Number of Articles</label>
+                        <select id="articleCount" class="form-select">
+                            <option value="3">3 Articles (3 Credits)</option>
+                            <option value="5">5 Articles (5 Credits)</option>
+                            <option value="10">10 Articles (10 Credits)</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary w-100 py-2 fw-bold" id="planBtn" onclick="generatePlan()">
+                        <i class="fas fa-brain me-2"></i> Generate Plan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXECUTION QUEUE -->
+        <div class="col-md-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+                    <span>2. Content Queue</span>
+                    <button class="btn btn-success btn-sm d-none" id="runBtn" onclick="runBatch()">
+                        <i class="fas fa-play me-1"></i> Start Writing
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div id="emptyState" class="text-center py-5 text-muted">
+                        <i class="fas fa-clipboard-list fa-3x mb-3 opacity-25"></i>
+                        <p>Plan your strategy on the left to begin.</p>
+                    </div>
+                    
+                    <ul class="list-group list-group-flush" id="queueList">
+                        <!-- Items injected here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- RESULTS AREA -->
+    <div id="finalResults" class="mt-4 d-none">
+        <div class="alert alert-success border-0 shadow-sm d-flex align-items-center justify-content-between">
+            <div>
+                <h4 class="alert-heading fw-bold mb-1">Batch Complete! 🎉</h4>
+                <p class="mb-0">All articles have been written and saved to your Library.</p>
+            </div>
+            <a href="/content-library" class="btn btn-light fw-bold">View Library</a>
+        </div>
+    </div>
+</div>
+
+<script>
+let keywordQueue = [];
+
+// STEP 1: GENERATE TOPICS
+async function generatePlan() {
+    const seed = document.getElementById('seedKeyword').value;
+    if(!seed) return alert("Enter a niche");
+
+    const btn = document.getElementById('planBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Brainstorming...';
+
+    try {
+        // Use existing Cluster API
+        const res = await fetch('/api/generate-clusters', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: seed})
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            keywordQueue = [];
+            const count = parseInt(document.getElementById('articleCount').value);
+            const ul = document.getElementById('queueList');
+            ul.innerHTML = '';
+            document.getElementById('emptyState').classList.add('d-none');
+
+            // Flatten clusters into a list of titles
+            let added = 0;
+            data.clusters.forEach(cluster => {
+                cluster.keywords.forEach(k => {
+                    if(added < count) {
+                        const title = `${k} - The Ultimate Guide`;
+                        keywordQueue.push(title);
+                        
+                        ul.innerHTML += `
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-3" id="item-${added}">
+                                <div>
+                                    <span class="fw-bold">${title}</span><br>
+                                    <span class="small text-muted">Cluster: ${cluster.name}</span>
+                                </div>
+                                <span class="badge bg-secondary" id="status-${added}">Queued</span>
+                            </li>
+                        `;
+                        added++;
+                    }
+                });
+            });
+
+            document.getElementById('runBtn').classList.remove('d-none');
+        } else {
+            alert(data.error);
+        }
+    } catch(e) { console.error(e); }
+    finally { btn.disabled = false; btn.innerHTML = 'Regenerate Plan'; }
+}
+
+// STEP 2: EXECUTE BATCH (LOOP)
+async function runBatch() {
+    const btn = document.getElementById('runBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-cog fa-spin"></i> Processing...';
+
+    for (let i = 0; i < keywordQueue.length; i++) {
+        const title = keywordQueue[i];
+        const statusBadge = document.getElementById(`status-${i}`);
+        
+        // Update Status
+        statusBadge.className = "badge bg-primary";
+        statusBadge.innerText = "Writing...";
+
+        try {
+            // 1. Generate Article
+            const res = await fetch('/api/article-wizard', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({topic: title, tone: 'Professional'})
+            });
+            const data = await res.json();
+
+            if(data.success) {
+                // 2. Auto-Save to Library
+                await fetch('/api/save-content', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        title: title,
+                        content: data.content,
+                        html_content: data.html,
+                        keyword: title
+                    })
+                });
+
+                statusBadge.className = "badge bg-success";
+                statusBadge.innerText = "Done";
+            } else {
+                statusBadge.className = "badge bg-danger";
+                statusBadge.innerText = "Failed";
+            }
+        } catch(e) {
+            statusBadge.className = "badge bg-danger";
+            statusBadge.innerText = "Error";
+        }
+        
+        // Small delay to be nice to the server
+        await new Promise(r => setTimeout(r, 1000));
+    }
+
+    document.getElementById('finalResults').classList.remove('d-none');
+    btn.innerText = "Batch Complete";
+}
+</script>
+{% endblock %}
