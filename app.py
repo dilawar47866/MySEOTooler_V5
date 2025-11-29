@@ -145,11 +145,16 @@ def pricing(): return render_template('pricing.html')
 @login_required
 def profile(): return render_template('profile.html')
 
-# --- FORCE ARTICLE WIZARD ROUTE ---
+# --- FORCE ROUTES FOR CRITICAL TOOLS ---
 @app.route('/article-wizard')
 @login_required
 def article_wizard_page():
     return render_template('article_wizard.html')
+
+@app.route('/alt-text-generator')
+@login_required
+def alt_text_generator_page():
+    return render_template('alt_text_generator.html')
 
 # --- TECHNICAL SEO ROUTES ---
 @app.route('/robots.txt')
@@ -255,20 +260,15 @@ def admin_delete_user(user_id):
         db.session.commit()
     return jsonify({'success': True})
 
-# --- MANUAL UPGRADE ROUTE ---
 @app.route('/admin/user/<int:user_id>/upgrade', methods=['POST'])
 @login_required
 def admin_upgrade_user(user_id):
     if not getattr(current_user, 'is_admin', False): return jsonify({'error': 'Unauthorized'}), 403
-    
     data = request.get_json()
-    new_tier = data.get('tier') # 'free', 'pro king', 'enterprise'
-    
     user = User.query.get_or_404(user_id)
-    user.tier = new_tier
+    user.tier = data.get('tier')
     db.session.commit()
-    
-    return jsonify({'success': True, 'message': f"User upgraded to {new_tier.upper()}"})
+    return jsonify({'success': True})
 
 @app.route('/payment/success/<plan_name>')
 @login_required
@@ -287,7 +287,15 @@ def tool_view(tool_name):
     if tool_name == 'image-generator' and current_user.tier == 'free':
         flash("Pro Feature!", "warning")
         return redirect('/pricing')
-    return render_template(f'{tool_name.replace("-", "_")}.html')
+    
+    # Avoid conflict with explicit routes
+    if tool_name in ['article-wizard', 'alt-text-generator']:
+        return redirect(f'/{tool_name}')
+        
+    try:
+        return render_template(f'{tool_name.replace("-", "_")}.html')
+    except:
+        return "Tool not found", 404
 
 for t in TOOL_LIST:
     app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
@@ -313,6 +321,7 @@ def api_public_audit():
         elif len(s.title.string) > 60: score -= 5; real_issues.append("Title Too Long")
         if not s.find('meta', attrs={'name':'description'}): score -= 20; real_issues.append("Missing Meta Description")
         if not s.find('h1'): score -= 20; real_issues.append("Missing H1 Heading")
+        
         if score == 100: real_issues.append("No critical errors found")
         
         return jsonify({'success': True, 'score': max(35,score), 'issues': real_issues})
@@ -325,23 +334,18 @@ def api_audit_site():
     try:
         url = request.get_json().get('url')
         if not url.startswith('http'): url = 'https://' + url
-        
         start = datetime.now()
-        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=30)
+        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=30)
         load = round((datetime.now()-start).total_seconds(), 2)
         s = BeautifulSoup(r.content, 'html.parser')
         
         score = 100; issues = []; passed = []
-        
         if not s.title: score-=20; issues.append({"type":"critical","msg":"Missing Title","fix":"Add <title>"})
         else: passed.append("Title Exists")
-        
         if not s.find('meta', attrs={'name':'description'}): score-=20; issues.append({"type":"critical","msg":"Missing Meta Desc","fix":"Add description"})
         else: passed.append("Meta Description Found")
-        
         if not s.find('h1'): score-=20; issues.append({"type":"critical","msg":"Missing H1","fix":"Add H1 tag"})
         else: passed.append("H1 Tag Found")
-        
         imgs = s.find_all('img'); miss = sum(1 for i in imgs if not i.get('alt'))
         if miss > 0: score-=5; issues.append({"type":"warning","msg":f"{miss} Images missing Alt","fix":"Add alt text"})
         else: passed.append("Images Optimized")
@@ -353,28 +357,17 @@ def api_audit_site():
         })
     except Exception as e: return jsonify({'error': f"Failed: {str(e)}"}), 500
 
-# --- IMAGE GEN (UPDATED WITH SIZES) ---
 @app.route('/api/generate-image', methods=['POST'])
 @login_required
 def api_generate_image():
     if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro!'}), 403
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
     try:
-        # Get Size from Frontend
-        d = request.get_json()
-        size = d.get('size', '1024x1024')
-        
-        # DALL-E 3 supports only specific sizes, ensure validation
-        allowed_sizes = ['1024x1024', '1024x1792', '1792x1024']
-        if size not in allowed_sizes: size = '1024x1024'
-
-        res = client.images.generate(model="dall-e-3", prompt=d.get('prompt'), size=size, quality="standard", n=1)
-        
+        res = client.images.generate(model="dall-e-3", prompt=request.get_json().get('prompt'), size="1024x1024", quality="standard", n=1)
         current_user.ai_requests_this_month += 5; db.session.commit()
         return jsonify({'success': True, 'image_url': res.data[0].url})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- HUMANIZER ---
 @app.route('/api/humanize-text', methods=['POST'])
 @login_required
 def api_humanize_text():
@@ -385,7 +378,6 @@ def api_humanize_text():
         return jsonify({'success': True, 'content': res.choices[0].message.content})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- ARTICLE WIZARD ---
 @app.route('/api/article-wizard', methods=['POST'])
 @login_required
 def api_article_wizard():
@@ -397,7 +389,6 @@ def api_article_wizard():
         return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- YOUTUBE TO BLOG API ---
 @app.route('/api/youtube-to-blog', methods=['POST'])
 @login_required
 def api_youtube_to_blog():
@@ -425,7 +416,6 @@ def api_youtube_to_blog():
         return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- GENERIC ---
 @app.route('/api/generate-content', methods=['POST'])
 @login_required
 def api_generate_content():
@@ -457,6 +447,7 @@ def api_delete(id):
     if c.user_id == current_user.id: db.session.delete(c); db.session.commit()
     return jsonify({'success': True})
 
+# --- HELPER APIs ---
 @app.route('/api/generate-seo-terms', methods=['POST'])
 @login_required
 def api_generate_seo_terms():
