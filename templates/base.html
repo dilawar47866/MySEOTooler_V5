@@ -122,7 +122,7 @@
                 <i class="fas fa-folder-open"></i> Library
             </a>
 
-            <!-- NEW: ADVANCED TOOLS -->
+            <!-- ADVANCED TOOLS -->
             <p class="small text-muted text-uppercase px-4 mt-4 mb-2 fw-bold" style="font-size: 0.75rem;">Advanced</p>
             <a href="/image-generator" class="nav-link {% if 'image-generator' in request.path %}active{% endif %}">
                 <i class="fas fa-paint-brush"></i> AI Images (Pro)
@@ -132,6 +132,9 @@
             </a>
             <a href="/content-humanizer" class="nav-link {% if 'content-humanizer' in request.path %}active{% endif %}">
                 <i class="fas fa-user-check"></i> Humanizer
+            </a>
+            <a href="/tool/gbp-tool" class="nav-link {% if 'gbp' in request.path %}active{% endif %}">
+                <i class="fas fa-map-marker-alt text-success"></i> Google Business
             </a>
 
             <!-- CONTENT GEN -->
