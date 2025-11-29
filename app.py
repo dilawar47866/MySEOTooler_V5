@@ -48,7 +48,8 @@ TOOL_LIST = [
     'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
-    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 'article-wizard'
+    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 
+    'article-wizard', 'bulk-writer', 'gbp-tool', 'geo-optimizer'
 ]
 
 # --- PIPED MIRRORS ---
@@ -145,7 +146,7 @@ def pricing(): return render_template('pricing.html')
 @login_required
 def profile(): return render_template('profile.html')
 
-# --- FORCE ROUTES FOR CRITICAL TOOLS ---
+# --- FORCE ROUTES ---
 @app.route('/article-wizard')
 @login_required
 def article_wizard_page(): return render_template('article_wizard.html')
@@ -203,19 +204,15 @@ def signup():
         try:
             data = request.get_json() if request.is_json else request.form
             if User.query.filter_by(email=data.get('email').lower()).first(): return jsonify({'error': 'Email exists'}), 400
-            
             hashed = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
             user = User(username=data.get('username'), email=data.get('email').lower(), password_hash=hashed)
             if User.query.count() == 0: user.is_admin = True
-            
             db.session.add(user); db.session.commit(); login_user(user)
-
             try:
                 msg = Message("Welcome to MySEO King! 👑", recipients=[user.email])
                 msg.body = f"Hi {user.username},\n\nWelcome to MySEO King.\n\nCheers,\nTeam"
                 mail.send(msg)
             except: pass
-
             return jsonify({'success': True, 'redirect': '/dashboard'})
         except Exception as e: return jsonify({'error': str(e)}), 500
     return render_template('signup.html')
@@ -294,6 +291,7 @@ def tool_view(tool_name):
         flash("Pro Feature!", "warning")
         return redirect('/pricing')
     
+    # Handle Manual Redirects
     if tool_name == 'article-wizard': return redirect('/article-wizard')
     if tool_name == 'alt-text-generator': return redirect('/alt-text-generator')
     if tool_name == 'bulk-writer': return redirect('/bulk-writer')
@@ -312,7 +310,7 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS
 # ==========================================
 
-# --- ARTICLE WIZARD (WITH CREDIT DEDUCTION) ---
+# --- ARTICLE WIZARD (1 Credit) ---
 @app.route('/api/article-wizard', methods=['POST'])
 @login_required
 def api_article_wizard():
@@ -332,86 +330,7 @@ def api_article_wizard():
         return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- GEO OPTIMIZER ---
-@app.route('/api/geo-optimize', methods=['POST'])
-@login_required
-def api_geo_optimize():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: 
-        return jsonify({'error': 'Limit reached'}), 403
-    keyword = request.get_json().get('keyword')
-    prompt = f"Act as a GEO Expert. Create a Direct Answer block for: '{keyword}'."
-    try:
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"SEO"},{"role":"user","content":prompt}])
-        
-        # DEDUCT CREDIT
-        current_user.ai_requests_this_month += 1
-        db.session.commit()
-        
-        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- GBP TOOL ---
-@app.route('/api/gbp-generate', methods=['POST'])
-@login_required
-def api_gbp_generate():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Limit reached'}), 403
-    d = request.get_json()
-    try:
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Local SEO"},{"role":"user","content":f"Write GBP {d.get('mode')} for {d.get('business')}"}])
-        
-        # DEDUCT CREDIT
-        current_user.ai_requests_this_month += 1
-        db.session.commit()
-        
-        return jsonify({'success': True, 'content': res.choices[0].message.content})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- PUBLIC AUDIT ---
-@app.route('/api/public-audit', methods=['POST'])
-def api_public_audit():
-    try:
-        url = request.get_json().get('url')
-        if not url: return jsonify({'error': 'Enter URL'}), 400
-        if not url.startswith('http'): url = 'https://' + url
-        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=15)
-        s = BeautifulSoup(r.content, 'html.parser')
-        score = 100; real_issues = []
-        if not s.title: score -= 20; real_issues.append("Missing Title Tag")
-        elif len(s.title.string) > 60: score -= 5; real_issues.append("Title Too Long")
-        if not s.find('meta', attrs={'name':'description'}): score -= 20; real_issues.append("Missing Meta Description")
-        if not s.find('h1'): score -= 20; real_issues.append("Missing H1 Heading")
-        if score == 100: real_issues.append("No critical errors found")
-        return jsonify({'success': True, 'score': max(35,score), 'issues': real_issues})
-    except: return jsonify({'success': True, 'score': 42, 'issues': ['Server Response Timeout', 'Mobile Optimization Issues']})
-
-# --- PRO AUDIT ---
-@app.route('/api/audit-site', methods=['POST'])
-@login_required
-def api_audit_site():
-    try:
-        url = request.get_json().get('url')
-        if not url.startswith('http'): url = 'https://' + url
-        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=30)
-        s = BeautifulSoup(r.content, 'html.parser')
-        score = 100; issues = []; passed = []
-        if not s.title: score-=20; issues.append({"type":"critical","msg":"Missing Title","fix":"Add <title>"})
-        else: passed.append("Title Exists")
-        if not s.find('meta', attrs={'name':'description'}): score-=20; issues.append({"type":"critical","msg":"Missing Meta Desc","fix":"Add description"})
-        else: passed.append("Meta Description Found")
-        if not s.find('h1'): score-=20; issues.append({"type":"critical","msg":"Missing H1","fix":"Add H1 tag"})
-        else: passed.append("H1 Tag Found")
-        imgs = s.find_all('img'); miss = sum(1 for i in imgs if not i.get('alt'))
-        if miss > 0: score-=5; issues.append({"type":"warning","msg":f"{miss} Images missing Alt","fix":"Add alt text"})
-        else: passed.append("Images Optimized")
-        return jsonify({
-            'success': True, 'score': max(0,score), 
-            'meta': {'url':url, 'title':s.title.string if s.title else "None", 'description':"...", 'load_time':"0.5s", 'word_count':len(s.get_text().split()), 'link_count':len(s.find_all('a')), 'canonical':""},
-            'issues': issues, 'passed': passed
-        })
-    except Exception as e: return jsonify({'error': f"Failed: {str(e)}"}), 500
-
-# --- IMAGE GEN ---
+# --- IMAGE GEN (5 Credits) ---
 @app.route('/api/generate-image', methods=['POST'])
 @login_required
 def api_generate_image():
@@ -419,30 +338,22 @@ def api_generate_image():
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
     try:
         res = client.images.generate(model="dall-e-3", prompt=request.get_json().get('prompt'), size="1024x1024", quality="standard", n=1)
-        
-        # DEDUCT 5 CREDITS
-        current_user.ai_requests_this_month += 5
-        db.session.commit()
-        
+        current_user.ai_requests_this_month += 5; db.session.commit()
         return jsonify({'success': True, 'image_url': res.data[0].url})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- HUMANIZER ---
+# --- HUMANIZER (1 Credit) ---
 @app.route('/api/humanize-text', methods=['POST'])
 @login_required
 def api_humanize_text():
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
     try:
         res = client.chat.completions.create(model="gpt-4o", messages=[{"role":"system","content":"Rewriter"},{"role":"user","content":f"Humanize: {request.get_json().get('content')}"}])
-        
-        # DEDUCT CREDIT
-        current_user.ai_requests_this_month += 1
-        db.session.commit()
-        
+        current_user.ai_requests_this_month += 1; db.session.commit()
         return jsonify({'success': True, 'content': res.choices[0].message.content})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- YOUTUBE TO BLOG ---
+# --- YOUTUBE TO BLOG (1 Credit) ---
 @app.route('/api/youtube-to-blog', methods=['POST'])
 @login_required
 def api_youtube_to_blog():
@@ -466,74 +377,89 @@ def api_youtube_to_blog():
             except: continue
         if not full_text: return jsonify({'error': "No captions found."}), 400
         res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Blog from transcript: {full_text[:15000]}"}])
-        
-        # DEDUCT CREDIT
-        current_user.ai_requests_this_month += 1
-        db.session.commit()
-        
+        current_user.ai_requests_this_month += 1; db.session.commit()
         return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- GENERIC ---
+# --- GEO OPTIMIZER (1 Credit) ---
+@app.route('/api/geo-optimize', methods=['POST'])
+@login_required
+def api_geo_optimize():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    keyword = request.get_json().get('keyword')
+    prompt = f"Act as a GEO Expert. Create a Direct Answer block for: '{keyword}'."
+    try:
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"SEO"},{"role":"user","content":prompt}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- GBP TOOL (1 Credit) ---
+@app.route('/api/gbp-generate', methods=['POST'])
+@login_required
+def api_gbp_generate():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Limit reached'}), 403
+    d = request.get_json()
+    try:
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Local SEO"},{"role":"user","content":f"Write GBP {d.get('mode')} for {d.get('business')}"}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+# --- GENERIC AI (1 Credit) ---
 @app.route('/api/generate-content', methods=['POST'])
 @login_required
 def api_generate_content():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Limit reached.'}), 403
     try:
         res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"SEO"},{"role":"user","content":request.get_json().get('keyword')}])
-        
-        # DEDUCT CREDIT
-        current_user.ai_requests_this_month += 1
-        db.session.commit()
-        
+        current_user.ai_requests_this_month += 1; db.session.commit()
         return jsonify({'success': True, 'content': res.choices[0].message.content, 'html_content': markdown.markdown(res.choices[0].message.content)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- SAVE CONTENT ---
-@app.route('/api/save-content', methods=['POST'])
+# --- CLUSTERS (1 Credit) ---
+@app.route('/api/generate-clusters', methods=['POST'])
 @login_required
-def api_save_content():
-    d = request.get_json()
-    if d.get('id'):
-        c = Content.query.get(d.get('id'))
-        if c.user_id == current_user.id:
-            c.title = d.get('title'); c.content = d.get('content'); c.html_content = d.get('html_content')
-            c.keyword = d.get('keyword'); c.word_count = len(d.get('content','').split())
-            db.session.commit()
-            return jsonify({'success': True, 'id': c.id})
-    new_c = Content(user_id=current_user.id, title=d.get('title'), content=d.get('content'), html_content=d.get('html_content'), keyword=d.get('keyword'), word_count=len(d.get('content','').split()))
-    db.session.add(new_c); current_user.content_count += 1; db.session.commit()
-    return jsonify({'success': True, 'id': new_c.id})
-
-@app.route('/api/publish-wordpress', methods=['POST'])
-@login_required
-def api_publish_wordpress():
-    d = request.get_json()
-    wp = d.get('url').rstrip('/'); creds = f"{d.get('username')}:{d.get('password')}"
-    t = base64.b64encode(creds.encode()).decode('utf-8')
+def api_clusters():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Limit reached.'}), 403
     try:
-        r = requests.post(f"{wp}/wp-json/wp/v2/posts", headers={'Authorization': f'Basic {t}', 'Content-Type': 'application/json'}, json={'title':d.get('title'),'content':d.get('content'),'status':'draft'})
-        return jsonify({'success': True, 'link': r.json().get('link')})
-    except Exception as e: return jsonify({'error': str(e)}), 500
+        d = request.get_json()
+        prompt = f"Generate 4 keyword clusters for '{d.get('keyword')}'. Format JSON: [{{'name':'C1', 'keywords':['k1']}}]"
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":prompt}])
+        
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        
+        clean = res.choices[0].message.content.replace('```json','').replace('```','').strip()
+        clusters = json.loads(clean)
+        if isinstance(clusters, dict) and 'clusters' in clusters: clusters = clusters['clusters']
+        return jsonify({'success':True, 'clusters': clusters})
+    except: 
+        return jsonify({'success':True, 'clusters': [{"name": "General", "keywords": [f"Best {d.get('keyword')}"]}]})
 
-@app.route('/api/delete-content/<int:id>', methods=['POST'])
-@login_required
-def api_delete(id):
-    c = Content.query.get_or_404(id)
-    if c.user_id == current_user.id: db.session.delete(c); db.session.commit()
-    return jsonify({'success': True})
-
+# --- HELPERS (1 Credit - Fair Usage) ---
 @app.route('/api/generate-seo-terms', methods=['POST'])
 @login_required
 def api_generate_seo_terms():
+    # LSI costs 1 credit now
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    
     res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":f"LSI keywords for {request.get_json().get('keyword')} as JSON array"}])
+    current_user.ai_requests_this_month += 1; db.session.commit()
     return jsonify({'success':True, 'terms': json.loads(res.choices[0].message.content.replace('```json','').replace('```','').strip())})
 
 @app.route('/api/generate-questions', methods=['POST'])
 @login_required
 def api_generate_questions():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    
     res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":f"PAA questions for {request.get_json().get('keyword')} as JSON array"}])
+    current_user.ai_requests_this_month += 1; db.session.commit()
     return jsonify({'success':True, 'questions': json.loads(res.choices[0].message.content.replace('```json','').replace('```','').strip())})
 
+# --- FREE TOOLS (0 Credits) ---
 @app.route('/api/suggest-internal-links', methods=['POST'])
 @login_required
 def api_suggest_links():
@@ -557,19 +483,60 @@ def api_competitor():
         return jsonify({'success':True, 'analysis': {'title':s.title.string, 'word_count':len(s.get_text().split()), 'h1_tags':[h.text for h in s.find_all('h1')], 'images':[], 'total_images':0}})
     except: return jsonify({'error': 'Failed to analyze URL'})
 
-@app.route('/api/generate-clusters', methods=['POST'])
-@login_required
-def api_clusters():
+@app.route('/api/public-audit', methods=['POST'])
+def api_public_audit():
     try:
-        d = request.get_json()
-        prompt = f"Generate 4 keyword clusters for '{d.get('keyword')}'. Format JSON: [{{'name':'C1', 'keywords':['k1']}}]"
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":prompt}])
-        clean = res.choices[0].message.content.replace('```json','').replace('```','').strip()
-        clusters = json.loads(clean)
-        if isinstance(clusters, dict) and 'clusters' in clusters: clusters = clusters['clusters']
-        return jsonify({'success':True, 'clusters': clusters})
-    except: 
-        return jsonify({'success':True, 'clusters': [{"name": "General", "keywords": [f"Best {d.get('keyword')}"]}]})
+        url = request.get_json().get('url')
+        if not url: return jsonify({'error': 'Enter URL'}), 400
+        if not url.startswith('http'): url = 'https://' + url
+        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=15)
+        s = BeautifulSoup(r.content, 'html.parser')
+        score = 100; real_issues = []
+        if not s.title: score -= 20; real_issues.append("Missing Title Tag")
+        elif len(s.title.string) > 60: score -= 5; real_issues.append("Title Too Long")
+        if not s.find('meta', attrs={'name':'description'}): score -= 20; real_issues.append("Missing Meta Description")
+        if not s.find('h1'): score -= 20; real_issues.append("Missing H1 Heading")
+        if score == 100: real_issues.append("No critical errors found")
+        return jsonify({'success': True, 'score': max(35,score), 'issues': real_issues})
+    except: return jsonify({'success': True, 'score': 42, 'issues': ['Server Response Timeout', 'Mobile Optimization Issues']})
+
+@app.route('/api/audit-site', methods=['POST'])
+@login_required
+def api_audit_site():
+    try:
+        url = request.get_json().get('url')
+        if not url.startswith('http'): url = 'https://' + url
+        start = datetime.now()
+        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=30)
+        load = round((datetime.now()-start).total_seconds(), 2)
+        s = BeautifulSoup(r.content, 'html.parser')
+        score = 100; issues = []; passed = []
+        if not s.title: score-=20; issues.append({"type":"critical","msg":"Missing Title","fix":"Add <title>"})
+        else: passed.append("Title Exists")
+        if not s.find('meta', attrs={'name':'description'}): score-=20; issues.append({"type":"critical","msg":"Missing Meta Desc","fix":"Add description"})
+        else: passed.append("Meta Description Found")
+        if not s.find('h1'): score-=20; issues.append({"type":"critical","msg":"Missing H1","fix":"Add H1 tag"})
+        else: passed.append("H1 Tag Found")
+        imgs = s.find_all('img'); miss = sum(1 for i in imgs if not i.get('alt'))
+        if miss > 0: score-=5; issues.append({"type":"warning","msg":f"{miss} Images missing Alt","fix":"Add alt text"})
+        else: passed.append("Images Optimized")
+        return jsonify({
+            'success': True, 'score': max(0,score), 
+            'meta': {'url':url, 'title':s.title.string if s.title else "None", 'description':"...", 'load_time':f"{load}s", 'word_count':len(s.get_text().split()), 'link_count':len(s.find_all('a')), 'canonical':""},
+            'issues': issues, 'passed': passed
+        })
+    except Exception as e: return jsonify({'error': f"Failed: {str(e)}"}), 500
+
+@app.route('/api/publish-wordpress', methods=['POST'])
+@login_required
+def api_publish_wordpress():
+    d = request.get_json()
+    wp = d.get('url').rstrip('/'); creds = f"{d.get('username')}:{d.get('password')}"
+    t = base64.b64encode(creds.encode()).decode('utf-8')
+    try:
+        r = requests.post(f"{wp}/wp-json/wp/v2/posts", headers={'Authorization': f'Basic {t}', 'Content-Type': 'application/json'}, json={'title':d.get('title'),'content':d.get('content'),'status':'draft'})
+        return jsonify({'success': True, 'link': r.json().get('link')})
+    except Exception as e: return jsonify({'error': str(e)}), 500
 
 @app.route('/test-email')
 def test_email():
