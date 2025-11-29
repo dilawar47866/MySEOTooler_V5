@@ -145,17 +145,6 @@ def pricing(): return render_template('pricing.html')
 @login_required
 def profile(): return render_template('profile.html')
 
-# --- FORCE ROUTES FOR CRITICAL TOOLS ---
-@app.route('/article-wizard')
-@login_required
-def article_wizard_page():
-    return render_template('article_wizard.html')
-
-@app.route('/alt-text-generator')
-@login_required
-def alt_text_generator_page():
-    return render_template('alt_text_generator.html')
-
 # --- TECHNICAL SEO ROUTES ---
 @app.route('/robots.txt')
 def robots_txt():
@@ -279,27 +268,69 @@ def payment_success(plan_name):
     return redirect('/dashboard')
 
 # ==========================================
-# 6. TOOL ROUTER
+# 6. TOOL ROUTER (FIXED)
 # ==========================================
+
+# Specific Routes First
+@app.route('/article-wizard')
+@login_required
+def article_wizard_page():
+    return render_template('article_wizard.html')
+
+@app.route('/alt-text-generator')
+@login_required
+def alt_text_generator_page():
+    return render_template('alt_text_generator.html')
+
 @app.route('/tool/<tool_name>')
 @login_required
 def tool_view(tool_name):
+    # Handle Redirects
+    if tool_name == 'article-wizard': return redirect('/article-wizard')
+    if tool_name == 'alt-text-generator': return redirect('/alt-text-generator')
+    
+    # Handle Pro Check
     if tool_name == 'image-generator' and current_user.tier == 'free':
         flash("Pro Feature!", "warning")
         return redirect('/pricing')
+
+    # Template Map
+    template_map = {
+        'competitor-analyzer': 'competitor_analyzer.html',
+        'keyword-research': 'keyword_research.html',
+        'sitemap-generator': 'sitemap_generator.html',
+        'robots-generator': 'robots_generator.html',
+        'image-seo': 'image_seo.html',
+        'social-posts': 'social_posts.html',
+        'content-outline': 'content_outline.html',
+        'content-brief': 'content_brief.html',
+        'lsi-keywords': 'lsi_keywords.html',
+        'email-subject': 'email_subject.html',
+        'headline-analyzer': 'headline_analyzer.html',
+        'internal-linking': 'internal_linking.html',
+        'schema-generator': 'schema_generator.html',
+        'readability-checker': 'readability_checker.html',
+        'faq-schema': 'faq_schema.html',
+        'youtube-script': 'youtube_script.html',
+        'meta-tags': 'meta_tags.html',
+        'plagiarism-checker': 'plagiarism_checker.html',
+        'serp-analysis': 'serp_analysis.html',
+        'image-generator': 'image_generator.html',
+        'site-auditor': 'site_auditor.html',
+        'content-humanizer': 'content_humanizer.html',
+        'youtube-to-blog': 'youtube_to_blog.html'
+    }
+
+    filename = template_map.get(tool_name, f'{tool_name.replace("-", "_")}.html')
     
-    # Avoid conflict with explicit routes
-    if tool_name in ['article-wizard', 'alt-text-generator']:
-        return redirect(f'/{tool_name}')
-        
     try:
-        return render_template(f'{tool_name.replace("-", "_")}.html')
+        return render_template(filename)
     except:
-        return "Tool not found", 404
+        return f"Template '{filename}' not found.", 404
 
 for t in TOOL_LIST:
-    app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
-    if '-' in t: app.add_url_rule(f'/{t}', endpoint=t.replace('-', '_'), view_func=lambda t=t: tool_view(t))
+    if t not in ['article-wizard', 'alt-text-generator']:
+        app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
 
 # ==========================================
 # 7. API ENDPOINTS
@@ -335,7 +366,7 @@ def api_audit_site():
         url = request.get_json().get('url')
         if not url.startswith('http'): url = 'https://' + url
         start = datetime.now()
-        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=30)
+        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=30)
         load = round((datetime.now()-start).total_seconds(), 2)
         s = BeautifulSoup(r.content, 'html.parser')
         
@@ -447,7 +478,6 @@ def api_delete(id):
     if c.user_id == current_user.id: db.session.delete(c); db.session.commit()
     return jsonify({'success': True})
 
-# --- HELPER APIs ---
 @app.route('/api/generate-seo-terms', methods=['POST'])
 @login_required
 def api_generate_seo_terms():
