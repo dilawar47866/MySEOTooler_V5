@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}AI Editor - My SEO King Tool{% endblock %}
+{% block title %}AI Editor - MySEO King{% endblock %}
 
 {% block content %}
 <div class="container-fluid h-100">
@@ -10,13 +10,21 @@
         <div class="col-md-9 d-flex flex-column h-100">
             <!-- Toolbar -->
             <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded shadow-sm">
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 w-50">
                     <input type="text" id="documentTitle" class="form-control fw-bold border-0 fs-5" placeholder="Enter Article Title..." value="{{ content.title if content else '' }}">
                 </div>
                 <div class="d-flex gap-2">
+                    <!-- SAVE BUTTON -->
                     <button class="btn btn-outline-secondary btn-sm" onclick="saveContent()">
                         <i class="fas fa-save"></i> Save
                     </button>
+                    
+                    <!-- WORDPRESS BUTTON (NEW) -->
+                    <button class="btn btn-outline-dark btn-sm" onclick="publishToWP()">
+                        <i class="fab fa-wordpress"></i> Publish
+                    </button>
+
+                    <!-- AI WRITER BUTTON -->
                     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#aiModal">
                         <i class="fas fa-robot"></i> AI Writer
                     </button>
@@ -92,7 +100,7 @@
 
                     <hr>
 
-                    <!-- NEW: Internal Links -->
+                    <!-- Internal Links -->
                     <h6 class="small fw-bold mb-2">Internal Link Suggestions</h6>
                     <p class="small text-muted fst-italic mb-2" style="font-size: 0.75rem;">Click to insert link</p>
                     <div id="linksList" class="d-flex flex-column gap-2">
@@ -139,7 +147,6 @@ function runAllSeoChecks() {
     const btn = document.querySelector('.input-group button');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     
-    // Run all 3 checks: Terms, Questions, and Links
     Promise.all([
         fetchSeoTerms(keyword), 
         fetchQuestions(keyword),
@@ -193,10 +200,9 @@ async function fetchQuestions(keyword) {
     } catch(e) { console.error(e); }
 }
 
-// 3. NEW: FETCH INTERNAL LINKS
+// 3. FETCH INTERNAL LINKS
 async function fetchInternalLinks(keyword) {
     try {
-        // We pass the current content ID so we don't link to ourselves
         const currentId = "{{ content.id if content else '' }}";
         
         const res = await fetch('/api/suggest-internal-links', {
@@ -214,7 +220,6 @@ async function fetchInternalLinks(keyword) {
                 div.className = 'p-2 border rounded bg-light small cursor-pointer hover-bg-light';
                 div.style.cursor = 'pointer';
                 div.innerHTML = `<i class="fas fa-link text-success me-1"></i> ${link.title}`;
-                // When clicked, insert an anchor tag
                 div.onclick = () => insertInternalLink(link.title, link.id);
                 container.appendChild(div);
             });
@@ -224,17 +229,16 @@ async function fetchInternalLinks(keyword) {
     } catch(e) { console.error(e); }
 }
 
-// Helper: Insert Internal Link
+// HELPER: Insert Internal Link
 function insertInternalLink(title, id) {
     const editor = document.getElementById('editor');
     editor.focus();
-    // Create a link to the editor route for that ID
     const url = `/editor?id=${id}`;
     const html = `<a href="${url}" title="${title}">${title}</a>`;
     document.execCommand('insertHTML', false, html);
 }
 
-// Helper: Insert Question as H2
+// HELPER: Insert Question as H2
 function insertHeading(text) {
     const editor = document.getElementById('editor');
     editor.focus();
@@ -256,13 +260,12 @@ function renderTerms() {
     });
 }
 
-// 5. CHECK TEXT AGAINST TERMS (Real-time Scoring)
+// 5. CHECK TEXT AGAINST TERMS
 function checkSeoTerms() {
     const text = document.getElementById('editor').innerText.toLowerCase();
     const badges = document.querySelectorAll('.term-badge');
     let usedCount = 0;
     
-    // Update Term Badges
     badges.forEach(badge => {
         const term = badge.dataset.term;
         if(text.includes(term)) {
@@ -275,22 +278,20 @@ function checkSeoTerms() {
         }
     });
 
-    // Update Basic Stats
+    // Update Stats
     const words = text.trim().split(/\s+/).length;
     document.getElementById('wordCount').innerText = words;
     document.getElementById('headingCount').innerText = document.getElementById('editor').querySelectorAll('h2, h3').length;
 
-    // Calculate Score (Simple Logic)
+    // Calculate Score
     let score = 0;
     if(requiredTerms.length > 0) {
         score = Math.round((usedCount / requiredTerms.length) * 100);
     }
-    // Bonus for length
     if(words > 500) score = Math.min(score + 10, 100);
     
     document.getElementById('seoScoreDisplay').innerText = score;
     
-    // Change color of score circle
     const circle = document.querySelector('.rounded-circle');
     circle.className = `d-inline-flex align-items-center justify-content-center rounded-circle border border-4 ${score > 70 ? 'border-success text-success' : 'border-primary'}`;
 }
@@ -298,7 +299,7 @@ function checkSeoTerms() {
 // 6. SAVE FUNCTION
 async function saveContent() {
     const content = {
-        id: "{{ content.id if content else '' }}", // Flask injects ID if exists
+        id: "{{ content.id if content else '' }}",
         title: document.getElementById('documentTitle').value,
         content: document.getElementById('editor').innerText,
         html_content: document.getElementById('editor').innerHTML,
@@ -318,7 +319,6 @@ async function generateAiContent() {
     const prompt = document.getElementById('aiPrompt').value;
     const mode = document.getElementById('humanMode').checked ? 'human' : 'ai';
     
-    // Close Modal
     const modal = bootstrap.Modal.getInstance(document.getElementById('aiModal'));
     modal.hide();
     
@@ -332,15 +332,40 @@ async function generateAiContent() {
     
     const data = await res.json();
     if(data.success) {
-        // Replace "Generating..." with actual content
         document.getElementById('editor').innerHTML = data.html_content;
-        checkSeoTerms(); // Auto-score result
+        checkSeoTerms();
     } else {
         alert(data.error);
     }
 }
 
-// Initialize if content exists
+// 8. WORDPRESS PUBLISH (NEW)
+async function publishToWP() {
+    const url = prompt("Enter WordPress URL (e.g. https://mysite.com)");
+    if(!url) return;
+    
+    const user = prompt("Enter WP Username");
+    const pass = prompt("Enter WP Application Password (Plugins -> App Passwords)");
+    
+    if(!user || !pass) return;
+    
+    const res = await fetch('/api/publish-wordpress', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            url: url,
+            username: user,
+            password: pass,
+            title: document.getElementById('documentTitle').value,
+            content: document.getElementById('editor').innerHTML
+        })
+    });
+    const data = await res.json();
+    if(data.success) alert("Published! Draft saved to WP.");
+    else alert("Error: " + data.error);
+}
+
+// Initialize
 window.onload = function() {
     if(document.getElementById('editor').innerText.length > 10) {
         checkSeoTerms();
