@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Competitor Spy - My SEO King Tool{% endblock %}
+{% block title %}Competitor Keyword Thief - MySEO King{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,105 +9,84 @@
             
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 class="h3 fw-bold mb-1">Competitor Analyzer</h2>
-                    <p class="text-muted">Spy on any URL to reveal their on-page SEO strategy.</p>
+                    <h2 class="h3 fw-bold mb-1">Competitor Keyword Thief</h2>
+                    <p class="text-muted">Enter a URL to steal their keywords and outrank them.</p>
                 </div>
                 <div class="bg-white p-2 rounded-circle shadow-sm">
-                    <i class="fas fa-user-secret fa-2x text-primary"></i>
+                    <i class="fas fa-user-secret fa-2x text-dark"></i>
                 </div>
             </div>
 
-            <!-- Input Section -->
-            <div class="card shadow-sm mb-4">
+            <!-- Input -->
+            <div class="card shadow-sm mb-4 border-0">
                 <div class="card-body p-4">
                     <div class="input-group input-group-lg">
-                        <span class="input-group-text bg-light"><i class="fas fa-link"></i></span>
-                        <input type="url" id="competitorUrl" class="form-control" placeholder="https://competitor.com/their-best-article">
-                        <button class="btn btn-primary px-5" onclick="analyzeUrl()">
-                            <i class="fas fa-search me-2"></i> Analyze
+                        <input type="text" id="compUrl" class="form-control" placeholder="https://competitor.com/their-best-post">
+                        <button class="btn btn-dark px-5" onclick="analyzeCompetitor()">
+                            <i class="fas fa-mask me-2"></i> Steal Data
                         </button>
                     </div>
-                    <div class="form-text mt-2">Enter a full URL (including https://)</div>
                 </div>
             </div>
 
-            <!-- Loading Spinner -->
-            <div id="loader" class="text-center d-none py-5">
-                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-                <p class="mt-3 text-muted">Scraping competitor data... this may take a few seconds...</p>
+            <!-- Loading -->
+            <div id="loader" class="d-none text-center my-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-3 fw-bold">Analyzing competitor strategy...</p>
             </div>
 
-            <!-- Results Section -->
+            <!-- Results -->
             <div id="resultsArea" class="d-none">
                 
-                <!-- Top Stats -->
+                <!-- Stats Row -->
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
-                        <div class="card h-100 border-primary border-start border-4">
-                            <div class="card-body">
-                                <small class="text-muted text-uppercase fw-bold">Word Count</small>
-                                <h2 class="fw-bold mb-0 mt-1" id="resWordCount">0</h2>
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted text-uppercase small fw-bold">Word Count</h6>
+                                <h2 class="fw-bold text-primary" id="resWords">0</h2>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="card h-100 border-success border-start border-4">
-                            <div class="card-body">
-                                <small class="text-muted text-uppercase fw-bold">Total Images</small>
-                                <h2 class="fw-bold mb-0 mt-1" id="resImgCount">0</h2>
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted text-uppercase small fw-bold">Images</h6>
+                                <h2 class="fw-bold text-success" id="resImages">0</h2>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="card h-100 border-warning border-start border-4">
-                            <div class="card-body">
-                                <small class="text-muted text-uppercase fw-bold">H1 Tags</small>
-                                <h2 class="fw-bold mb-0 mt-1" id="resH1Count">0</h2>
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted text-uppercase small fw-bold">Headings</h6>
+                                <h2 class="fw-bold text-warning" id="resHeadings">0</h2>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Meta Data -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-white fw-bold">Meta Data</div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="fw-bold small text-muted">Page Title</label>
-                            <div class="p-3 bg-light rounded border" id="resTitle"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Structure Analysis -->
+                <!-- Content Analysis -->
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="card shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold">Heading Structure (H1)</div>
-                            <div class="card-body">
-                                <ul class="list-group list-group-flush" id="resH1List">
-                                    <!-- H1s go here -->
-                                </ul>
+                    <div class="col-md-8">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white fw-bold py-3">
+                                <i class="fas fa-heading me-2 text-secondary"></i> Content Structure
+                            </div>
+                            <div class="card-body bg-light" style="max-height: 400px; overflow-y: auto;">
+                                <ul class="list-group list-group-flush bg-transparent" id="structureList"></ul>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold">Image Alt Text Audit</div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive" style="max-height: 300px;">
-                                    <table class="table table-hover mb-0 font-monospace small">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Image Preview</th>
-                                                <th>Alt Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="resImgList">
-                                            <!-- Images go here -->
-                                        </tbody>
-                                    </table>
-                                </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100 bg-dark text-white">
+                            <div class="card-body d-flex flex-column justify-content-center text-center p-4">
+                                <i class="fas fa-bolt fa-3x text-warning mb-3"></i>
+                                <h4 class="fw-bold">Beat This Page</h4>
+                                <p class="text-white-50 small mb-4">Our AI can write a longer, better optimized version of this exact topic right now.</p>
+                                <button class="btn btn-primary fw-bold py-3" onclick="rewriteContent()">
+                                    <i class="fas fa-pen-nib me-2"></i> Write Better Version
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -120,67 +99,75 @@
 </div>
 
 <script>
-async function analyzeUrl() {
-    const url = document.getElementById('competitorUrl').value;
-    if (!url) return alert("Please enter a URL");
+let pageTitle = "";
 
-    // UI State
+async function analyzeCompetitor() {
+    const url = document.getElementById('compUrl').value;
+    if(!url) return alert("Enter URL");
+
     document.getElementById('loader').classList.remove('d-none');
     document.getElementById('resultsArea').classList.add('d-none');
-    
+
     try {
         const res = await fetch('/api/analyze-competitor', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({url: url})
         });
-        
         const data = await res.json();
         
-        if (data.error) {
-            alert(data.error);
-        } else {
-            const analysis = data.analysis;
+        if(data.success) {
+            const a = data.analysis;
+            pageTitle = a.title;
             
-            // Populate Stats
-            document.getElementById('resWordCount').innerText = analysis.word_count;
-            document.getElementById('resImgCount').innerText = analysis.total_images;
-            document.getElementById('resH1Count').innerText = analysis.h1_tags.length;
-            document.getElementById('resTitle').innerText = analysis.title;
+            document.getElementById('resWords').innerText = a.word_count;
+            document.getElementById('resImages').innerText = a.images ? a.images.length : 0;
+            document.getElementById('resHeadings').innerText = a.h1_tags.length;
 
-            // Populate H1s
-            const h1List = document.getElementById('resH1List');
-            h1List.innerHTML = '';
-            if(analysis.h1_tags.length === 0) h1List.innerHTML = '<li class="list-group-item text-danger">No H1 tags found!</li>';
-            analysis.h1_tags.forEach(h1 => {
-                h1List.innerHTML += `<li class="list-group-item"><i class="fas fa-heading text-muted me-2"></i>${h1}</li>`;
-            });
-
-            // Populate Images
-            const imgList = document.getElementById('resImgList');
-            imgList.innerHTML = '';
-            analysis.images.forEach(img => {
-                const hasAlt = img.alt && img.alt.trim() !== "";
-                const status = hasAlt 
-                    ? `<span class="badge bg-success">OK</span> <span class="text-muted">${img.alt}</span>` 
-                    : `<span class="badge bg-danger">MISSING</span> <span class="text-danger">No Alt Text</span>`;
-                
-                imgList.innerHTML += `
-                    <tr>
-                        <td style="width: 60px;"><img src="${img.src}" style="width: 40px; height: 40px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/40'"></td>
-                        <td>${status}</td>
-                    </tr>
-                `;
+            const list = document.getElementById('structureList');
+            list.innerHTML = '';
+            
+            if(a.title) list.innerHTML += `<li class="list-group-item bg-transparent fw-bold">H1: ${a.title}</li>`;
+            a.h1_tags.forEach(h => {
+                list.innerHTML += `<li class="list-group-item bg-transparent ms-3 border-start border-primary"><i class="fas fa-angle-right me-2 text-primary"></i>${h}</li>`;
             });
 
             document.getElementById('resultsArea').classList.remove('d-none');
+        } else {
+            alert("Could not analyze. Site might block bots.");
         }
-    } catch (e) {
-        alert("Failed to analyze. Check the URL or try again.");
-        console.error(e);
-    } finally {
-        document.getElementById('loader').classList.add('d-none');
-    }
+    } catch(e) { console.error(e); }
+    finally { document.getElementById('loader').classList.add('d-none'); }
+}
+
+function rewriteContent() {
+    // Send the stolen title to the Article Wizard
+    fetch('/api/article-wizard', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({topic: pageTitle, tone: 'Professional'})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            // Save and redirect
+            fetch('/api/save-content', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    title: "Better Version: " + pageTitle,
+                    content: data.content,
+                    html_content: data.html,
+                    keyword: pageTitle
+                })
+            }).then(r => r.json()).then(d => window.location.href = `/editor?id=${d.id}`);
+        }
+    });
+    
+    // Show loading state on button
+    const btn = document.querySelector('.btn-primary');
+    btn.innerText = "Generating... (Wait 20s)";
+    btn.disabled = true;
 }
 </script>
 {% endblock %}
