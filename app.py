@@ -49,7 +49,7 @@ TOOL_LIST = [
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
     'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 
-    'article-wizard', 'bulk-writer', 'gbp-tool' # Added Google Business Tool
+    'article-wizard', 'bulk-writer', 'gbp-tool', 'geo-optimizer' # ADDED GEO
 ]
 
 # --- PIPED MIRRORS ---
@@ -314,6 +314,19 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS
 # ==========================================
 
+# --- NEW: GEO OPTIMIZER ---
+@app.route('/api/geo-optimize', methods=['POST'])
+@login_required
+def api_geo_optimize():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    keyword = request.get_json().get('keyword')
+    prompt = f"Act as a GEO Expert. Create a Direct Answer block for: '{keyword}' to rank in Google AI Overview. Include a definition (40 words) and a bulleted list."
+    try:
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"SEO"},{"role":"user","content":prompt}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
 # --- NEW: GOOGLE BUSINESS PROFILE TOOL ---
 @app.route('/api/gbp-generate', methods=['POST'])
 @login_required
@@ -531,16 +544,8 @@ def api_competitor():
 @app.route('/api/generate-clusters', methods=['POST'])
 @login_required
 def api_clusters():
-    try:
-        d = request.get_json()
-        prompt = f"Generate 4 keyword clusters for '{d.get('keyword')}'. Format JSON: [{{'name':'C1', 'keywords':['k1']}}]"
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":prompt}])
-        clean = res.choices[0].message.content.replace('```json','').replace('```','').strip()
-        clusters = json.loads(clean)
-        if isinstance(clusters, dict) and 'clusters' in clusters: clusters = clusters['clusters']
-        return jsonify({'success':True, 'clusters': clusters})
-    except: 
-        return jsonify({'success':True, 'clusters': [{"name": "General", "keywords": [f"Best {d.get('keyword')}"]}]})
+    res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":f"Clusters for {request.get_json().get('keyword')} as JSON"}])
+    return jsonify({'success':True, 'clusters': json.loads(res.choices[0].message.content.replace('```json','').replace('```','').strip())})
 
 @app.route('/test-email')
 def test_email():
