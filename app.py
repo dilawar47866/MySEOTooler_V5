@@ -41,14 +41,16 @@ login_manager.login_view = 'login'
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- GLOBAL TOOL LIST ---
+# --- GLOBAL TOOL LIST (Removed conflicting tools) ---
+# These are handled by the dynamic router. 
+# Article Wizard and Alt Text are handled manually below.
 TOOL_LIST = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
-    'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
+    'robots-generator', 'image-seo', 'social-posts', 
     'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
-    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 'article-wizard'
+    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer'
 ]
 
 # --- PIPED MIRRORS ---
@@ -155,7 +157,9 @@ def robots_txt():
 def sitemap_xml():
     base_url = request.url_root.rstrip('/')
     pages = ['/', '/pricing', '/login', '/signup']
-    for slug in TOOL_LIST:
+    # Use TOOL_LIST + Manual ones
+    all_tools = TOOL_LIST + ['article-wizard', 'alt-text-generator']
+    for slug in all_tools:
         pages.append(f'/tool/{slug}')
 
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -271,7 +275,7 @@ def payment_success(plan_name):
 # 6. TOOL ROUTER (FIXED)
 # ==========================================
 
-# Specific Routes First
+# SPECIFIC ROUTES (MUST BE FIRST)
 @app.route('/article-wizard')
 @login_required
 def article_wizard_page():
@@ -282,55 +286,27 @@ def article_wizard_page():
 def alt_text_generator_page():
     return render_template('alt_text_generator.html')
 
+# DYNAMIC ROUTER (FOR EVERYTHING ELSE)
 @app.route('/tool/<tool_name>')
 @login_required
 def tool_view(tool_name):
-    # Handle Redirects
+    # Handle Manual Redirects just in case
     if tool_name == 'article-wizard': return redirect('/article-wizard')
     if tool_name == 'alt-text-generator': return redirect('/alt-text-generator')
     
-    # Handle Pro Check
     if tool_name == 'image-generator' and current_user.tier == 'free':
         flash("Pro Feature!", "warning")
         return redirect('/pricing')
-
-    # Template Map
-    template_map = {
-        'competitor-analyzer': 'competitor_analyzer.html',
-        'keyword-research': 'keyword_research.html',
-        'sitemap-generator': 'sitemap_generator.html',
-        'robots-generator': 'robots_generator.html',
-        'image-seo': 'image_seo.html',
-        'social-posts': 'social_posts.html',
-        'content-outline': 'content_outline.html',
-        'content-brief': 'content_brief.html',
-        'lsi-keywords': 'lsi_keywords.html',
-        'email-subject': 'email_subject.html',
-        'headline-analyzer': 'headline_analyzer.html',
-        'internal-linking': 'internal_linking.html',
-        'schema-generator': 'schema_generator.html',
-        'readability-checker': 'readability_checker.html',
-        'faq-schema': 'faq_schema.html',
-        'youtube-script': 'youtube_script.html',
-        'meta-tags': 'meta_tags.html',
-        'plagiarism-checker': 'plagiarism_checker.html',
-        'serp-analysis': 'serp_analysis.html',
-        'image-generator': 'image_generator.html',
-        'site-auditor': 'site_auditor.html',
-        'content-humanizer': 'content_humanizer.html',
-        'youtube-to-blog': 'youtube_to_blog.html'
-    }
-
-    filename = template_map.get(tool_name, f'{tool_name.replace("-", "_")}.html')
     
     try:
-        return render_template(filename)
+        return render_template(f'{tool_name.replace("-", "_")}.html')
     except:
-        return f"Template '{filename}' not found.", 404
+        return "Tool not found", 404
 
+# Register URLs only for non-manual tools
 for t in TOOL_LIST:
-    if t not in ['article-wizard', 'alt-text-generator']:
-        app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
+    app.add_url_rule(f'/{t}', endpoint=t, view_func=lambda t=t: tool_view(t))
+    if '-' in t: app.add_url_rule(f'/{t}', endpoint=t.replace('-', '_'), view_func=lambda t=t: tool_view(t))
 
 # ==========================================
 # 7. API ENDPOINTS
@@ -394,7 +370,10 @@ def api_generate_image():
     if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro!'}), 403
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
     try:
-        res = client.images.generate(model="dall-e-3", prompt=request.get_json().get('prompt'), size="1024x1024", quality="standard", n=1)
+        d = request.get_json()
+        size = d.get('size', '1024x1024')
+        if size not in ['1024x1024', '1024x1792', '1792x1024']: size = '1024x1024'
+        res = client.images.generate(model="dall-e-3", prompt=d.get('prompt'), size=size, quality="standard", n=1)
         current_user.ai_requests_this_month += 5; db.session.commit()
         return jsonify({'success': True, 'image_url': res.data[0].url})
     except Exception as e: return jsonify({'error': str(e)}), 500
