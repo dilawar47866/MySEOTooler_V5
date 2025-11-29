@@ -48,8 +48,7 @@ TOOL_LIST = [
     'content-outline', 'content-brief', 'lsi-keywords', 'email-subject', 
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
-    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 
-    'article-wizard', 'bulk-writer' # Added Bulk Writer
+    'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 'article-wizard'
 ]
 
 # --- PIPED MIRRORS ---
@@ -146,14 +145,16 @@ def pricing(): return render_template('pricing.html')
 @login_required
 def profile(): return render_template('profile.html')
 
-# --- FORCE ROUTES ---
+# --- FORCE ROUTES FOR CRITICAL TOOLS ---
 @app.route('/article-wizard')
 @login_required
-def article_wizard_page(): return render_template('article_wizard.html')
+def article_wizard_page():
+    return render_template('article_wizard.html')
 
 @app.route('/alt-text-generator')
 @login_required
-def alt_text_generator_page(): return render_template('alt_text_generator.html')
+def alt_text_generator_page():
+    return render_template('alt_text_generator.html')
 
 @app.route('/bulk-writer')
 @login_required
@@ -173,10 +174,12 @@ def robots_txt():
 def sitemap_xml():
     base_url = request.url_root.rstrip('/')
     pages = ['/', '/pricing', '/login', '/signup']
-    for slug in TOOL_LIST: pages.append(f'/tool/{slug}')
+    for slug in TOOL_LIST:
+        pages.append(f'/tool/{slug}')
+
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     for page in pages:
-        xml += f'<url><loc>{base_url}{page}</loc><changefreq>weekly</changefreq></url>\n'
+        xml += f'  <url>\n    <loc>{base_url}{page}</loc>\n    <changefreq>weekly</changefreq>\n  </url>\n'
     xml += '</urlset>'
     return xml, 200, {'Content-Type': 'application/xml'}
 
@@ -202,15 +205,19 @@ def signup():
         try:
             data = request.get_json() if request.is_json else request.form
             if User.query.filter_by(email=data.get('email').lower()).first(): return jsonify({'error': 'Email exists'}), 400
+            
             hashed = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
             user = User(username=data.get('username'), email=data.get('email').lower(), password_hash=hashed)
             if User.query.count() == 0: user.is_admin = True
+            
             db.session.add(user); db.session.commit(); login_user(user)
+
             try:
                 msg = Message("Welcome to MySEO King! 👑", recipients=[user.email])
                 msg.body = f"Hi {user.username},\n\nWelcome to MySEO King.\n\nCheers,\nTeam"
                 mail.send(msg)
             except: pass
+
             return jsonify({'success': True, 'redirect': '/dashboard'})
         except Exception as e: return jsonify({'error': str(e)}), 500
     return render_template('signup.html')
@@ -285,7 +292,7 @@ def payment_success(plan_name):
 @app.route('/tool/<tool_name>')
 @login_required
 def tool_view(tool_name):
-    # Handle Redirects
+    # Handle Manual Redirects
     if tool_name == 'article-wizard': return redirect('/article-wizard')
     if tool_name == 'alt-text-generator': return redirect('/alt-text-generator')
     if tool_name == 'bulk-writer': return redirect('/bulk-writer')
@@ -308,25 +315,24 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS
 # ==========================================
 
-# --- NEW: PUBLISH TO WORDPRESS (RESTORED) ---
-@app.route('/api/publish-wordpress', methods=['POST'])
+# --- KEYWORD CLUSTERS (FIXED) ---
+@app.route('/api/generate-clusters', methods=['POST'])
 @login_required
-def api_publish_wordpress():
-    data = request.get_json()
-    wp_url = data.get('url').rstrip('/')
-    creds = f"{data.get('username')}:{data.get('password')}"
-    token = base64.b64encode(creds.encode()).decode('utf-8')
-    headers = {'Authorization': f'Basic {token}', 'Content-Type': 'application/json'}
-    payload = {
-        'title': data.get('title'),
-        'content': data.get('content'),
-        'status': 'draft' # Safe default
-    }
+def api_generate_clusters():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached.'}), 403
     try:
-        r = requests.post(f"{wp_url}/wp-json/wp/v2/posts", headers=headers, json=payload)
-        if r.status_code == 201: 
-            return jsonify({'success': True, 'link': r.json().get('link')})
-        return jsonify({'error': f"WP Error {r.status_code}: {r.text}"}), 400
+        data = request.get_json()
+        prompt = f"Generate 4 keyword clusters for '{data.get('keyword')}'. Format: JSON. [{{\"name\": \"C1\", \"keywords\": [\"k1\"]}}]"
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON Gen"},{"role":"user","content":prompt}])
+        
+        clean = res.choices[0].message.content.replace('```json','').replace('```','').strip()
+        try:
+            clusters = json.loads(clean)
+            if isinstance(clusters, dict) and 'clusters' in clusters: clusters = clusters['clusters']
+        except:
+            clusters = [{"name": "General", "keywords": [f"Best {data.get('keyword')}"]}]
+
+        return jsonify({'success': True, 'clusters': clusters})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
 # --- PUBLIC AUDIT ---
@@ -336,14 +342,17 @@ def api_public_audit():
         url = request.get_json().get('url')
         if not url: return jsonify({'error': 'Enter URL'}), 400
         if not url.startswith('http'): url = 'https://' + url
+        
         r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=15)
         s = BeautifulSoup(r.content, 'html.parser')
+        
         score = 100; real_issues = []
         if not s.title: score -= 20; real_issues.append("Missing Title Tag")
         elif len(s.title.string) > 60: score -= 5; real_issues.append("Title Too Long")
         if not s.find('meta', attrs={'name':'description'}): score -= 20; real_issues.append("Missing Meta Description")
         if not s.find('h1'): score -= 20; real_issues.append("Missing H1 Heading")
         if score == 100: real_issues.append("No critical errors found")
+        
         return jsonify({'success': True, 'score': max(35,score), 'issues': real_issues})
     except: return jsonify({'success': True, 'score': 42, 'issues': ['Server Response Timeout', 'Mobile Optimization Issues']})
 
@@ -355,9 +364,10 @@ def api_audit_site():
         url = request.get_json().get('url')
         if not url.startswith('http'): url = 'https://' + url
         start = datetime.now()
-        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=30)
+        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=30)
         load = round((datetime.now()-start).total_seconds(), 2)
         s = BeautifulSoup(r.content, 'html.parser')
+        
         score = 100; issues = []; passed = []
         if not s.title: score-=20; issues.append({"type":"critical","msg":"Missing Title","fix":"Add <title>"})
         else: passed.append("Title Exists")
@@ -368,6 +378,7 @@ def api_audit_site():
         imgs = s.find_all('img'); miss = sum(1 for i in imgs if not i.get('alt'))
         if miss > 0: score-=5; issues.append({"type":"warning","msg":f"{miss} Images missing Alt","fix":"Add alt text"})
         else: passed.append("Images Optimized")
+        
         return jsonify({
             'success': True, 'score': max(0,score), 
             'meta': {'url':url, 'title':s.title.string if s.title else "None", 'description':"...", 'load_time':f"{load}s", 'word_count':len(s.get_text().split()), 'link_count':len(s.find_all('a')), 'canonical':""},
@@ -458,6 +469,17 @@ def api_save_content():
     db.session.add(new_c); current_user.content_count += 1; db.session.commit()
     return jsonify({'success': True, 'id': new_c.id})
 
+@app.route('/api/publish-wordpress', methods=['POST'])
+@login_required
+def api_publish_wordpress():
+    d = request.get_json()
+    wp = d.get('url').rstrip('/'); creds = f"{d.get('username')}:{d.get('password')}"
+    t = base64.b64encode(creds.encode()).decode('utf-8')
+    try:
+        r = requests.post(f"{wp}/wp-json/wp/v2/posts", headers={'Authorization': f'Basic {t}', 'Content-Type': 'application/json'}, json={'title':d.get('title'),'content':d.get('content'),'status':'draft'})
+        return jsonify({'success': True, 'link': r.json().get('link')})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
 @app.route('/api/delete-content/<int:id>', methods=['POST'])
 @login_required
 def api_delete(id):
@@ -499,12 +521,6 @@ def api_competitor():
         s = BeautifulSoup(r.content, 'html.parser')
         return jsonify({'success':True, 'analysis': {'title':s.title.string, 'word_count':len(s.get_text().split()), 'h1_tags':[h.text for h in s.find_all('h1')], 'images':[], 'total_images':0}})
     except: return jsonify({'error': 'Failed to analyze URL'})
-
-@app.route('/api/generate-clusters', methods=['POST'])
-@login_required
-def api_clusters():
-    res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":f"Clusters for {request.get_json().get('keyword')} as JSON"}])
-    return jsonify({'success':True, 'clusters': json.loads(res.choices[0].message.content.replace('```json','').replace('```','').strip())})
 
 @app.route('/test-email')
 def test_email():
