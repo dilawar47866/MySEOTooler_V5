@@ -683,15 +683,6 @@ def api_schema():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/analyze-competitor', methods=['POST'])
-@login_required
-def api_competitor():
-    try:
-        r = requests.get(request.get_json().get('url'), headers={'User-Agent':'Mozilla/5.0'})
-        s = BeautifulSoup(r.content, 'html.parser')
-        return jsonify({'success':True, 'analysis': {'title':s.title.string, 'word_count':len(s.get_text().split()), 'h1_tags':[h.text for h in s.find_all('h1')], 'images':[], 'total_images':0}})
-    except: return jsonify({'error': 'Failed to analyze URL'})
-
 @app.route('/api/generate-clusters', methods=['POST'])
 @login_required
 def api_clusters():
@@ -948,6 +939,73 @@ def api_generate_social_posts():
             'content': content,
             'html': markdown.markdown(content)
         })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 6. COMPETITOR SPY API (NEW - THE VIRAL FEATURE)
+@app.route('/api/spy-competitor', methods=['POST'])
+@login_required
+def api_spy_competitor():
+    # Check Limits
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Limit reached'}), 403
+        
+    try:
+        import string
+        
+        url = request.get_json().get('url')
+        if not url.startswith('http'): url = 'https://' + url
+        
+        # 1. Scrape
+        r = requests.get(url, headers={'User-Agent':'Mozilla/5.0'}, timeout=15)
+        soup = BeautifulSoup(r.content, 'html.parser')
+        
+        # 2. Extract Data
+        title = soup.title.string if soup.title else "No Title"
+        h1s = [h.get_text().strip() for h in soup.find_all('h1')]
+        h2s = [h.get_text().strip() for h in soup.find_all('h2')[:5]] # Top 5 H2s
+        text_content = soup.get_text()
+        word_count = len(text_content.split())
+        
+        # 3. Extract Top Keywords
+        words = text_content.lower().translate(str.maketrans('', '', string.punctuation)).split()
+        stop_words = {"the","is","at","of","on","and","a","an","to","in","for","with","as","by","but","or","from","up","down","my","this","that","it","be","are","was","were","have","has","had","not","i","you","he","she","we","they"}
+        filtered_words = [w for w in words if w not in stop_words and len(w) > 3]
+        common_words = [w[0] for w in Counter(filtered_words).most_common(8)]
+        
+        # 4. AI Analysis
+        prompt = f"""
+        Analyze this competitor's content strategy:
+        URL: {url}
+        Title: {title}
+        H1: {h1s}
+        Top Keywords: {common_words}
+        Word Count: {word_count}
+        
+        Provide 3 specific insights on why they might be ranking well, and 3 specific ways I can outrank them.
+        Keep it actionable and punchy.
+        """
+        
+        res = client.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=[{"role":"system","content":"SEO Strategist."},{"role":"user","content":prompt}]
+        )
+        
+        current_user.ai_requests_this_month += 1
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'title': title,
+                'word_count': word_count,
+                'h1': h1s,
+                'h2_sample': h2s,
+                'keywords': common_words,
+                'strategy': markdown.markdown(res.choices[0].message.content)
+            }
+        })
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
