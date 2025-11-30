@@ -1,70 +1,51 @@
 {% extends "base.html" %}
-
-{% block title %}YouTube Script Generator - MySEO King{% endblock %}
+{% block title %}YouTube Script Generator{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-md-10">
-            
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="h3 fw-bold mb-1">YouTube Script Generator</h2>
-                    <p class="text-muted">Generate engaging video scripts with hooks that retain viewers.</p>
-                </div>
-                <div class="bg-white p-2 rounded-circle shadow-sm">
-                    <i class="fab fa-youtube fa-2x text-danger"></i>
+            <h2 class="mb-4 fw-bold"><i class="fab fa-youtube text-danger"></i> YouTube Script Generator</h2>
+            <p class="text-muted">Generate high-retention video scripts with Hook, Intro, and Call-to-Actions.</p>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label fw-bold">Video Topic</label>
+                            <input type="text" id="topic" class="form-control" placeholder="e.g. How to lose weight in 30 days">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Tone</label>
+                            <select id="tone" class="form-select">
+                                <option value="Engaging">Engaging</option>
+                                <option value="Educational">Educational</option>
+                                <option value="Funny">Funny</option>
+                                <option value="Professional">Professional</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger px-4" onclick="generateScript()">
+                        <i class="fas fa-video"></i> Generate Script
+                    </button>
                 </div>
             </div>
 
-            <div class="row">
-                <!-- Input -->
-                <div class="col-md-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body p-4">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Video Topic</label>
-                                <textarea id="videoTopic" class="form-control" rows="3" placeholder="E.g. How to bake sourdough bread for beginners"></textarea>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Target Audience</label>
-                                <input type="text" id="audience" class="form-control" placeholder="Home cooks">
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Tone</label>
-                                <select id="videoTone" class="form-select">
-                                    <option value="Energetic & Fast">Energetic & Fast (MrBeast style)</option>
-                                    <option value="Educational & Calm">Educational & Calm</option>
-                                    <option value="Funny & Sarcastic">Funny & Sarcastic</option>
-                                </select>
-                            </div>
-
-                            <button class="btn btn-danger w-100 py-2 text-white" id="genBtn" onclick="generateScript()">
-                                <i class="fas fa-video me-2"></i> Write Script
-                            </button>
-                        </div>
-                    </div>
+            <div id="resultArea" class="card shadow-sm" style="display:none;">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">Generated Script</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyScript()">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
                 </div>
-
-                <!-- Output -->
-                <div class="col-md-8">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                            <span class="fw-bold">Video Script</span>
-                            <button class="btn btn-sm btn-outline-dark" onclick="copyScript()">Copy Text</button>
-                        </div>
-                        <div class="card-body">
-                            <div id="scriptOutput" class="h-100 p-3 bg-light rounded border" style="min-height: 400px; white-space: pre-wrap;">
-                                <div class="text-center text-muted pt-5 mt-5">
-                                    <i class="fab fa-youtube fa-3x mb-3 opacity-25"></i>
-                                    <p>Enter details on the left to generate your script.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="card-body">
+                    <div id="scriptContent" class="prose"></div>
                 </div>
+            </div>
+            
+            <div id="loader" class="text-center mt-5" style="display:none;">
+                <div class="spinner-border text-danger" role="status"></div>
+                <p class="mt-2">Writing your script...</p>
             </div>
 
         </div>
@@ -73,49 +54,44 @@
 
 <script>
 async function generateScript() {
-    const topic = document.getElementById('videoTopic').value;
-    const audience = document.getElementById('audience').value;
-    const tone = document.getElementById('videoTone').value;
+    const topic = document.getElementById('topic').value;
+    if(!topic) return alert("Enter a topic!");
 
-    if(!topic) return alert("Please enter a video topic");
-
-    const btn = document.getElementById('genBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Writing...';
-
-    const prompt = `Write a YouTube video script for a video about "${topic}".
-    Target Audience: ${audience}.
-    Tone: ${tone}.
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('resultArea').style.display = 'none';
     
-    Structure:
-    1. THE HOOK (0-30s): Grab attention immediately.
-    2. THE INTRO: Tell them what they will learn.
-    3. THE BODY: 3 Main Tips/Steps.
-    4. THE CTA: Ask to subscribe.
-    
-    Format with timestamps like [0:00] and Scene directions like [Camera zooms in].`;
-
     try {
-        const res = await fetch('/api/generate-content', {
+        const res = await fetch('/api/generate-video-script', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+            body: JSON.stringify({
+                topic: topic,
+                tone: document.getElementById('tone').value
+            })
         });
         const data = await res.json();
-        if(data.success) {
-            document.getElementById('scriptOutput').innerHTML = data.html_content;
-        }
-    } catch(e) { console.error(e); }
-    finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-video me-2"></i> Write Script';
+        
+        if(data.error) throw new Error(data.error);
+        
+        document.getElementById('scriptContent').innerHTML = data.html;
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('resultArea').style.display = 'block';
+        
+    } catch(e) {
+        alert(e.message);
+        document.getElementById('loader').style.display = 'none';
     }
 }
 
 function copyScript() {
-    const text = document.getElementById('scriptOutput').innerText;
-    navigator.clipboard.writeText(text);
-    alert("Copied script!");
+    const text = document.getElementById('scriptContent').innerText;
+    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
 }
 </script>
+
+<style>
+    .prose h1, .prose h2, .prose h3 { margin-top: 1.5rem; margin-bottom: 1rem; color: #333; }
+    .prose ul { padding-left: 1.5rem; }
+    .prose li { margin-bottom: 0.5rem; }
+</style>
 {% endblock %}
