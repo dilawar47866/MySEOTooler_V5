@@ -1,45 +1,53 @@
 {% extends "base.html" %}
-
-{% block title %}Keyword Research - MySEO King{% endblock %}
+{% block title %}AI Keyword Researcher{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-md-10">
-            
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="h3 fw-bold mb-1">AI Keyword Clusters</h2>
-                    <p class="text-muted">Generate topical authority maps from a single seed keyword.</p>
-                </div>
-                <div class="bg-white p-2 rounded-circle shadow-sm">
-                    <i class="fas fa-project-diagram fa-2x text-primary"></i>
-                </div>
-            </div>
+            <h2 class="mb-4 fw-bold"><i class="fas fa-search-dollar text-success"></i> AI Keyword Researcher</h2>
+            <p class="text-muted">Find high-value long-tail keywords, check intent, and get content ideas instantly.</p>
 
-            <!-- Input -->
+            <!-- Input Card -->
             <div class="card shadow-sm mb-4">
                 <div class="card-body p-4">
                     <div class="input-group input-group-lg">
-                        <input type="text" id="seedKeyword" class="form-control" placeholder="E.g. Vegan Protein Powder">
-                        <button class="btn btn-primary px-5" onclick="generateClusters()">
-                            <i class="fas fa-magic me-2"></i> Generate Clusters
+                        <input type="text" id="seedKeyword" class="form-control" placeholder="Enter a Seed Keyword (e.g. Vegan Diet, CRM Software)">
+                        <button class="btn btn-success px-4" onclick="researchKeywords()">
+                            <i class="fas fa-rocket"></i> Find Keywords
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Loading -->
-            <div id="loader" class="text-center d-none py-5">
-                <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-3 text-muted">AI is brainstorming topic clusters...</p>
+            <!-- Loader -->
+            <div id="loader" class="text-center py-5" style="display:none;">
+                <div class="spinner-border text-success" role="status"></div>
+                <p class="mt-2 text-muted">Analyzing search intent & competition...</p>
             </div>
 
-            <!-- Results -->
-            <div id="resultsArea" class="d-none">
-                <h5 class="fw-bold mb-3">Strategy Map</h5>
-                <div class="row" id="clusterGrid">
-                    <!-- Clusters inserted here by JS -->
+            <!-- Results Table -->
+            <div id="resultsArea" style="display:none;">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">Results</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Keyword</th>
+                                    <th>Intent</th>
+                                    <th>Diff (Est)</th>
+                                    <th>Content Idea</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kwTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer bg-white text-end">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="exportCSV()">
+                            <i class="fas fa-download"></i> Export CSV
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -48,76 +56,70 @@
 </div>
 
 <script>
-async function generateClusters() {
-    const keyword = document.getElementById('seedKeyword').value;
-    if(!keyword) return alert("Enter a keyword");
+let currentKeywords = [];
 
-    document.getElementById('loader').classList.remove('d-none');
-    document.getElementById('resultsArea').classList.add('d-none');
+async function researchKeywords() {
+    const seed = document.getElementById('seedKeyword').value;
+    if(!seed) return alert("Enter a keyword!");
 
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('resultsArea').style.display = 'none';
+    
     try {
-        const res = await fetch('/api/generate-clusters', {
+        const res = await fetch('/api/research-keywords', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({keyword: keyword})
+            body: JSON.stringify({ seed: seed })
         });
-        
         const data = await res.json();
         
-        if(data.error) {
-            alert(data.error);
-        } else {
-            const grid = document.getElementById('clusterGrid');
-            grid.innerHTML = '';
-            
-            data.clusters.forEach(cluster => {
-                let pills = '';
-                cluster.keywords.forEach(k => {
-                    pills += `<span class="badge bg-light text-dark border me-1 mb-1 fw-normal">${k}</span>`;
-                });
+        if(data.error) throw new Error(data.error);
+        
+        currentKeywords = data.keywords;
+        const tbody = document.getElementById('kwTableBody');
+        tbody.innerHTML = '';
 
-                grid.innerHTML += `
-                    <div class="col-md-6 mb-4">
-                        <div class="card h-100 shadow-sm border-0">
-                            <div class="card-header bg-primary text-white fw-bold">
-                                <i class="fas fa-folder me-2"></i>${cluster.name}
-                            </div>
-                            <div class="card-body">
-                                <p class="small text-muted mb-2">Related Keywords:</p>
-                                <div>${pills}</div>
-                            </div>
-                            <div class="card-footer bg-white border-0">
-                                <button class="btn btn-sm btn-outline-primary w-100" onclick="sendToEditor('${cluster.name}')">
-                                    <i class="fas fa-pen me-1"></i> Write about this
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            document.getElementById('resultsArea').classList.remove('d-none');
-        }
-    } catch(e) { console.error(e); } 
-    finally { document.getElementById('loader').classList.add('d-none'); }
+        currentKeywords.forEach(k => {
+            // Color code difficulty
+            let diffBadge = 'bg-success';
+            if(k.difficulty > 40) diffBadge = 'bg-warning text-dark';
+            if(k.difficulty > 70) diffBadge = 'bg-danger';
+
+            // Color code intent
+            let intentBadge = 'bg-info text-dark';
+            if(k.intent.includes('Trans') || k.intent.includes('Comm')) intentBadge = 'bg-primary';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="fw-bold text-dark">${k.keyword}</td>
+                    <td><span class="badge ${intentBadge}">${k.intent}</span></td>
+                    <td><span class="badge ${diffBadge}">${k.difficulty}/100</span></td>
+                    <td class="text-muted small"><i class="fas fa-pen-nib me-1"></i> ${k.content_idea}</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('resultsArea').style.display = 'block';
+        
+    } catch(e) {
+        alert(e.message);
+        document.getElementById('loader').style.display = 'none';
+    }
 }
 
-function sendToEditor(topic) {
-    // Create a new content draft and redirect
-    fetch('/api/save-content', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            title: topic,
-            content: '',
-            html_content: '',
-            keyword: topic
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if(data.success) window.location.href = `/editor?id=${data.id}`;
+function exportCSV() {
+    if(!currentKeywords.length) return;
+    let csvContent = "data:text/csv;charset=utf-8,Keyword,Intent,Difficulty,Content Idea\n";
+    currentKeywords.forEach(k => {
+        csvContent += `"${k.keyword}","${k.intent}","${k.difficulty}","${k.content_idea}"\n`;
     });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "keyword_research.csv");
+    document.body.appendChild(link);
+    link.click();
 }
 </script>
 {% endblock %}
