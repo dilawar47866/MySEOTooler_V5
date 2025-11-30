@@ -1,173 +1,162 @@
 {% extends "base.html" %}
-
-{% block title %}Competitor Keyword Thief - MySEO King{% endblock %}
+{% block title %}Competitor Spy Tool{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-md-10">
-            
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="h3 fw-bold mb-1">Competitor Keyword Thief</h2>
-                    <p class="text-muted">Enter a URL to steal their keywords and outrank them.</p>
-                </div>
-                <div class="bg-white p-2 rounded-circle shadow-sm">
-                    <i class="fas fa-user-secret fa-2x text-dark"></i>
-                </div>
+            <div class="text-center mb-5">
+                <h2 class="fw-bold"><i class="fas fa-user-secret text-dark"></i> Competitor Spy</h2>
+                <p class="text-muted">Reveal the hidden strategy behind any ranking page.</p>
             </div>
 
-            <!-- Input -->
-            <div class="card shadow-sm mb-4 border-0">
+            <div class="card shadow-sm mb-4">
                 <div class="card-body p-4">
                     <div class="input-group input-group-lg">
-                        <input type="text" id="compUrl" class="form-control" placeholder="https://competitor.com/their-best-post">
-                        <button class="btn btn-dark px-5" onclick="analyzeCompetitor()">
-                            <i class="fas fa-mask me-2"></i> Steal Data
+                        <input type="text" id="competitorUrl" class="form-control" placeholder="Enter Competitor URL (e.g. https://competitor.com/best-seo-tools)">
+                        <button class="btn btn-dark px-4" onclick="spyCompetitor()">
+                            <i class="fas fa-search"></i> Analyze
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Loading -->
-            <div id="loader" class="d-none text-center my-5">
-                <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-3 fw-bold">Analyzing competitor strategy...</p>
+            <div id="loader" class="text-center py-5" style="display:none;">
+                <div class="spinner-border text-dark" role="status"></div>
+                <p class="mt-2">Hacking the mainframe... (Just kidding, analyzing SEO)</p>
             </div>
 
             <!-- Results -->
-            <div id="resultsArea" class="d-none">
+            <div id="resultsArea" style="display:none;">
                 
-                <!-- Stats Row -->
-                <div class="row g-3 mb-4">
+                <!-- Quick Stats -->
+                <div class="row mb-4">
                     <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
+                        <div class="card h-100 border-0 shadow-sm bg-light">
                             <div class="card-body text-center">
-                                <h6 class="text-muted text-uppercase small fw-bold">Word Count</h6>
-                                <h2 class="fw-bold text-primary" id="resWords">0</h2>
+                                <h6 class="text-muted text-uppercase">Word Count</h6>
+                                <h3 class="fw-bold mb-0" id="wordCount">0</h3>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body text-center">
-                                <h6 class="text-muted text-uppercase small fw-bold">Images</h6>
-                                <h2 class="fw-bold text-success" id="resImages">0</h2>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body text-center">
-                                <h6 class="text-muted text-uppercase small fw-bold">Headings</h6>
-                                <h2 class="fw-bold text-warning" id="resHeadings">0</h2>
+                    <div class="col-md-8">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="text-muted text-uppercase">Page Title</h6>
+                                <h5 class="fw-bold text-primary mb-0" id="pageTitle">...</h5>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Content Analysis -->
+                <!-- Deep Dive Grid -->
                 <div class="row">
-                    <div class="col-md-8">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold py-3">
-                                <i class="fas fa-heading me-2 text-secondary"></i> Content Structure
+                    <!-- Structure -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-white fw-bold">
+                                <i class="fas fa-sitemap text-primary"></i> Structure X-Ray
                             </div>
-                            <div class="card-body bg-light" style="max-height: 400px; overflow-y: auto;">
-                                <ul class="list-group list-group-flush bg-transparent" id="structureList"></ul>
+                            <div class="card-body">
+                                <small class="text-muted d-block mb-2">Main Heading (H1):</small>
+                                <div id="h1List" class="mb-3 fw-bold"></div>
+                                
+                                <small class="text-muted d-block mb-2">Subheadings (Top 5 H2s):</small>
+                                <ul id="h2List" class="list-unstyled ps-2 border-start border-3 border-primary"></ul>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100 bg-dark text-white">
-                            <div class="card-body d-flex flex-column justify-content-center text-center p-4">
-                                <i class="fas fa-bolt fa-3x text-warning mb-3"></i>
-                                <h4 class="fw-bold">Beat This Page</h4>
-                                <p class="text-white-50 small mb-4">Our AI can write a longer, better optimized version of this exact topic right now.</p>
-                                <button class="btn btn-primary fw-bold py-3" onclick="rewriteContent()">
-                                    <i class="fas fa-pen-nib me-2"></i> Write Better Version
-                                </button>
+
+                    <!-- Keywords -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-white fw-bold">
+                                <i class="fas fa-key text-warning"></i> Target Keywords
+                            </div>
+                            <div class="card-body">
+                                <p class="small text-muted">Most frequent relevant words:</p>
+                                <div id="keywordList"></div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- AI Strategy Reveal -->
+                <div class="card shadow-lg border-0 mb-5" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-left: 5px solid #0d6efd !important;">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold mb-4"><i class="fas fa-robot text-primary"></i> AI Strategy Reveal</h4>
+                        <div id="aiStrategy" class="prose"></div>
                     </div>
                 </div>
 
             </div>
-
         </div>
     </div>
 </div>
 
 <script>
-let pageTitle = "";
+async function spyCompetitor() {
+    const url = document.getElementById('competitorUrl').value;
+    if(!url) return alert("Enter a URL!");
 
-async function analyzeCompetitor() {
-    const url = document.getElementById('compUrl').value;
-    if(!url) return alert("Enter URL");
-
-    document.getElementById('loader').classList.remove('d-none');
-    document.getElementById('resultsArea').classList.add('d-none');
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('resultsArea').style.display = 'none';
 
     try {
-        const res = await fetch('/api/analyze-competitor', {
+        const res = await fetch('/api/spy-competitor', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({url: url})
         });
         const data = await res.json();
         
-        if(data.success) {
-            const a = data.analysis;
-            pageTitle = a.title;
-            
-            document.getElementById('resWords').innerText = a.word_count;
-            document.getElementById('resImages').innerText = a.images ? a.images.length : 0;
-            document.getElementById('resHeadings').innerText = a.h1_tags.length;
+        if(data.error) throw new Error(data.error);
 
-            const list = document.getElementById('structureList');
-            list.innerHTML = '';
-            
-            if(a.title) list.innerHTML += `<li class="list-group-item bg-transparent fw-bold">H1: ${a.title}</li>`;
-            a.h1_tags.forEach(h => {
-                list.innerHTML += `<li class="list-group-item bg-transparent ms-3 border-start border-primary"><i class="fas fa-angle-right me-2 text-primary"></i>${h}</li>`;
-            });
+        const d = data.data;
 
-            document.getElementById('resultsArea').classList.remove('d-none');
+        // Populate Basic Data
+        document.getElementById('wordCount').innerText = d.word_count;
+        document.getElementById('pageTitle').innerText = d.title;
+
+        // Populate H1s
+        const h1Box = document.getElementById('h1List');
+        h1Box.innerHTML = '';
+        if(d.h1.length > 0) {
+            d.h1.forEach(h => h1Box.innerHTML += `<div class="text-dark">${h}</div>`);
         } else {
-            alert("Could not analyze. Site might block bots.");
+            h1Box.innerHTML = '<span class="text-danger">No H1 found! (Opportunity)</span>';
         }
-    } catch(e) { console.error(e); }
-    finally { document.getElementById('loader').classList.add('d-none'); }
-}
 
-function rewriteContent() {
-    // Send the stolen title to the Article Wizard
-    fetch('/api/article-wizard', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({topic: pageTitle, tone: 'Professional'})
-    })
-    .then(res => res.json())
-    .then(data => {
-        if(data.success) {
-            // Save and redirect
-            fetch('/api/save-content', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    title: "Better Version: " + pageTitle,
-                    content: data.content,
-                    html_content: data.html,
-                    keyword: pageTitle
-                })
-            }).then(r => r.json()).then(d => window.location.href = `/editor?id=${d.id}`);
-        }
-    });
-    
-    // Show loading state on button
-    const btn = document.querySelector('.btn-primary');
-    btn.innerText = "Generating... (Wait 20s)";
-    btn.disabled = true;
+        // Populate H2s
+        const h2Box = document.getElementById('h2List');
+        h2Box.innerHTML = '';
+        d.h2_sample.forEach(h => h2Box.innerHTML += `<li class="mb-2">${h}</li>`);
+
+        // Populate Keywords
+        const kwBox = document.getElementById('keywordList');
+        kwBox.innerHTML = '';
+        d.keywords.forEach(k => {
+            kwBox.innerHTML += `<span class="badge bg-light text-dark border me-2 mb-2 p-2 fs-6">${k}</span>`;
+        });
+
+        // Populate AI
+        document.getElementById('aiStrategy').innerHTML = d.strategy;
+
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('resultsArea').style.display = 'block';
+
+    } catch(e) {
+        alert(e.message);
+        document.getElementById('loader').style.display = 'none';
+    }
 }
 </script>
+
+<style>
+    .prose h3 { font-size: 1.25rem; font-weight: bold; margin-top: 1.5rem; margin-bottom: 1rem; }
+    .prose ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+    .prose li { margin-bottom: 0.5rem; }
+    .prose strong { color: #0d6efd; }
+</style>
 {% endblock %}
