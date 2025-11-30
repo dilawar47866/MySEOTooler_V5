@@ -871,6 +871,49 @@ def api_generate_report():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# 4. YOUTUBE VIDEO SCRIPT API (NEW)
+@app.route('/api/generate-video-script', methods=['POST'])
+@login_required
+def api_generate_video_script():
+    # Check Limits
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Limit reached'}), 403
+    
+    data = request.get_json()
+    topic = data.get('topic')
+    tone = data.get('tone', 'Engaging')
+    
+    prompt = f"""
+    Create a structured YouTube Video Script.
+    Topic: {topic}
+    Tone: {tone}
+    
+    Structure:
+    1. Hook (0-30s): Catchy opening.
+    2. Intro: What will be covered.
+    3. Body: 3 main points.
+    4. CTA: Call to action.
+    
+    Format using Markdown headings.
+    """
+    
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=[{"role":"system","content":"You are a YouTuber."},{"role":"user","content":prompt}]
+        )
+        current_user.ai_requests_this_month += 1
+        db.session.commit()
+        
+        content = res.choices[0].message.content
+        return jsonify({
+            'success': True, 
+            'content': content,
+            'html': markdown.markdown(content)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     with app.app_context(): db.create_all()
     app.run(debug=True, port=int(os.environ.get('PORT', 5001)))
