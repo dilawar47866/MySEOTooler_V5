@@ -1,68 +1,53 @@
 {% extends "base.html" %}
-
-{% block title %}Social Media Generator - MySEO King{% endblock %}
+{% block title %}Social Media Post Generator{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="h3 fw-bold mb-1">Social Media Generator</h2>
-                    <p class="text-muted">Generate viral posts for LinkedIn, Twitter (X), and Instagram.</p>
-                </div>
-                <div class="bg-white p-2 rounded-circle shadow-sm">
-                    <i class="fab fa-twitter fa-2x text-primary"></i>
-                </div>
-            </div>
+        <div class="col-md-10">
+            <h2 class="mb-4 fw-bold"><i class="fab fa-twitter text-primary"></i> Social Media Generator</h2>
+            <p class="text-muted">Generate viral content for LinkedIn, Twitter, and Instagram in one click.</p>
 
             <div class="card shadow-sm mb-4">
                 <div class="card-body p-4">
-                    
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Platform</label>
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="platform" id="plat1" value="LinkedIn" checked>
-                            <label class="btn btn-outline-primary" for="plat1"><i class="fab fa-linkedin me-1"></i> LinkedIn</label>
-
-                            <input type="radio" class="btn-check" name="platform" id="plat2" value="Twitter">
-                            <label class="btn btn-outline-primary" for="plat2"><i class="fab fa-twitter me-1"></i> Twitter</label>
-
-                            <input type="radio" class="btn-check" name="platform" id="plat3" value="Instagram">
-                            <label class="btn btn-outline-primary" for="plat3"><i class="fab fa-instagram me-1"></i> Instagram</label>
-                        </div>
+                    <label class="form-label fw-bold">Topic or URL</label>
+                    <div class="input-group">
+                        <input type="text" id="topic" class="form-control form-control-lg" placeholder="e.g. 5 Tips for Better SEO, or https://myblog.com/new-post">
+                        <button class="btn btn-primary px-4" onclick="generateSocial()">
+                            <i class="fas fa-magic"></i> Generate All
+                        </button>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">What is the post about?</label>
-                        <textarea id="topic" class="form-control" rows="3" placeholder="E.g. Launching our new SEO tool features today..."></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Tone</label>
-                        <select id="tone" class="form-select">
-                            <option value="Professional">Professional</option>
-                            <option value="Viral/Hype">Viral / Hype</option>
-                            <option value="Educational">Educational</option>
-                            <option value="Funny">Funny</option>
-                        </select>
-                    </div>
-
-                    <button class="btn btn-primary w-100 py-2" id="genBtn" onclick="generatePost()">
-                        <i class="fas fa-magic me-2"></i> Generate Post
-                    </button>
-
                 </div>
             </div>
 
-            <!-- Result -->
-            <div id="resultCard" class="card shadow-sm d-none">
-                <div class="card-header bg-white fw-bold">Generated Content</div>
-                <div class="card-body">
-                    <div id="output" class="bg-light p-3 rounded border mb-3" style="white-space: pre-wrap;"></div>
-                    <button class="btn btn-sm btn-outline-dark" onclick="copyPost()"><i class="fas fa-copy"></i> Copy Text</button>
+            <!-- Results -->
+            <div id="resultsArea" style="display:none;">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <ul class="nav nav-tabs card-header-tabs" id="socialTabs" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#all-tab">All Posts</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="all-tab">
+                                <div id="socialContent" class="prose"></div>
+                                <hr>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="copySocial()">
+                                    <i class="fas fa-copy"></i> Copy Content
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" class="text-center mt-5" style="display:none;">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">Writing posts for LinkedIn, Twitter, and Instagram...</p>
             </div>
 
         </div>
@@ -70,52 +55,41 @@
 </div>
 
 <script>
-async function generatePost() {
+async function generateSocial() {
     const topic = document.getElementById('topic').value;
-    if(!topic) return alert("Enter a topic");
+    if(!topic) return alert("Enter a topic!");
 
-    const platform = document.querySelector('input[name="platform"]:checked').value;
-    const tone = document.getElementById('tone').value;
-    const btn = document.getElementById('genBtn');
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('resultsArea').style.display = 'none';
     
-    // Construct prompt
-    const prompt = `Write a ${tone} ${platform} post about: "${topic}". 
-    Include emojis and hashtags. 
-    For Twitter, keep it under 280 chars. 
-    For LinkedIn, use line breaks for readability.`;
-
-    // UI Loading
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Writing...';
-    document.getElementById('resultCard').classList.add('d-none');
-
     try {
-        // We reuse the generic AI endpoint
-        const res = await fetch('/api/generate-content', {
+        const res = await fetch('/api/generate-social-posts', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+            body: JSON.stringify({ topic: topic })
         });
-        
         const data = await res.json();
-        if(data.success) {
-            // Display raw text (data.content) instead of HTML
-            document.getElementById('output').innerText = data.content;
-            document.getElementById('resultCard').classList.remove('d-none');
-        } else {
-            alert(data.error);
-        }
-    } catch(e) { console.error(e); }
-    finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-magic me-2"></i> Generate Post';
+        
+        if(data.error) throw new Error(data.error);
+        
+        document.getElementById('socialContent').innerHTML = data.html;
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('resultsArea').style.display = 'block';
+        
+    } catch(e) {
+        alert(e.message);
+        document.getElementById('loader').style.display = 'none';
     }
 }
 
-function copyPost() {
-    const text = document.getElementById('output').innerText;
-    navigator.clipboard.writeText(text);
-    alert("Copied!");
+function copySocial() {
+    const text = document.getElementById('socialContent').innerText;
+    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
 }
 </script>
+
+<style>
+    .prose h3 { color: #4f46e5; margin-top: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+    .prose p { font-size: 1.05rem; line-height: 1.6; }
+</style>
 {% endblock %}
