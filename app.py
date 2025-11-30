@@ -871,11 +871,10 @@ def api_generate_report():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# 4. YOUTUBE VIDEO SCRIPT API (NEW)
+# 4. YOUTUBE VIDEO SCRIPT API
 @app.route('/api/generate-video-script', methods=['POST'])
 @login_required
 def api_generate_video_script():
-    # Check Limits
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
         return jsonify({'error': 'Limit reached'}), 403
     
@@ -901,6 +900,44 @@ def api_generate_video_script():
         res = client.chat.completions.create(
             model="gpt-4o-mini", 
             messages=[{"role":"system","content":"You are a YouTuber."},{"role":"user","content":prompt}]
+        )
+        current_user.ai_requests_this_month += 1
+        db.session.commit()
+        
+        content = res.choices[0].message.content
+        return jsonify({
+            'success': True, 
+            'content': content,
+            'html': markdown.markdown(content)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 5. SOCIAL MEDIA POST GENERATOR API (NEW)
+@app.route('/api/generate-social-posts', methods=['POST'])
+@login_required
+def api_generate_social_posts():
+    # Check Limits
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Limit reached'}), 403
+    
+    data = request.get_json()
+    topic = data.get('topic')
+    
+    prompt = f"""
+    Write 3 distinct social media posts about: "{topic}".
+    
+    1. LinkedIn Post: Professional, use bullet points, end with a thought-provoking question.
+    2. Twitter Thread (3 tweets): Short, punchy, informative.
+    3. Instagram Caption: Casual, engaging, include 5 relevant hashtags.
+    
+    Format the output clearly with headers (e.g., ### LinkedIn).
+    """
+    
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=[{"role":"system","content":"Social Media Expert."},{"role":"user","content":prompt}]
         )
         current_user.ai_requests_this_month += 1
         db.session.commit()
