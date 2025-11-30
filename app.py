@@ -41,7 +41,7 @@ login_manager.login_view = 'login'
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- GLOBAL TOOL LIST ---
+# --- GLOBAL TOOL LIST (Added backlink-outreach) ---
 TOOL_LIST = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
     'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
@@ -49,7 +49,7 @@ TOOL_LIST = [
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
     'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 
-    'article-wizard', 'bulk-writer', 'gbp-tool', 'geo-optimizer'
+    'article-wizard', 'bulk-writer', 'gbp-tool', 'geo-optimizer', 'backlink-outreach'
 ]
 
 # --- PIPED MIRRORS ---
@@ -204,15 +204,19 @@ def signup():
         try:
             data = request.get_json() if request.is_json else request.form
             if User.query.filter_by(email=data.get('email').lower()).first(): return jsonify({'error': 'Email exists'}), 400
+            
             hashed = bcrypt.generate_password_hash(data.get('password')).decode('utf-8')
             user = User(username=data.get('username'), email=data.get('email').lower(), password_hash=hashed)
             if User.query.count() == 0: user.is_admin = True
+            
             db.session.add(user); db.session.commit(); login_user(user)
+
             try:
                 msg = Message("Welcome to MySEO King! 👑", recipients=[user.email])
                 msg.body = f"Hi {user.username},\n\nWelcome to MySEO King.\n\nCheers,\nTeam"
                 mail.send(msg)
             except: pass
+
             return jsonify({'success': True, 'redirect': '/dashboard'})
         except Exception as e: return jsonify({'error': str(e)}), 500
     return render_template('signup.html')
@@ -310,179 +314,32 @@ for t in TOOL_LIST:
 # 7. API ENDPOINTS
 # ==========================================
 
-# --- ARTICLE WIZARD (1 Credit) ---
-@app.route('/api/article-wizard', methods=['POST'])
+# --- BACKLINK BUILDER (SAFE OUTREACH) ---
+@app.route('/api/backlink-outreach', methods=['POST'])
 @login_required
-def api_article_wizard():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: 
-        return jsonify({'error': 'Limit reached'}), 403
-    try:
-        d = request.get_json()
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Blog about: {d.get('topic')}. Tone: {d.get('tone')}"}]
-        )
-        
-        # DEDUCT CREDIT
-        current_user.ai_requests_this_month += 1
-        db.session.commit()
-        
-        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- IMAGE GEN (5 Credits) ---
-@app.route('/api/generate-image', methods=['POST'])
-@login_required
-def api_generate_image():
-    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro!'}), 403
+def api_backlink_outreach():
     if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
-    try:
-        res = client.images.generate(model="dall-e-3", prompt=request.get_json().get('prompt'), size="1024x1024", quality="standard", n=1)
-        current_user.ai_requests_this_month += 5; db.session.commit()
-        return jsonify({'success': True, 'image_url': res.data[0].url})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- HUMANIZER (1 Credit) ---
-@app.route('/api/humanize-text', methods=['POST'])
-@login_required
-def api_humanize_text():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
-    try:
-        res = client.chat.completions.create(model="gpt-4o", messages=[{"role":"system","content":"Rewriter"},{"role":"user","content":f"Humanize: {request.get_json().get('content')}"}])
-        current_user.ai_requests_this_month += 1; db.session.commit()
-        return jsonify({'success': True, 'content': res.choices[0].message.content})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- YOUTUBE TO BLOG (1 Credit) ---
-@app.route('/api/youtube-to-blog', methods=['POST'])
-@login_required
-def api_youtube_to_blog():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached.'}), 403
-    data = request.get_json(); video_url = data.get('url')
-    try:
-        vid = video_url.split("v=")[1].split("&")[0] if "v=" in video_url else video_url.split("youtu.be/")[1].split("?")[0]
-        full_text = ""
-        mirrors = PIPED_INSTANCES.copy(); random.shuffle(mirrors)
-        for m in mirrors:
-            try:
-                r = requests.get(f"{m}/streams/{vid}", timeout=5)
-                if r.status_code == 200:
-                    subs = r.json().get('subtitles', [])
-                    tgt = next((s for s in subs if 'en' in s.get('code','')), subs[0] if subs else None)
-                    if tgt:
-                        lines = requests.get(tgt['url']).text.splitlines()
-                        clean = [l.strip() for l in lines if '-->' not in l and 'WEBVTT' not in l and l.strip()]
-                        full_text = " ".join(clean)
-                        if len(full_text) > 50: break
-            except: continue
-        if not full_text: return jsonify({'error': "No captions found."}), 400
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Blog from transcript: {full_text[:15000]}"}])
-        current_user.ai_requests_this_month += 1; db.session.commit()
-        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- GEO OPTIMIZER (1 Credit) ---
-@app.route('/api/geo-optimize', methods=['POST'])
-@login_required
-def api_geo_optimize():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
-    keyword = request.get_json().get('keyword')
-    prompt = f"Act as a GEO Expert. Create a Direct Answer block for: '{keyword}'."
-    try:
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"SEO"},{"role":"user","content":prompt}])
-        current_user.ai_requests_this_month += 1; db.session.commit()
-        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- GBP TOOL (1 Credit) ---
-@app.route('/api/gbp-generate', methods=['POST'])
-@login_required
-def api_gbp_generate():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Limit reached'}), 403
+    
     d = request.get_json()
+    target_url = d.get('url')
+    topic = d.get('topic')
+    
+    prompt = f"""
+    Write a high-conversion 'Guest Post' or 'Link Insertion' email pitch.
+    Target Website: {target_url}
+    My Topic: {topic}
+    
+    Tone: Professional but personal.
+    Subject Line: Catchy.
+    Body: Compliment their recent work, explain why my content adds value to them, and propose the link.
+    """
     try:
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Local SEO"},{"role":"user","content":f"Write GBP {d.get('mode')} for {d.get('business')}"}])
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Outreach Expert"},{"role":"user","content":prompt}])
         current_user.ai_requests_this_month += 1; db.session.commit()
         return jsonify({'success': True, 'content': res.choices[0].message.content})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
-# --- GENERIC AI (1 Credit) ---
-@app.route('/api/generate-content', methods=['POST'])
-@login_required
-def api_generate_content():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Limit reached.'}), 403
-    try:
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"SEO"},{"role":"user","content":request.get_json().get('keyword')}])
-        current_user.ai_requests_this_month += 1; db.session.commit()
-        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html_content': markdown.markdown(res.choices[0].message.content)})
-    except Exception as e: return jsonify({'error': str(e)}), 500
-
-# --- CLUSTERS (1 Credit) ---
-@app.route('/api/generate-clusters', methods=['POST'])
-@login_required
-def api_clusters():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
-        return jsonify({'error': 'Limit reached.'}), 403
-    try:
-        d = request.get_json()
-        prompt = f"Generate 4 keyword clusters for '{d.get('keyword')}'. Format JSON: [{{'name':'C1', 'keywords':['k1']}}]"
-        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":prompt}])
-        
-        current_user.ai_requests_this_month += 1; db.session.commit()
-        
-        clean = res.choices[0].message.content.replace('```json','').replace('```','').strip()
-        clusters = json.loads(clean)
-        if isinstance(clusters, dict) and 'clusters' in clusters: clusters = clusters['clusters']
-        return jsonify({'success':True, 'clusters': clusters})
-    except: 
-        return jsonify({'success':True, 'clusters': [{"name": "General", "keywords": [f"Best {d.get('keyword')}"]}]})
-
-# --- HELPERS (1 Credit - Fair Usage) ---
-@app.route('/api/generate-seo-terms', methods=['POST'])
-@login_required
-def api_generate_seo_terms():
-    # LSI costs 1 credit now
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
-    
-    res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":f"LSI keywords for {request.get_json().get('keyword')} as JSON array"}])
-    current_user.ai_requests_this_month += 1; db.session.commit()
-    return jsonify({'success':True, 'terms': json.loads(res.choices[0].message.content.replace('```json','').replace('```','').strip())})
-
-@app.route('/api/generate-questions', methods=['POST'])
-@login_required
-def api_generate_questions():
-    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
-    
-    res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":f"PAA questions for {request.get_json().get('keyword')} as JSON array"}])
-    current_user.ai_requests_this_month += 1; db.session.commit()
-    return jsonify({'success':True, 'questions': json.loads(res.choices[0].message.content.replace('```json','').replace('```','').strip())})
-
-# --- FREE TOOLS (0 Credits) ---
-@app.route('/api/suggest-internal-links', methods=['POST'])
-@login_required
-def api_suggest_links():
-    res = Content.query.filter(Content.user_id==current_user.id, Content.title.ilike(f"%{request.get_json().get('keyword')}%")).limit(5).all()
-    return jsonify({'success':True, 'links': [{'id':c.id, 'title':c.title} for c in res]})
-
-@app.route('/api/check-readability', methods=['POST'])
-@login_required
-def api_readability(): return jsonify({'success':True, 'stats': {'grade': 8, 'difficulty': 'Good', 'sentences': 10, 'words': 100, 'color': 'success'}})
-
-@app.route('/api/generate-schema', methods=['POST'])
-@login_required
-def api_schema(): return jsonify({'success':True, 'json': json.dumps({"@context":"https://schema.org","@type":"Article","headline":request.get_json().get('headline')}, indent=4)})
-
-@app.route('/api/analyze-competitor', methods=['POST'])
-@login_required
-def api_competitor():
-    try:
-        r = requests.get(request.get_json().get('url'), headers={'User-Agent':'Mozilla/5.0'})
-        s = BeautifulSoup(r.content, 'html.parser')
-        return jsonify({'success':True, 'analysis': {'title':s.title.string, 'word_count':len(s.get_text().split()), 'h1_tags':[h.text for h in s.find_all('h1')], 'images':[], 'total_images':0}})
-    except: return jsonify({'error': 'Failed to analyze URL'})
-
+# --- PUBLIC AUDIT ---
 @app.route('/api/public-audit', methods=['POST'])
 def api_public_audit():
     try:
@@ -500,6 +357,7 @@ def api_public_audit():
         return jsonify({'success': True, 'score': max(35,score), 'issues': real_issues})
     except: return jsonify({'success': True, 'score': 42, 'issues': ['Server Response Timeout', 'Mobile Optimization Issues']})
 
+# --- PRO AUDIT ---
 @app.route('/api/audit-site', methods=['POST'])
 @login_required
 def api_audit_site():
@@ -527,6 +385,89 @@ def api_audit_site():
         })
     except Exception as e: return jsonify({'error': f"Failed: {str(e)}"}), 500
 
+@app.route('/api/generate-image', methods=['POST'])
+@login_required
+def api_generate_image():
+    if current_user.tier == 'free': return jsonify({'error': 'Upgrade to Pro!'}), 403
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    try:
+        res = client.images.generate(model="dall-e-3", prompt=request.get_json().get('prompt'), size="1024x1024", quality="standard", n=1)
+        current_user.ai_requests_this_month += 5; db.session.commit()
+        return jsonify({'success': True, 'image_url': res.data[0].url})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+@app.route('/api/humanize-text', methods=['POST'])
+@login_required
+def api_humanize_text():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    try:
+        res = client.chat.completions.create(model="gpt-4o", messages=[{"role":"system","content":"Rewriter"},{"role":"user","content":f"Humanize: {request.get_json().get('content')}"}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+@app.route('/api/article-wizard', methods=['POST'])
+@login_required
+def api_article_wizard():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached'}), 403
+    try:
+        d = request.get_json()
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Blog about: {d.get('topic')}"}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+@app.route('/api/youtube-to-blog', methods=['POST'])
+@login_required
+def api_youtube_to_blog():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: return jsonify({'error': 'Limit reached.'}), 403
+    data = request.get_json(); video_url = data.get('url')
+    try:
+        vid = video_url.split("v=")[1].split("&")[0] if "v=" in video_url else video_url.split("youtu.be/")[1].split("?")[0]
+        full_text = ""
+        mirrors = PIPED_INSTANCES.copy(); random.shuffle(mirrors)
+        for m in mirrors:
+            try:
+                r = requests.get(f"{m}/streams/{vid}", timeout=5)
+                if r.status_code == 200:
+                    subs = r.json().get('subtitles', [])
+                    tgt = next((s for s in subs if 'en' in s.get('code','')), subs[0] if subs else None)
+                    if tgt:
+                        lines = requests.get(tgt['url']).text.splitlines()
+                        clean = [l.strip() for l in lines if '-->' not in l and 'WEBVTT' not in l and l.strip()]
+                        full_text = " ".join(clean)
+                        if len(full_text) > 50: break
+            except: continue
+        if not full_text: return jsonify({'error': "No captions found."}), 400
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Writer"},{"role":"user","content":f"Blog from transcript: {full_text[:15000]}"}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+@app.route('/api/generate-content', methods=['POST'])
+@login_required
+def api_generate_content():
+    try:
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"SEO"},{"role":"user","content":request.get_json().get('keyword')}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html_content': markdown.markdown(res.choices[0].message.content)})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+@app.route('/api/save-content', methods=['POST'])
+@login_required
+def api_save_content():
+    d = request.get_json()
+    if d.get('id'):
+        c = Content.query.get(d.get('id'))
+        if c.user_id == current_user.id:
+            c.title = d.get('title'); c.content = d.get('content'); c.html_content = d.get('html_content')
+            c.keyword = d.get('keyword'); c.word_count = len(d.get('content','').split())
+            db.session.commit()
+            return jsonify({'success': True, 'id': c.id})
+    new_c = Content(user_id=current_user.id, title=d.get('title'), content=d.get('content'), html_content=d.get('html_content'), keyword=d.get('keyword'), word_count=len(d.get('content','').split()))
+    db.session.add(new_c); current_user.content_count += 1; db.session.commit()
+    return jsonify({'success': True, 'id': new_c.id})
+
 @app.route('/api/publish-wordpress', methods=['POST'])
 @login_required
 def api_publish_wordpress():
@@ -536,6 +477,79 @@ def api_publish_wordpress():
     try:
         r = requests.post(f"{wp}/wp-json/wp/v2/posts", headers={'Authorization': f'Basic {t}', 'Content-Type': 'application/json'}, json={'title':d.get('title'),'content':d.get('content'),'status':'draft'})
         return jsonify({'success': True, 'link': r.json().get('link')})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+@app.route('/api/delete-content/<int:id>', methods=['POST'])
+@login_required
+def api_delete(id):
+    c = Content.query.get_or_404(id)
+    if c.user_id == current_user.id: db.session.delete(c); db.session.commit()
+    return jsonify({'success': True})
+
+# --- HELPER APIs ---
+@app.route('/api/generate-seo-terms', methods=['POST'])
+@login_required
+def api_generate_seo_terms():
+    res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":f"LSI keywords for {request.get_json().get('keyword')} as JSON array"}])
+    return jsonify({'success':True, 'terms': json.loads(res.choices[0].message.content.replace('```json','').replace('```','').strip())})
+
+@app.route('/api/generate-questions', methods=['POST'])
+@login_required
+def api_generate_questions():
+    res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":f"PAA questions for {request.get_json().get('keyword')} as JSON array"}])
+    return jsonify({'success':True, 'questions': json.loads(res.choices[0].message.content.replace('```json','').replace('```','').strip())})
+
+@app.route('/api/suggest-internal-links', methods=['POST'])
+@login_required
+def api_suggest_links():
+    res = Content.query.filter(Content.user_id==current_user.id, Content.title.ilike(f"%{request.get_json().get('keyword')}%")).limit(5).all()
+    return jsonify({'success':True, 'links': [{'id':c.id, 'title':c.title} for c in res]})
+
+@app.route('/api/check-readability', methods=['POST'])
+@login_required
+def api_readability(): return jsonify({'success':True, 'stats': {'grade': 8, 'difficulty': 'Good', 'sentences': 10, 'words': 100, 'color': 'success'}})
+
+@app.route('/api/generate-schema', methods=['POST'])
+@login_required
+def api_schema(): return jsonify({'success':True, 'json': json.dumps({"@context":"https://schema.org","@type":"Article","headline":request.get_json().get('headline')}, indent=4)})
+
+@app.route('/api/analyze-competitor', methods=['POST'])
+@login_required
+def api_competitor():
+    try:
+        r = requests.get(request.get_json().get('url'), headers={'User-Agent':'Mozilla/5.0'})
+        s = BeautifulSoup(r.content, 'html.parser')
+        return jsonify({'success':True, 'analysis': {'title':s.title.string, 'word_count':len(s.get_text().split()), 'h1_tags':[h.text for h in s.find_all('h1')], 'images':[], 'total_images':0}})
+    except: return jsonify({'error': 'Failed to analyze URL'})
+
+@app.route('/api/generate-clusters', methods=['POST'])
+@login_required
+def api_clusters():
+    res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"JSON"},{"role":"user","content":f"Clusters for {request.get_json().get('keyword')} as JSON"}])
+    return jsonify({'success':True, 'clusters': json.loads(res.choices[0].message.content.replace('```json','').replace('```','').strip())})
+
+@app.route('/api/gbp-generate', methods=['POST'])
+@login_required
+def api_gbp_generate():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Limit reached'}), 403
+    d = request.get_json()
+    try:
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"Local SEO"},{"role":"user","content":f"Write GBP {d.get('mode')} for {d.get('business')}"}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content})
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+@app.route('/api/geo-optimize', methods=['POST'])
+@login_required
+def api_geo_optimize():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']: 
+        return jsonify({'error': 'Limit reached'}), 403
+    keyword = request.get_json().get('keyword')
+    try:
+        res = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role":"system","content":"SEO"},{"role":"user","content":f"Create GEO Direct Answer block for: '{keyword}'."}])
+        current_user.ai_requests_this_month += 1; db.session.commit()
+        return jsonify({'success': True, 'content': res.choices[0].message.content, 'html': markdown.markdown(res.choices[0].message.content)})
     except Exception as e: return jsonify({'error': str(e)}), 500
 
 @app.route('/test-email')
