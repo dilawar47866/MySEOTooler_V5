@@ -13,6 +13,7 @@ import markdown
 from io import BytesIO, StringIO
 from sqlalchemy import text
 from youtube_transcript_api import YouTubeTranscriptApi
+from collections import Counter # Added for keyword density
 
 # ==========================================
 # 1. CONFIGURATION
@@ -41,7 +42,7 @@ login_manager.login_view = 'login'
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- GLOBAL TOOL LIST (Added backlink-outreach) ---
+# --- GLOBAL TOOL LIST (Added social-preview and keyword-density) ---
 TOOL_LIST = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
     'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
@@ -49,7 +50,8 @@ TOOL_LIST = [
     'headline-analyzer', 'internal-linking', 'schema-generator', 'readability-checker',
     'faq-schema', 'youtube-script', 'meta-tags', 'plagiarism-checker', 'serp-analysis',
     'youtube-to-blog', 'image-generator', 'site-auditor', 'content-humanizer', 
-    'article-wizard', 'bulk-writer', 'gbp-tool', 'geo-optimizer', 'backlink-outreach'
+    'article-wizard', 'bulk-writer', 'gbp-tool', 'geo-optimizer', 'backlink-outreach',
+    'social-preview', 'keyword-density'
 ]
 
 # --- PIPED MIRRORS ---
@@ -565,6 +567,97 @@ def fix_db():
         with db.engine.connect() as conn: conn.execute(text("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS tier VARCHAR(20) DEFAULT 'free';")); conn.commit()
         return "DB Fixed"
     except: return "Err"
+
+# ==========================================
+# NEW FEATURES APIs
+# ==========================================
+
+# 1. SOCIAL MEDIA PREVIEW API
+@app.route('/api/analyze-social', methods=['POST'])
+@login_required
+def api_analyze_social():
+    try:
+        data = request.get_json()
+        target_url = data.get('url')
+        if not target_url.startswith('http'): target_url = 'https://' + target_url
+        
+        headers = {'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'}
+        r = requests.get(target_url, headers=headers, timeout=10)
+        soup = BeautifulSoup(r.content, 'html.parser')
+        
+        def get_meta(prop):
+            t = soup.find('meta', property=prop) or soup.find('meta', attrs={'name': prop})
+            return t['content'] if t else ""
+
+        # Resolve relative image URLs
+        og_image = get_meta('og:image')
+        if og_image and not og_image.startswith('http'):
+            og_image = urljoin(target_url, og_image)
+
+        result = {
+            'og_title': get_meta('og:title') or soup.title.string,
+            'og_desc': get_meta('og:description') or get_meta('description'),
+            'og_image': og_image,
+            'og_url': get_meta('og:url') or target_url,
+            'twitter_card': get_meta('twitter:card'),
+            'twitter_title': get_meta('twitter:title'),
+        }
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 2. KEYWORD DENSITY API
+@app.route('/api/analyze-density', methods=['POST'])
+@login_required
+def api_analyze_density():
+    try:
+        import string
+        
+        data = request.get_json()
+        text_content = ""
+        
+        # If URL provided, scrape it. If Text provided, use it.
+        if data.get('type') == 'url':
+            url = data.get('content')
+            if not url.startswith('http'): url = 'https://' + url
+            r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+            soup = BeautifulSoup(r.content, 'html.parser')
+            # Remove scripts and styles
+            for script in soup(["script", "style"]): script.extract()
+            text_content = soup.get_text()
+        else:
+            text_content = data.get('content')
+
+        # Processing
+        words = text_content.lower().translate(str.maketrans('', '', string.punctuation)).split()
+        
+        # Basic Stop Words List (Hardcoded to avoid NLTK dependency on Railway)
+        stop_words = {
+            "the", "is", "at", "of", "on", "and", "a", "an", "to", "in", "for", "with", "as", 
+            "by", "but", "or", "from", "up", "down", "my", "this", "that", "it", "be", "are", 
+            "was", "were", "have", "has", "had", "not", "i", "you", "he", "she", "we", "they"
+        }
+        
+        filtered_words = [w for w in words if w not in stop_words and len(w) > 2]
+        total_words = len(filtered_words)
+        
+        if total_words == 0: return jsonify({'error': 'No content found'}), 400
+        
+        # Get Top 15 Keywords
+        counter = Counter(filtered_words)
+        most_common = counter.most_common(15)
+        
+        results = []
+        for word, count in most_common:
+            results.append({
+                'word': word,
+                'count': count,
+                'density': round((count / total_words) * 100, 2)
+            })
+            
+        return jsonify({'success': True, 'results': results, 'total_words': len(words)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     with app.app_context(): db.create_all()
