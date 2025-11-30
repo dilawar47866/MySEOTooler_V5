@@ -1018,7 +1018,7 @@ def api_spy_competitor():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# 7. AI KEYWORD RESEARCH & CLUSTER API (NEW)
+# 7. AI KEYWORD RESEARCH & CLUSTER API
 @app.route('/api/research-keywords', methods=['POST'])
 @login_required
 def api_research_keywords():
@@ -1058,6 +1058,46 @@ def api_research_keywords():
         return jsonify({
             'success': True, 
             'keywords': json.loads(raw)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 8. SMART CONTENT OUTLINE API (NEW)
+@app.route('/api/generate-outline', methods=['POST'])
+@login_required
+def api_generate_outline():
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Limit reached'}), 403
+    
+    data = request.get_json()
+    topic = data.get('topic')
+    
+    prompt = f"""
+    Create a comprehensive, SEO-optimized blog post outline for the topic: "{topic}".
+    
+    Structure:
+    1. Catchy H1 Title.
+    2. Introduction (Hook).
+    3. 4-5 H2 Sections (Logical flow).
+    4. Under each H2, list 3 bullet points of what to cover.
+    5. Conclusion & Key Takeaways.
+    
+    Format using Markdown.
+    """
+    
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=[{"role":"system","content":"SEO Content Strategist."},{"role":"user","content":prompt}]
+        )
+        current_user.ai_requests_this_month += 1
+        db.session.commit()
+        
+        content = res.choices[0].message.content
+        return jsonify({
+            'success': True, 
+            'content': content,
+            'html': markdown.markdown(content)
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
