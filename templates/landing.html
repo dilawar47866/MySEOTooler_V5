@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My SEO King Tool - #1 Free AI SEO Tool & Content Generator</title>
+    <meta name="description" content="Boost your rankings with MySEO King. The all-in-one AI platform for keyword research, competitor analysis, and SEO-optimized content generation.">
     
     <!-- Styles -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -13,6 +14,7 @@
     <style>
         body { font-family: 'Outfit', sans-serif; background: #0f172a; color: white; overflow-x: hidden; }
         
+        /* HERO SECTION */
         .hero-section {
             background: radial-gradient(circle at 50% 0%, #6366f1 0%, #0f172a 70%);
             padding: 140px 0 100px;
@@ -67,26 +69,40 @@
         .score-warning { border-color: #f59e0b; color: #f59e0b; }
         .score-success { border-color: #22c55e; color: #22c55e; }
 
+        /* LOCK SECTION */
+        .blur-container {
+            position: relative;
+            background: #f8fafc;
+            padding: 2rem;
+            border-top: 1px solid #e2e8f0;
+        }
+        .blur-trap { filter: blur(6px); user-select: none; pointer-events: none; opacity: 0.6; }
+        .lock-overlay {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 10; width: 90%; max-width: 400px;
+        }
+
         /* FEATURE BOXES */
         .feature-box {
-            background: #1e293b;
-            padding: 2rem;
-            border-radius: 16px;
-            border: 1px solid #334155;
-            transition: 0.3s;
-            height: 100%;
+            background: #1e293b; padding: 2rem; border-radius: 16px; border: 1px solid #334155; transition: 0.3s; height: 100%;
         }
         .feature-box:hover { border-color: #6366f1; transform: translateY(-5px); }
         .icon-wrap { font-size: 2rem; margin-bottom: 1rem; color: #818cf8; }
+
+        /* TOOL LIST */
+        .tool-item {
+            display: flex; align-items: center; padding: 15px;
+            background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;
+            color: #334155; transition: 0.2s;
+        }
+        .tool-item:hover { border-color: #6366f1; background: white; box-shadow: 0 5px 15px rgba(0,0,0,0.05); transform: translateY(-2px); }
+        .tool-item i { font-size: 1.2rem; margin-right: 12px; width: 24px; text-align: center; }
 
         /* PRICING */
         .pricing-card { background: white; border-radius: 20px; transition: 0.3s; border: 1px solid #e2e8f0; color: #1e293b; }
         .pricing-card:hover { transform: translateY(-5px); border-color: #6366f1; }
         .pricing-popular { border: 2px solid #4f46e5; position: relative; }
         .badge-popular { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: #4f46e5; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-        
-        .blur-trap { filter: blur(5px); user-select: none; pointer-events: none; opacity: 0.7; }
-        .lock-overlay { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%); z-index: 10; width: 90%; }
     </style>
 </head>
 <body>
@@ -115,7 +131,7 @@
                 <span class="text-transparent bg-clip-text bg-gradient-to-r" style="background-image: linear-gradient(90deg, #818cf8, #ec4899);">Without an Agency</span>
             </h1>
             <p class="lead text-white-50 mb-5 px-lg-5 mx-auto" style="max-width: 800px;">
-                The only All-in-One SEO platform you need. Audit sites, spy on competitors, and generate ranking content in seconds.
+                Automate your SEO. Audit sites, spy on competitors, and generate ranking content in seconds.
             </p>
 
             <!-- SCANNER -->
@@ -141,16 +157,15 @@
                 <h4 class="fw-light">Analyzing 200+ Ranking Factors...</h4>
             </div>
 
-            <!-- AUDIT RESULT -->
+            <!-- AUDIT RESULT (HOOK) -->
             <div id="resultCard" class="audit-card shadow-lg d-none animate__animated animate__fadeInUp">
+                <!-- Header -->
                 <div class="p-4 border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <!-- The Score Circle -->
                             <div id="finalScoreCircle" class="score-circle me-3">0</div>
                             <div class="text-start">
                                 <h6 class="text-muted text-uppercase mb-0 small fw-bold">Health Score</h6>
-                                <!-- The URL Display -->
                                 <div id="finalUrlDisplay" class="text-primary fw-bold fs-5">scanning...</div>
                             </div>
                         </div>
@@ -159,25 +174,30 @@
                         </div>
                     </div>
                 </div>
-                <div class="p-4 position-relative bg-light" style="min-height: 300px;">
-                    
-                    <!-- ISSUES CONTAINER -->
-                    <div id="issuesContainer"></div>
 
-                    <!-- BLURRED CONTENT -->
-                    <div class="blur-trap mt-2">
-                        <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
-                            <span class="fw-bold text-dark">Slow Mobile Speed (LCP)</span><span class="badge bg-warning text-dark">Warning</span>
-                        </div>
+                <!-- VISIBLE CRITICAL ERRORS (THE HOOK) -->
+                <div class="p-4 bg-white">
+                    <h6 class="text-dark fw-bold mb-3 border-bottom pb-2">🛑 Top Critical Issues Detected:</h6>
+                    <div id="issuesContainer">
+                        <!-- Issues Injected Here -->
+                    </div>
+                </div>
+
+                <!-- LOCKED BLURRED SECTION (THE BAIT) -->
+                <div class="blur-container">
+                    <div class="blur-trap">
                         <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
                             <span class="fw-bold text-dark">Duplicate H1 Tags</span><span class="badge bg-danger">Critical</span>
                         </div>
-                        <div class="d-flex justify-content-between">
-                            <span class="fw-bold text-dark">Image Alt Text Missing</span><span class="badge bg-warning text-dark">Warning</span>
+                        <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
+                            <span class="fw-bold text-dark">Mobile Viewport Error</span><span class="badge bg-warning text-dark">Warning</span>
                         </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold text-dark">Image Alt Text Missing (12)</span><span class="badge bg-warning text-dark">Warning</span>
+                        </div>
+                        <p class="text-muted mt-3 small">...and 8 more technical issues found.</p>
                     </div>
 
-                    <!-- LOCK OVERLAY -->
                     <div class="lock-overlay text-center">
                         <div class="bg-dark p-4 rounded-4 shadow-lg border border-white border-opacity-10">
                             <i class="fas fa-lock fa-3x text-warning mb-3"></i>
@@ -191,7 +211,7 @@
         </div>
     </div>
 
-    <!-- FEATURES (UPDATED) -->
+    <!-- MAIN FEATURES -->
     <div class="py-5 bg-dark">
         <div class="container py-5">
             <div class="text-center mb-5">
@@ -209,8 +229,50 @@
         </div>
     </div>
 
+    <!-- COMPLETE TOOL LIST -->
+    <div class="py-5 bg-white">
+        <div class="container py-5">
+            <div class="text-center mb-5">
+                <h6 class="text-primary fw-bold text-uppercase">Complete Toolset</h6>
+                <h2 class="fw-bold display-5 text-dark">25+ Powerful SEO Tools</h2>
+                <p class="text-muted">Everything you need to manage your entire SEO workflow.</p>
+            </div>
+            <div class="row g-3">
+                <!-- Content Tools -->
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-layer-group text-primary"></i> <span>Bulk Article Writer</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-magic text-primary"></i> <span>One-Click Wizard</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-robot text-primary"></i> <span>GEO Optimizer</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-file-contract text-primary"></i> <span>Content Briefs</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fab fa-youtube text-danger"></i> <span>YouTube to Blog</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-video text-danger"></i> <span>Video Script Gen</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fab fa-twitter text-info"></i> <span>Social Posts</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-envelope text-warning"></i> <span>Email Subject Gen</span></div></div>
+
+                <!-- Research & Analysis -->
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-search text-success"></i> <span>Keyword Research</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-chart-pie text-success"></i> <span>Competitor Spy</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-project-diagram text-success"></i> <span>LSI Keywords</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-list-ol text-success"></i> <span>SERP Analysis</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-stethoscope text-info"></i> <span>Site Health Audit</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-user-secret text-info"></i> <span>Plagiarism Checker</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-user-check text-info"></i> <span>AI Humanizer</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-book-reader text-info"></i> <span>Readability Check</span></div></div>
+
+                <!-- Technical & Images -->
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-sitemap text-dark"></i> <span>Sitemap Gen</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-robot text-dark"></i> <span>Robots.txt Gen</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-code text-dark"></i> <span>Schema Markup</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-tags text-dark"></i> <span>Meta Tags Gen</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-paint-brush text-purple"></i> <span>AI Image Gen</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-closed-captioning text-purple"></i> <span>Alt Text Gen</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-images text-purple"></i> <span>Image SEO</span></div></div>
+                <div class="col-lg-3 col-md-4 col-6"><div class="tool-item"><i class="fas fa-map-marker-alt text-success"></i> <span>Google Business</span></div></div>
+            </div>
+        </div>
+    </div>
+
     <!-- PRICING -->
-    <div class="py-5 bg-white text-dark">
+    <div class="py-5 bg-light text-dark">
         <div class="container py-5">
             <div class="text-center mb-5">
                 <h6 class="text-primary fw-bold text-uppercase">Pricing</h6>
@@ -274,8 +336,6 @@
         async function runPublicAudit() {
             const urlInput = document.getElementById('scanUrl').value;
             if(!urlInput) return alert("Enter URL");
-            
-            // Clean URL for display (e.g. https://google.com -> google.com)
             let displayUrl = urlInput.replace(/^https?:\/\//, '').replace(/\/$/, ''); 
 
             if(scans <= 0) { window.location.href = "/signup"; return; }
@@ -305,21 +365,19 @@
             document.getElementById('resultCard').classList.remove('d-none');
             document.getElementById('scanBtn').disabled = false;
 
-            // UPDATING TEXT VALUES
+            // Update IDs correctly
             document.getElementById('finalScoreCircle').innerText = score;
             document.getElementById('finalUrlDisplay').innerText = url; 
-            document.getElementById('scanId').innerText = Math.floor(Math.random() * 10000);
-
-            // UPDATING SCORE COLOR
+            
             const circle = document.getElementById('finalScoreCircle');
             circle.className = `score-circle me-3 ${score > 80 ? 'score-success' : score > 50 ? 'score-warning' : 'score-danger'}`;
 
-            // INJECTING ISSUES
             const container = document.getElementById('issuesContainer');
             container.innerHTML = '';
             
             let list = (issues && issues.length > 0) ? issues : ["Page Load Speed", "Broken Links"];
             
+            // SHOW REAL ERRORS CLEARLY
             container.innerHTML += `<div class="audit-item bg-danger bg-opacity-10 border border-danger border-opacity-25"><span class="fw-bold text-dark"><i class="fas fa-times-circle text-danger me-2"></i> ${list[0]}</span><span class="badge bg-danger">Critical</span></div>`;
             
             if (list.length > 1) {
