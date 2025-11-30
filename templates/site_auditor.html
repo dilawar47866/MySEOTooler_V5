@@ -1,166 +1,88 @@
 {% extends "base.html" %}
-
-{% block title %}Pro Site Auditor - MySEO King{% endblock %}
+{% block title %}Site Auditor - MySEO King{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-xl-10">
-            
-            <!-- Header -->
-            <div class="text-center mb-5">
-                <h2 class="fw-bold display-6">SEO Health Auditor</h2>
-                <p class="text-muted">Deep scan your URL for technical issues, speed, and ranking factors.</p>
-            </div>
-
-            <!-- Input Section -->
-            <div class="card shadow-sm mb-5 border-0">
-                <div class="card-body p-4">
+        <div class="col-md-10">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-5 text-center">
+                    <h1 class="h3 mb-3 fw-bold"><i class="fas fa-stethoscope text-primary"></i> Professional Site Auditor</h1>
+                    <p class="text-muted mb-4">Analyze any URL for technical SEO errors, speed issues, and metadata.</p>
+                    
                     <div class="input-group input-group-lg">
-                        <span class="input-group-text bg-light"><i class="fas fa-globe"></i></span>
-                        <input type="text" id="siteUrl" class="form-control" placeholder="example.com">
-                        <button class="btn btn-primary px-5 fw-bold" id="auditBtn" onclick="runAudit()">
-                            Start Audit
+                        <input type="text" id="auditUrl" class="form-control" placeholder="Enter Website URL (e.g., https://example.com)">
+                        <button class="btn btn-primary px-4" onclick="runAudit()">
+                            <i class="fas fa-search"></i> Analyze Now
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- RESULT DASHBOARD (Hidden by default) -->
-            <div id="resultArea" class="d-none">
-                
-                <!-- 1. TOP METRICS -->
-                <div class="row g-4 mb-4">
-                    <!-- Score Circle -->
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100 text-center">
-                            <div class="card-body d-flex flex-column justify-content-center align-items-center">
-                                <h6 class="text-muted text-uppercase fw-bold mb-3">Overall Health</h6>
-                                <div class="position-relative" style="width: 120px; height: 120px;">
-                                    <svg viewBox="0 0 36 36" class="circular-chart">
-                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                        <path class="circle" id="scoreCircle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                        <text x="18" y="20.35" class="percentage" id="scoreText">0</text>
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <!-- Loading Spinner -->
+            <div id="loader" class="text-center py-5" style="display: none;">
+                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+                <p class="mt-3 text-muted">Crawling website... this may take 10-15 seconds.</p>
+            </div>
 
-                    <!-- Tech Specs -->
-                    <div class="col-md-8">
-                        <div class="row g-3 h-100">
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm h-100 bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-tachometer-alt fa-2x text-primary mb-2"></i>
-                                        <h3 class="fw-bold mb-0" id="resLoad">0s</h3>
-                                        <small class="text-muted">Load Time</small>
-                                    </div>
-                                </div>
+            <!-- Results Area -->
+            <div id="results" style="display: none;">
+                <!-- Score Card -->
+                <div class="card shadow-sm mb-4 border-0 overflow-hidden">
+                    <div class="card-body p-0 d-flex">
+                        <div class="bg-primary p-4 text-white d-flex flex-column align-items-center justify-content-center" style="width: 150px;">
+                            <span class="display-4 fw-bold" id="scoreVal">0</span>
+                            <small>SEO SCORE</small>
+                        </div>
+                        <div class="p-4 flex-grow-1 d-flex align-items-center justify-content-between">
+                            <div>
+                                <h4 id="metaTitle" class="mb-1 fw-bold">Page Title</h4>
+                                <a href="#" id="metaUrl" target="_blank" class="text-muted text-decoration-none">https://example.com</a>
                             </div>
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm h-100 bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-file-alt fa-2x text-success mb-2"></i>
-                                        <h3 class="fw-bold mb-0" id="resWords">0</h3>
-                                        <small class="text-muted">Word Count</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm h-100 bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-link fa-2x text-warning mb-2"></i>
-                                        <h3 class="fw-bold mb-0" id="resLinks">0</h3>
-                                        <small class="text-muted">Total Links</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm h-100 bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-check-circle fa-2x text-info mb-2"></i>
-                                        <h3 class="fw-bold mb-0" id="resPassed">0</h3>
-                                        <small class="text-muted">Tests Passed</small>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- PDF BUTTON -->
+                            <button class="btn btn-outline-danger" onclick="downloadPDF()">
+                                <i class="fas fa-file-pdf"></i> Download Report
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- 2. GOOGLE PREVIEW -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white fw-bold py-3">
-                        <i class="fab fa-google text-primary me-2"></i> Google Search Preview
-                    </div>
-                    <div class="card-body">
-                        <div class="p-3 rounded" style="max-width: 600px;">
-                            <div class="d-flex align-items-center mb-1">
-                                <div class="bg-secondary rounded-circle me-2" style="width: 24px; height: 24px;"></div>
-                                <span class="small text-dark" id="prevUrl">example.com</span>
-                            </div>
-                            <h4 class="text-primary fs-5 mb-1 text-decoration-underline" style="color: #1a0dab !important; cursor: pointer;" id="prevTitle">Page Title</h4>
-                            <p class="small text-secondary mb-0" style="color: #4d5156 !important; font-size: 14px;" id="prevDesc">
-                                This is how your page description will appear in Google search results.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. DETAILED REPORT -->
-                <div class="row g-4">
-                    <!-- Issues -->
+                <div class="row">
                     <div class="col-md-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold text-danger py-3">
-                                <i class="fas fa-exclamation-triangle me-2"></i> Issues Found
+                        <div class="card shadow-sm h-100 border-danger border-top-0 border-end-0 border-bottom-0 border-3">
+                            <div class="card-header bg-white fw-bold text-danger">
+                                <i class="fas fa-exclamation-circle"></i> Critical Issues
                             </div>
-                            <ul class="list-group list-group-flush" id="issuesList">
-                                <!-- Issues injected here -->
-                            </ul>
+                            <div class="card-body">
+                                <ul id="issuesList" class="list-unstyled mb-0"></ul>
+                            </div>
                         </div>
                     </div>
-
-                    <!-- Passed Tests -->
                     <div class="col-md-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold text-success py-3">
-                                <i class="fas fa-check-double me-2"></i> Passed Tests
+                        <div class="card shadow-sm h-100 border-success border-top-0 border-end-0 border-bottom-0 border-3">
+                            <div class="card-header bg-white fw-bold text-success">
+                                <i class="fas fa-check-circle"></i> Passed Checks
                             </div>
-                            <ul class="list-group list-group-flush" id="passedList">
-                                <!-- Passed items injected here -->
-                            </ul>
+                            <div class="card-body">
+                                <ul id="passedList" class="list-unstyled mb-0"></ul>
+                            </div>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
 </div>
 
-<style>
-    /* Circular Progress Bar */
-    .circular-chart { display: block; margin: 0 auto; max-width: 80%; max-height: 250px; }
-    .circle-bg { fill: none; stroke: #eee; stroke-width: 3.8; }
-    .circle { fill: none; stroke-width: 2.8; stroke-linecap: round; animation: progress 1s ease-out forwards; }
-    .percentage { fill: #666; font-family: sans-serif; font-weight: bold; font-size: 0.5em; text-anchor: middle; }
-    @keyframes progress { 0% { stroke-dasharray: 0 100; } }
-    /* Dynamic colors */
-    .stroke-green { stroke: #198754; }
-    .stroke-orange { stroke: #fd7e14; }
-    .stroke-red { stroke: #dc3545; }
-</style>
-
 <script>
-async function runAudit() {
-    const url = document.getElementById('siteUrl').value;
-    if(!url) return alert("Enter URL");
+let currentAuditData = null; // Store data for PDF
 
-    const btn = document.getElementById('auditBtn');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+async function runAudit() {
+    const url = document.getElementById('auditUrl').value;
+    if(!url) return alert("Please enter a URL");
+
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
 
     try {
         const res = await fetch('/api/audit-site', {
@@ -168,65 +90,79 @@ async function runAudit() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({url: url})
         });
+        
         const data = await res.json();
+        if(data.error) throw new Error(data.error);
 
-        if(data.success) {
-            // Update Metrics
-            document.getElementById('resLoad').innerText = data.meta.load_time;
-            document.getElementById('resWords').innerText = data.meta.word_count;
-            document.getElementById('resLinks').innerText = data.meta.link_count;
-            document.getElementById('resPassed').innerText = data.passed.length;
+        currentAuditData = data; // Save for PDF
 
-            // Update Score Circle
-            const score = data.score;
-            const circle = document.getElementById('scoreCircle');
-            const text = document.getElementById('scoreText');
-            
-            circle.setAttribute('stroke-dasharray', `${score}, 100`);
-            text.innerHTML = score;
-            
-            // Circle Color
-            circle.classList.remove('stroke-green', 'stroke-orange', 'stroke-red');
-            if(score >= 80) circle.classList.add('stroke-green');
-            else if(score >= 50) circle.classList.add('stroke-orange');
-            else circle.classList.add('stroke-red');
+        // UI Updates
+        document.getElementById('scoreVal').innerText = data.score;
+        document.getElementById('metaTitle').innerText = data.meta.title;
+        document.getElementById('metaUrl').innerText = data.meta.url;
+        document.getElementById('metaUrl').href = data.meta.url;
 
-            // Update Google Preview
-            document.getElementById('prevUrl').innerText = data.meta.url;
-            document.getElementById('prevTitle').innerText = data.meta.title;
-            document.getElementById('prevDesc').innerText = data.meta.description;
-
-            // Update Lists
-            const issuesUl = document.getElementById('issuesList');
-            issuesUl.innerHTML = '';
-            if(data.issues.length === 0) {
-                issuesUl.innerHTML = '<li class="list-group-item text-success">Perfect! No issues found.</li>';
-            } else {
-                data.issues.forEach(i => {
-                    const badge = i.type === 'critical' ? '<span class="badge bg-danger">Critical</span>' : '<span class="badge bg-warning text-dark">Warning</span>';
-                    issuesUl.innerHTML += `
-                        <li class="list-group-item py-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold text-dark">${i.msg}</span>
-                                ${badge}
-                            </div>
-                            <div class="small text-muted"><i class="fas fa-tools me-1"></i> <strong>Fix:</strong> ${i.fix}</div>
-                        </li>`;
-                });
-            }
-
-            const passedUl = document.getElementById('passedList');
-            passedUl.innerHTML = '';
-            data.passed.forEach(p => {
-                passedUl.innerHTML += `<li class="list-group-item py-2 text-success"><i class="fas fa-check me-2"></i> ${p}</li>`;
-            });
-
-            document.getElementById('resultArea').classList.remove('d-none');
+        const issuesList = document.getElementById('issuesList');
+        issuesList.innerHTML = '';
+        if(data.issues.length === 0) {
+            issuesList.innerHTML = '<li class="text-muted">No critical issues found! Great job.</li>';
         } else {
-            alert(data.error);
+            data.issues.forEach(i => {
+                issuesList.innerHTML += `<li class="mb-2"><i class="fas fa-times text-danger me-2"></i> ${i.msg}</li>`;
+            });
         }
-    } catch(e) { console.error(e); alert("Audit failed. Check console."); }
-    finally { btn.disabled = false; btn.innerHTML = "Start Audit"; }
+
+        const passedList = document.getElementById('passedList');
+        passedList.innerHTML = '';
+        data.passed.forEach(p => {
+            passedList.innerHTML += `<li class="mb-2"><i class="fas fa-check text-success me-2"></i> ${p}</li>`;
+        });
+
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('results').style.display = 'block';
+
+    } catch(e) {
+        alert(e.message);
+        document.getElementById('loader').style.display = 'none';
+    }
+}
+
+async function downloadPDF() {
+    if(!currentAuditData) return;
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    
+    try {
+        const res = await fetch('/api/generate-report', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                url: currentAuditData.meta.url,
+                score: currentAuditData.score,
+                issues: currentAuditData.issues,
+                passed: currentAuditData.passed
+            })
+        });
+        
+        if(res.status !== 200) throw new Error("Failed to generate PDF");
+        
+        // Trigger Download
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "SEO_Audit_Report.pdf";
+        document.body.appendChild(a); 
+        a.click();
+        a.remove();
+        
+    } catch(e) {
+        alert("Error generating PDF");
+    } finally {
+        btn.innerHTML = originalText;
+    }
 }
 </script>
 {% endblock %}
