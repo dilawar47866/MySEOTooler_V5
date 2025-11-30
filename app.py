@@ -540,7 +540,6 @@ def api_readability():
         total_syllables = sum(count_syllables(w) for w in words)
         
         # 3. Flesch Reading Ease Formula
-        # 206.835 - 1.015(total_words/total_sentences) - 84.6(total_syllables/total_words)
         score = 206.835 - (1.015 * avg_sentence_len) - (84.6 * (total_syllables / total_words))
         score = round(score, 1)
 
@@ -577,6 +576,47 @@ def api_readability():
                 'color': color
             }
         })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --- NEW: IMPROVE READABILITY API ---
+@app.route('/api/improve-readability', methods=['POST'])
+@login_required
+def api_improve_readability():
+    # 1. Check Limits
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'AI Limit reached for this month. Please upgrade.'}), 403
+
+    try:
+        text_content = request.get_json().get('content', '')
+        if not text_content: return jsonify({'error': 'No text provided'}), 400
+
+        # 2. Send to AI
+        prompt = f"""
+        Rewrite the following text to improve its Flesch-Kincaid readability score.
+        Target: 7th-8th Grade Level (Score 60-70).
+        
+        Rules:
+        - Use shorter sentences.
+        - Use simpler vocabulary.
+        - Break up long paragraphs.
+        - Keep the original meaning.
+        
+        Text:
+        {text_content[:3000]}
+        """
+        
+        res = client.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=[{"role":"system","content":"You are a professional editor."},{"role":"user","content":prompt}]
+        )
+        
+        # 3. Update Usage
+        current_user.ai_requests_this_month += 1
+        db.session.commit()
+
+        return jsonify({'success': True, 'content': res.choices[0].message.content})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
