@@ -8,10 +8,10 @@
             <div class="card shadow-sm">
                 <div class="card-body p-4">
                     <h2 class="mb-4"><i class="fas fa-book-reader text-primary"></i> Readability Checker</h2>
-                    <p class="text-muted">Paste your content below to check its Flesch-Kincaid reading score, grade level, and clarity.</p>
+                    <p class="text-muted">Paste your content below to check its Flesch-Kincaid reading score.</p>
                     
                     <div class="form-group mb-3">
-                        <textarea id="inputText" class="form-control p-3" rows="10" placeholder="Paste your article or blog post here..."></textarea>
+                        <textarea id="inputText" class="form-control p-3" rows="8" placeholder="Paste your article or blog post here..."></textarea>
                     </div>
                     
                     <div class="d-flex justify-content-between align-items-center">
@@ -55,13 +55,35 @@
                                     <small class="text-muted text-uppercase">Read Time</small>
                                 </div>
                             </div>
-                            <hr class="my-4">
-                            <div class="alert alert-light border mb-0">
-                                <i class="fas fa-info-circle text-muted me-2"></i>
-                                <span class="text-muted small">A score between <strong>60-70</strong> is considered standard for web content.</span>
+                            
+                            <!-- IMPROVE BUTTON AREA -->
+                            <div id="improveSection" class="mt-4 p-3 bg-light rounded border" style="display:none;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>Score too low?</strong>
+                                        <p class="mb-0 small text-muted">Use AI to rewrite this for a standard audience (Grade 8).</p>
+                                    </div>
+                                    <button class="btn btn-success" onclick="improveText()">
+                                        <i class="fas fa-magic"></i> Improve with AI
+                                    </button>
+                                </div>
                             </div>
+
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- AI RESULT AREA -->
+            <div id="aiResultArea" class="card shadow-sm mt-3 border-success" style="display:none;">
+                <div class="card-header bg-success text-white fw-bold">
+                    <i class="fas fa-robot"></i> AI Improved Version
+                </div>
+                <div class="card-body">
+                    <textarea id="aiOutput" class="form-control mb-3" rows="8"></textarea>
+                    <button class="btn btn-outline-dark btn-sm" onclick="useAiText()">
+                        <i class="fas fa-arrow-up"></i> Replace Original & Re-Check
+                    </button>
                 </div>
             </div>
 
@@ -78,6 +100,9 @@ async function checkReadability() {
     const originalText = btn.innerHTML;
     btn.innerHTML = 'Calculating...';
     btn.disabled = true;
+
+    // Hide previous AI results
+    document.getElementById('aiResultArea').style.display = 'none';
 
     try {
         const res = await fetch('/api/check-readability', {
@@ -97,9 +122,16 @@ async function checkReadability() {
         document.getElementById('rWords').innerText = s.words;
         document.getElementById('rTime').innerText = s.reading_time;
         
-        // Color Coding
         const card = document.getElementById('scoreCard');
         card.className = `card h-100 border-0 shadow-sm text-white text-center bg-${s.color}`;
+
+        // Show "Improve" button if score is difficult (< 60)
+        const improveSec = document.getElementById('improveSection');
+        if(s.score < 60) {
+            improveSec.style.display = 'block';
+        } else {
+            improveSec.style.display = 'none';
+        }
 
         document.getElementById('resultsArea').style.display = 'flex';
 
@@ -109,6 +141,45 @@ async function checkReadability() {
         btn.innerHTML = originalText;
         btn.disabled = false;
     }
+}
+
+async function improveText() {
+    const text = document.getElementById('inputText').value;
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rewriting...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/improve-readability', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content: text})
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+
+        document.getElementById('aiOutput').value = data.content;
+        document.getElementById('aiResultArea').style.display = 'block';
+        
+        // Scroll to result
+        document.getElementById('aiResultArea').scrollIntoView({behavior: 'smooth'});
+
+    } catch(e) {
+        alert(e.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+function useAiText() {
+    const newText = document.getElementById('aiOutput').value;
+    document.getElementById('inputText').value = newText;
+    document.getElementById('aiResultArea').style.display = 'none';
+    // Automatically re-check
+    checkReadability(); 
 }
 </script>
 {% endblock %}
