@@ -683,6 +683,15 @@ def api_schema():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/analyze-competitor', methods=['POST'])
+@login_required
+def api_competitor():
+    try:
+        r = requests.get(request.get_json().get('url'), headers={'User-Agent':'Mozilla/5.0'})
+        s = BeautifulSoup(r.content, 'html.parser')
+        return jsonify({'success':True, 'analysis': {'title':s.title.string, 'word_count':len(s.get_text().split()), 'h1_tags':[h.text for h in s.find_all('h1')], 'images':[], 'total_images':0}})
+    except: return jsonify({'error': 'Failed to analyze URL'})
+
 @app.route('/api/generate-clusters', methods=['POST'])
 @login_required
 def api_clusters():
@@ -904,7 +913,7 @@ def api_generate_video_script():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# 5. SOCIAL MEDIA POST GENERATOR API (NEW)
+# 5. SOCIAL MEDIA POST GENERATOR API
 @app.route('/api/generate-social-posts', methods=['POST'])
 @login_required
 def api_generate_social_posts():
@@ -942,7 +951,7 @@ def api_generate_social_posts():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# 6. COMPETITOR SPY API (NEW - THE VIRAL FEATURE)
+# 6. COMPETITOR SPY API
 @app.route('/api/spy-competitor', methods=['POST'])
 @login_required
 def api_spy_competitor():
@@ -1006,6 +1015,50 @@ def api_spy_competitor():
             }
         })
         
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 7. AI KEYWORD RESEARCH & CLUSTER API (NEW)
+@app.route('/api/research-keywords', methods=['POST'])
+@login_required
+def api_research_keywords():
+    # Check Limits
+    if current_user.ai_requests_this_month >= current_user.get_limits()['ai_requests_per_month']:
+        return jsonify({'error': 'Limit reached'}), 403
+    
+    data = request.get_json()
+    seed = data.get('seed')
+    
+    prompt = f"""
+    Act as a master SEO strategist.
+    Seed Keyword: "{seed}"
+    
+    Generate a JSON list of 15 highly relevant Long-Tail Keywords.
+    For each keyword, provide:
+    1. "keyword": The keyword string.
+    2. "intent": (Informational, Commercial, or Transactional).
+    3. "difficulty": A score from 1-100 (Estimated).
+    4. "content_idea": A catchy blog post title for this keyword.
+    
+    Return ONLY valid JSON array format. No markdown.
+    """
+    
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4o-mini", 
+            messages=[{"role":"system","content":"JSON Generator"},{"role":"user","content":prompt}]
+        )
+        
+        current_user.ai_requests_this_month += 1
+        db.session.commit()
+        
+        # Clean response to ensure pure JSON
+        raw = res.choices[0].message.content.replace('```json','').replace('```','').strip()
+        
+        return jsonify({
+            'success': True, 
+            'keywords': json.loads(raw)
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
