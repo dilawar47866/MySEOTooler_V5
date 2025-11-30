@@ -13,7 +13,8 @@ import markdown
 from io import BytesIO, StringIO
 from sqlalchemy import text
 from youtube_transcript_api import YouTubeTranscriptApi
-from collections import Counter # Added for keyword density
+from collections import Counter
+from fpdf import FPDF # <--- NEW IMPORT
 
 # ==========================================
 # 1. CONFIGURATION
@@ -42,7 +43,7 @@ login_manager.login_view = 'login'
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# --- GLOBAL TOOL LIST (Added social-preview and keyword-density) ---
+# --- GLOBAL TOOL LIST ---
 TOOL_LIST = [
     'competitor-analyzer', 'keyword-research', 'sitemap-generator', 
     'robots-generator', 'image-seo', 'social-posts', 'alt-text-generator', 
@@ -616,46 +617,90 @@ def api_analyze_density():
         data = request.get_json()
         text_content = ""
         
-        # If URL provided, scrape it. If Text provided, use it.
         if data.get('type') == 'url':
             url = data.get('content')
             if not url.startswith('http'): url = 'https://' + url
             r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
             soup = BeautifulSoup(r.content, 'html.parser')
-            # Remove scripts and styles
             for script in soup(["script", "style"]): script.extract()
             text_content = soup.get_text()
         else:
             text_content = data.get('content')
 
-        # Processing
         words = text_content.lower().translate(str.maketrans('', '', string.punctuation)).split()
-        
-        # Basic Stop Words List (Hardcoded to avoid NLTK dependency on Railway)
-        stop_words = {
-            "the", "is", "at", "of", "on", "and", "a", "an", "to", "in", "for", "with", "as", 
-            "by", "but", "or", "from", "up", "down", "my", "this", "that", "it", "be", "are", 
-            "was", "were", "have", "has", "had", "not", "i", "you", "he", "she", "we", "they"
-        }
-        
+        stop_words = {"the","is","at","of","on","and","a","an","to","in","for","with","as","by","but","or","from","up","down","my","this","that","it","be","are","was","were","have","has","had","not","i","you","he","she","we","they"}
         filtered_words = [w for w in words if w not in stop_words and len(w) > 2]
         total_words = len(filtered_words)
         
         if total_words == 0: return jsonify({'error': 'No content found'}), 400
         
-        # Get Top 15 Keywords
         counter = Counter(filtered_words)
         most_common = counter.most_common(15)
         
         results = []
         for word, count in most_common:
-            results.append({
-                'word': word,
-                'count': count,
-                'density': round((count / total_words) * 100, 2)
-            })
+            results.append({'word': word, 'count': count, 'density': round((count / total_words) * 100, 2)})
             
         return jsonify({'success': True, 'results': results, 'total_words': len(words)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# 3. PDF REPORT GENERATOR API
+@app.route('/api/generate-report', methods=['POST'])
+@login_required
+def api_generate_report():
+    try:
+        data = request.get_json()
+        pdf = FPDF()
+        pdf.add_page()
+        
+        # Header
+        pdf.set_font("Arial", "B", 20)
+        pdf.set_text_color(79, 70, 229) # Indigo
+        pdf.cell(0, 10, "MySEO King - Audit Report", 0, 1, "C")
+        pdf.ln(5)
+        
+        # Details
+        pdf.set_font("Arial", "", 12)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 10, f"Target URL: {data.get('url')}", 0, 1)
+        pdf.cell(0, 10, f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}", 0, 1)
+        pdf.cell(0, 10, f"SEO Score: {data.get('score')}/100", 0, 1)
+        pdf.ln(10)
+        
+        # Critical Issues
+        pdf.set_font("Arial", "B", 14)
+        pdf.set_text_color(220, 53, 69) # Red
+        pdf.cell(0, 10, "Critical Issues Found:", 0, 1)
+        pdf.set_font("Arial", "", 12)
+        pdf.set_text_color(0, 0, 0)
+        
+        if data.get('issues'):
+            for issue in data.get('issues'):
+                msg = issue.get('msg', issue) if isinstance(issue, dict) else issue
+                pdf.cell(0, 10, f"- {msg}", 0, 1)
+        else:
+            pdf.cell(0, 10, "No critical issues found!", 0, 1)
+        
+        pdf.ln(10)
+        
+        # Passed Checks
+        pdf.set_font("Arial", "B", 14)
+        pdf.set_text_color(25, 135, 84) # Green
+        pdf.cell(0, 10, "Passed Checks:", 0, 1)
+        pdf.set_font("Arial", "", 12)
+        pdf.set_text_color(0, 0, 0)
+        
+        if data.get('passed'):
+            for item in data.get('passed'):
+                pdf.cell(0, 10, f"- {item}", 0, 1)
+                
+        # Output
+        response = make_response(pdf.output(dest='S').encode('latin-1'))
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = 'attachment; filename=seo_report.pdf'
+        return response
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
