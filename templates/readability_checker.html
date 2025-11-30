@@ -1,70 +1,65 @@
 {% extends "base.html" %}
-
-{% block title %}Readability Checker - MySEO King{% endblock %}
+{% block title %}Content Readability Checker{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-md-10">
-            
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="h3 fw-bold mb-1">Content Readability</h2>
-                    <p class="text-muted">Google prefers content written at an 8th-grade level. Check yours now.</p>
-                </div>
-                <div class="bg-white p-2 rounded-circle shadow-sm">
-                    <i class="fas fa-book-reader fa-2x text-primary"></i>
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="mb-4"><i class="fas fa-book-reader text-primary"></i> Readability Checker</h2>
+                    <p class="text-muted">Paste your content below to check its Flesch-Kincaid reading score, grade level, and clarity.</p>
+                    
+                    <div class="form-group mb-3">
+                        <textarea id="inputText" class="form-control p-3" rows="10" placeholder="Paste your article or blog post here..."></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small">Min 10 words required.</span>
+                        <button class="btn btn-primary px-4" onclick="checkReadability()">
+                            <i class="fas fa-calculator"></i> Calculate Score
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div class="row">
-                <!-- Input Area -->
-                <div class="col-md-8">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body">
-                            <label class="fw-bold mb-2">Paste Content</label>
-                            <textarea id="checkContent" class="form-control p-3" style="height: 400px; font-size: 1.1rem;" placeholder="Paste your article here..."></textarea>
-                            <button class="btn btn-primary mt-3 w-100 py-2" onclick="checkReadability()">
-                                <i class="fas fa-calculator me-2"></i> Calculate Score
-                            </button>
+            <!-- RESULTS AREA -->
+            <div id="resultsArea" class="row mt-4" style="display:none;">
+                <!-- Main Score -->
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-0 shadow-sm text-white text-center" id="scoreCard">
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <h6 class="text-uppercase opacity-75">Reading Score</h6>
+                            <h1 class="display-3 fw-bold mb-0" id="rScore">0</h1>
+                            <span id="rDifficulty" class="badge bg-white text-dark mt-2 mx-auto">Normal</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Results Area -->
-                <div class="col-md-4">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-white fw-bold">Analysis Result</div>
-                        <div class="card-body text-center d-flex flex-column justify-content-center">
-                            
-                            <div id="placeholder" class="text-muted">
-                                <i class="fas fa-arrow-left me-2"></i> Enter text to analyze
-                            </div>
-
-                            <div id="results" class="d-none">
-                                <h6 class="text-uppercase text-muted small fw-bold">Flesch-Kincaid Grade</h6>
-                                <div class="display-1 fw-bold mb-2" id="resGrade">0.0</div>
-                                <span class="badge bg-secondary mb-4 p-2 px-3 fs-6" id="resBadge">...</span>
-
-                                <hr>
-
-                                <div class="row mt-4 text-start">
-                                    <div class="col-6 mb-3">
-                                        <small class="text-muted d-block">Sentences</small>
-                                        <strong class="fs-5" id="resSentences">0</strong>
-                                    </div>
-                                    <div class="col-6 mb-3">
-                                        <small class="text-muted d-block">Words</small>
-                                        <strong class="fs-5" id="resWords">0</strong>
-                                    </div>
+                <!-- Details -->
+                <div class="col-md-8 mb-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="fw-bold mb-4">Content Analysis</h5>
+                            <div class="row text-center">
+                                <div class="col-4 border-end">
+                                    <h3 class="text-primary fw-bold" id="rGrade">--</h3>
+                                    <small class="text-muted text-uppercase">Grade Level</small>
                                 </div>
-
-                                <div class="alert alert-info mt-3 text-start small">
-                                    <i class="fas fa-info-circle me-1"></i> 
-                                    Aim for a score between <b>6 and 8</b> for best SEO results.
+                                <div class="col-4 border-end">
+                                    <h3 class="text-dark fw-bold" id="rWords">0</h3>
+                                    <small class="text-muted text-uppercase">Word Count</small>
+                                </div>
+                                <div class="col-4">
+                                    <h3 class="text-info fw-bold" id="rTime">0 min</h3>
+                                    <small class="text-muted text-uppercase">Read Time</small>
                                 </div>
                             </div>
-
+                            <hr class="my-4">
+                            <div class="alert alert-light border mb-0">
+                                <i class="fas fa-info-circle text-muted me-2"></i>
+                                <span class="text-muted small">A score between <strong>60-70</strong> is considered standard for web content.</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -76,8 +71,13 @@
 
 <script>
 async function checkReadability() {
-    const text = document.getElementById('checkContent').value;
-    if(text.length < 10) return alert("Enter more text.");
+    const text = document.getElementById('inputText').value;
+    if(text.split(' ').length < 10) return alert("Please enter at least 10 words.");
+
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Calculating...';
+    btn.disabled = true;
 
     try {
         const res = await fetch('/api/check-readability', {
@@ -86,26 +86,29 @@ async function checkReadability() {
             body: JSON.stringify({content: text})
         });
         const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
 
-        if(data.success) {
-            document.getElementById('placeholder').classList.add('d-none');
-            document.getElementById('results').classList.remove('d-none');
+        // Update UI
+        const s = data.stats;
+        document.getElementById('rScore').innerText = s.score;
+        document.getElementById('rDifficulty').innerText = s.difficulty;
+        document.getElementById('rGrade').innerText = s.grade;
+        document.getElementById('rWords').innerText = s.words;
+        document.getElementById('rTime').innerText = s.reading_time;
+        
+        // Color Coding
+        const card = document.getElementById('scoreCard');
+        card.className = `card h-100 border-0 shadow-sm text-white text-center bg-${s.color}`;
 
-            const s = data.stats;
-            const gradeEl = document.getElementById('resGrade');
-            const badgeEl = document.getElementById('resBadge');
+        document.getElementById('resultsArea').style.display = 'flex';
 
-            gradeEl.innerText = s.grade;
-            // Add appropriate color class based on backend result
-            gradeEl.className = `display-1 fw-bold mb-2 text-${s.color}`;
-            
-            badgeEl.innerText = s.difficulty;
-            badgeEl.className = `badge bg-${s.color} mb-4 p-2 px-3 fs-6`;
-
-            document.getElementById('resSentences').innerText = s.sentences;
-            document.getElementById('resWords').innerText = s.words;
-        }
-    } catch(e) { console.error(e); }
+    } catch(e) {
+        alert(e.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
 }
 </script>
 {% endblock %}
