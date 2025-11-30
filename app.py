@@ -621,9 +621,67 @@ def api_improve_readability():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# --- UPDATED SCHEMA GENERATOR (3-in-1) ---
 @app.route('/api/generate-schema', methods=['POST'])
 @login_required
-def api_schema(): return jsonify({'success':True, 'json': json.dumps({"@context":"https://schema.org","@type":"Article","headline":request.get_json().get('headline')}, indent=4)})
+def api_schema():
+    try:
+        data = request.get_json()
+        schema_type = data.get('type')
+        result = {}
+
+        if schema_type == 'faq':
+            result = {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": []
+            }
+            for qa in data.get('questions', []):
+                if qa.get('q') and qa.get('a'):
+                    result["mainEntity"].append({
+                        "@type": "Question",
+                        "name": qa['q'],
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": qa['a']
+                        }
+                    })
+
+        elif schema_type == 'article':
+            result = {
+                "@context": "https://schema.org",
+                "@type": "Article",
+                "headline": data.get('headline', ''),
+                "image": [data.get('image', '')],
+                "datePublished": data.get('date', ''),
+                "author": {
+                    "@type": "Person",
+                    "name": data.get('author', '')
+                }
+            }
+
+        elif schema_type == 'local':
+            result = {
+                "@context": "https://schema.org",
+                "@type": "LocalBusiness",
+                "name": data.get('name', ''),
+                "image": data.get('image', ''),
+                "telephone": data.get('phone', ''),
+                "address": {
+                    "@type": "PostalAddress",
+                    "streetAddress": data.get('address', ''),
+                    "addressLocality": data.get('city', ''),
+                    "addressRegion": data.get('region', ''),
+                    "postalCode": data.get('zip', ''),
+                    "addressCountry": data.get('country', '')
+                },
+                "priceRange": data.get('priceRange', '$$')
+            }
+
+        return jsonify({'success': True, 'json': json.dumps(result, indent=4)})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/analyze-competitor', methods=['POST'])
 @login_required
