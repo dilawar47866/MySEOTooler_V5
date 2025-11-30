@@ -100,7 +100,7 @@
             <i class="fas fa-crown"></i> MySEO King
         </a>
 
-        <div class="flex-grow-1 sidebar-scroll">
+                <div class="flex-grow-1 sidebar-scroll">
             
             <!-- ADMIN SECTION -->
             {% if current_user.is_admin %}
@@ -122,7 +122,7 @@
                 <i class="fas fa-folder-open"></i> Library
             </a>
 
-            <!-- ADVANCED TOOLS -->
+            <!-- ADVANCED TOOLS (NEW) -->
             <p class="small text-muted text-uppercase px-4 mt-4 mb-2 fw-bold" style="font-size: 0.75rem;">Advanced</p>
             <a href="/image-generator" class="nav-link {% if 'image-generator' in request.path %}active{% endif %}">
                 <i class="fas fa-paint-brush"></i> AI Images (Pro)
@@ -139,7 +139,6 @@
             <a href="/tool/geo-optimizer" class="nav-link {% if 'geo' in request.path %}active{% endif %}">
                 <i class="fas fa-robot text-info"></i> GEO Optimizer
             </a>
-            <!-- ADDED: Backlink Tool -->
             <a href="/tool/backlink-outreach" class="nav-link {% if 'backlink' in request.path %}active{% endif %}">
                 <i class="fas fa-link text-warning"></i> Backlink Outreach
             </a>
@@ -224,7 +223,6 @@
             
             <div class="mb-5"></div>
         </div>
-
         <!-- USER FOOTER -->
         <div class="border-top p-3 bg-white">
             <a href="/profile" class="d-flex align-items-center text-decoration-none text-dark mb-2">
