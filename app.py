@@ -14,7 +14,7 @@ from io import BytesIO, StringIO
 from sqlalchemy import text
 from youtube_transcript_api import YouTubeTranscriptApi
 from collections import Counter
-from fpdf import FPDF # <--- NEW IMPORT
+from fpdf import FPDF
 
 # ==========================================
 # 1. CONFIGURATION
@@ -508,9 +508,78 @@ def api_suggest_links():
     res = Content.query.filter(Content.user_id==current_user.id, Content.title.ilike(f"%{request.get_json().get('keyword')}%")).limit(5).all()
     return jsonify({'success':True, 'links': [{'id':c.id, 'title':c.title} for c in res]})
 
+# --- REAL READABILITY LOGIC ---
 @app.route('/api/check-readability', methods=['POST'])
 @login_required
-def api_readability(): return jsonify({'success':True, 'stats': {'grade': 8, 'difficulty': 'Good', 'sentences': 10, 'words': 100, 'color': 'success'}})
+def api_readability():
+    try:
+        text_content = request.get_json().get('content', '')
+        if not text_content: return jsonify({'error': 'No text provided'}), 400
+
+        # 1. Basic Stats
+        words = [w for w in text_content.split() if len(w) > 0]
+        sentences = [s for s in text_content.replace('!', '.').replace('?', '.').split('.') if len(s) > 0]
+        
+        total_words = len(words)
+        total_sentences = len(sentences) if len(sentences) > 0 else 1
+        avg_sentence_len = total_words / total_sentences
+
+        # 2. Syllable Count (Heuristic)
+        def count_syllables(word):
+            word = word.lower()
+            count = 0
+            vowels = "aeiouy"
+            if word[0] in vowels: count += 1
+            for index in range(1, len(word)):
+                if word[index] in vowels and word[index - 1] not in vowels:
+                    count += 1
+            if word.endswith("e"): count -= 1
+            if count == 0: count += 1
+            return count
+
+        total_syllables = sum(count_syllables(w) for w in words)
+        
+        # 3. Flesch Reading Ease Formula
+        # 206.835 - 1.015(total_words/total_sentences) - 84.6(total_syllables/total_words)
+        score = 206.835 - (1.015 * avg_sentence_len) - (84.6 * (total_syllables / total_words))
+        score = round(score, 1)
+
+        # 4. Determine Grade/Difficulty
+        difficulty = "Very Easy"
+        grade = "5th Grade"
+        color = "success"
+        
+        if score < 30: 
+            difficulty = "Very Confusing"; grade = "College Grad"; color = "danger"
+        elif score < 50: 
+            difficulty = "Difficult"; grade = "College"; color = "warning"
+        elif score < 60: 
+            difficulty = "Fairly Difficult"; grade = "10th-12th Grade"; color = "warning"
+        elif score < 70: 
+            difficulty = "Standard"; grade = "8th-9th Grade"; color = "primary"
+        elif score < 80: 
+            difficulty = "Fairly Easy"; grade = "7th Grade"; color = "success"
+        elif score < 90: 
+            difficulty = "Easy"; grade = "6th Grade"; color = "success"
+
+        # 5. Reading Time (200 words per minute)
+        reading_time = f"{max(1, round(total_words / 200))} min"
+
+        return jsonify({
+            'success': True,
+            'stats': {
+                'score': score,
+                'grade': grade,
+                'difficulty': difficulty,
+                'words': total_words,
+                'sentences': total_sentences,
+                'reading_time': reading_time,
+                'color': color
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate-schema', methods=['POST'])
 @login_required
