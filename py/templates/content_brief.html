@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h2><i class="fas fa-briefcase"></i> Content Brief Generator</h2>
+    <div class="card shadow-sm p-4 mb-4">
+        <div class="input-group">
+            <input type="text" id="briefTopic" class="form-control" placeholder="Enter Topic (e.g. Best Laptop 2024)">
+            <button class="btn btn-primary" onclick="generateBrief()">Generate Brief</button>
+        </div>
+    </div>
+
+    <div id="loading" style="display:none;">Generating brief...</div>
+    <div id="briefOutput" class="bg-white p-4 border rounded" style="display:none; white-space: pre-wrap;"></div>
+</div>
+
+<script>
+async function generateBrief() {
+    const topic = document.getElementById('briefTopic').value;
+    document.getElementById('loading').style.display = 'block';
+    
+    const prompt = `Create a detailed SEO Content Brief for: ${topic}. Include: Target Audience, Search Intent, Tone, H1, H2s, and Competitors to analyze.`;
+
+    const res = await fetch('/api/generate-content', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ keyword: prompt, mode: "standard" })
+    });
+    const data = await res.json();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('briefOutput').style.display = 'block';
+    document.getElementById('briefOutput').innerText = data.content;
+}
+</script>
+{% endblock %}

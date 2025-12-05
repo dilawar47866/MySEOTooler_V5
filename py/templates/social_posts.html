@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Social Media Post Generator{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <h2 class="mb-4 fw-bold"><i class="fab fa-twitter text-primary"></i> Social Media Generator</h2>
+            <p class="text-muted">Generate viral content for LinkedIn, Twitter, and Instagram in one click.</p>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <label class="form-label fw-bold">Topic or URL</label>
+                    <div class="input-group">
+                        <input type="text" id="topic" class="form-control form-control-lg" placeholder="e.g. 5 Tips for Better SEO, or https://myblog.com/new-post">
+                        <button class="btn btn-primary px-4" onclick="generateSocial()">
+                            <i class="fas fa-magic"></i> Generate All
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsArea" style="display:none;">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <ul class="nav nav-tabs card-header-tabs" id="socialTabs" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#all-tab">All Posts</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="all-tab">
+                                <div id="socialContent" class="prose"></div>
+                                <hr>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="copySocial()">
+                                    <i class="fas fa-copy"></i> Copy Content
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" class="text-center mt-5" style="display:none;">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">Writing posts for LinkedIn, Twitter, and Instagram...</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateSocial() {
+    const topic = document.getElementById('topic').value;
+    if(!topic) return alert("Enter a topic!");
+
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('resultsArea').style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/generate-social-posts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ topic: topic })
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+        
+        document.getElementById('socialContent').innerHTML = data.html;
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('resultsArea').style.display = 'block';
+        
+    } catch(e) {
+        alert(e.message);
+        document.getElementById('loader').style.display = 'none';
+    }
+}
+
+function copySocial() {
+    const text = document.getElementById('socialContent').innerText;
+    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
+}
+</script>
+
+<style>
+    .prose h3 { color: #4f46e5; margin-top: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+    .prose p { font-size: 1.05rem; line-height: 1.6; }
+</style>
+{% endblock %}

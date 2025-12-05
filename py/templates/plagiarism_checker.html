@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Content Analysis - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Content Scanner</h2>
+                    <p class="text-muted">Analyze text for repetition, AI patterns, and SEO keyword density.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-user-secret fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <textarea id="scanText" class="form-control h-100 border-0 p-3" style="resize: none; min-height: 400px;" placeholder="Paste your article text here..."></textarea>
+                        </div>
+                        <div class="card-footer bg-white border-0 pb-3">
+                            <button class="btn btn-primary w-100 py-2" id="scanBtn" onclick="scanContent()">
+                                <i class="fas fa-radar me-2"></i> Scan Content
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div id="resultsArea" class="d-none">
+                        
+                        <!-- AI Score -->
+                        <div class="card shadow-sm mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted text-uppercase small fw-bold">Human vs AI Score</h6>
+                                <div class="display-4 fw-bold text-success" id="humanScore">0%</div>
+                                <small class="text-muted">Estimated Human Probability</small>
+                                <div class="progress mt-2" style="height: 6px;">
+                                    <div class="progress-bar bg-success" id="humanBar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Issues List -->
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-white fw-bold">Analysis Report</div>
+                            <ul class="list-group list-group-flush" id="issueList">
+                                <!-- filled by JS -->
+                            </ul>
+                        </div>
+
+                    </div>
+
+                    <!-- Placeholder -->
+                    <div id="placeholder" class="text-center text-muted py-5">
+                        <i class="fas fa-arrow-left mb-2"></i>
+                        <p>Paste text to begin scan.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function scanContent() {
+    const text = document.getElementById('scanText').value;
+    if(text.length < 50) return alert("Please enter more text to scan.");
+
+    const btn = document.getElementById('scanBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+
+    // We use AI to judge the text quality patterns
+    const prompt = `Analyze this text for quality.
+    Text: "${text.substring(0, 1000)}..." (truncated).
+    
+    Determine:
+    1. "Human Score" (0-100). High means natural, varied sentence structure. Low means robotic/AI-sounding.
+    2. List 3 specific improvement tips (e.g. "Sentences are too long", "Repetitive words").
+    
+    Output ONLY JSON:
+    {
+        "human_score": 85,
+        "tips": ["Tip 1", "Tip 2", "Tip 3"]
+    }`;
+
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            let cleanJson = data.content.replace(/```json/g, '').replace(/```/g, '').trim();
+            const result = JSON.parse(cleanJson);
+
+            document.getElementById('humanScore').innerText = result.human_score + "%";
+            document.getElementById('humanBar').style.width = result.human_score + "%";
+            
+            // Color coding
+            const scoreEl = document.getElementById('humanScore');
+            const barEl = document.getElementById('humanBar');
+            if(result.human_score < 50) {
+                scoreEl.className = "display-4 fw-bold text-danger";
+                barEl.className = "progress-bar bg-danger";
+            } else {
+                scoreEl.className = "display-4 fw-bold text-success";
+                barEl.className = "progress-bar bg-success";
+            }
+
+            const list = document.getElementById('issueList');
+            list.innerHTML = '';
+            result.tips.forEach(tip => {
+                list.innerHTML += `<li class="list-group-item py-3"><i class="fas fa-exclamation-circle text-warning me-2"></i> ${tip}</li>`;
+            });
+
+            document.getElementById('placeholder').classList.add('d-none');
+            document.getElementById('resultsArea').classList.remove('d-none');
+        }
+    } catch(e) { console.error(e); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-radar me-2"></i> Scan Content';
+    }
+}
+</script>
+{% endblock %}

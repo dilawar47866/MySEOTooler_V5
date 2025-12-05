@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Content Readability Checker{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="mb-4"><i class="fas fa-book-reader text-primary"></i> Readability Checker</h2>
+                    <p class="text-muted">Paste your content below to check its Flesch-Kincaid reading score.</p>
+                    
+                    <div class="form-group mb-3">
+                        <textarea id="inputText" class="form-control p-3" rows="8" placeholder="Paste your article or blog post here..."></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small">Min 10 words required.</span>
+                        <button class="btn btn-primary px-4" onclick="checkReadability()">
+                            <i class="fas fa-calculator"></i> Calculate Score
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESULTS AREA -->
+            <div id="resultsArea" class="row mt-4" style="display:none;">
+                <!-- Main Score -->
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100 border-0 shadow-sm text-white text-center" id="scoreCard">
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <h6 class="text-uppercase opacity-75">Reading Score</h6>
+                            <h1 class="display-3 fw-bold mb-0" id="rScore">0</h1>
+                            <span id="rDifficulty" class="badge bg-white text-dark mt-2 mx-auto">Normal</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Details -->
+                <div class="col-md-8 mb-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="fw-bold mb-4">Content Analysis</h5>
+                            <div class="row text-center">
+                                <div class="col-4 border-end">
+                                    <h3 class="text-primary fw-bold" id="rGrade">--</h3>
+                                    <small class="text-muted text-uppercase">Grade Level</small>
+                                </div>
+                                <div class="col-4 border-end">
+                                    <h3 class="text-dark fw-bold" id="rWords">0</h3>
+                                    <small class="text-muted text-uppercase">Word Count</small>
+                                </div>
+                                <div class="col-4">
+                                    <h3 class="text-info fw-bold" id="rTime">0 min</h3>
+                                    <small class="text-muted text-uppercase">Read Time</small>
+                                </div>
+                            </div>
+                            
+                            <!-- IMPROVE BUTTON AREA -->
+                            <div id="improveSection" class="mt-4 p-3 bg-light rounded border" style="display:none;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>Score too low?</strong>
+                                        <p class="mb-0 small text-muted">Use AI to rewrite this for a standard audience (Grade 8).</p>
+                                    </div>
+                                    <button class="btn btn-success" onclick="improveText()">
+                                        <i class="fas fa-magic"></i> Improve with AI
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI RESULT AREA -->
+            <div id="aiResultArea" class="card shadow-sm mt-3 border-success" style="display:none;">
+                <div class="card-header bg-success text-white fw-bold">
+                    <i class="fas fa-robot"></i> AI Improved Version
+                </div>
+                <div class="card-body">
+                    <textarea id="aiOutput" class="form-control mb-3" rows="8"></textarea>
+                    <button class="btn btn-outline-dark btn-sm" onclick="useAiText()">
+                        <i class="fas fa-arrow-up"></i> Replace Original & Re-Check
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function checkReadability() {
+    const text = document.getElementById('inputText').value;
+    if(text.split(' ').length < 10) return alert("Please enter at least 10 words.");
+
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Calculating...';
+    btn.disabled = true;
+
+    // Hide previous AI results
+    document.getElementById('aiResultArea').style.display = 'none';
+
+    try {
+        const res = await fetch('/api/check-readability', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content: text})
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+
+        // Update UI
+        const s = data.stats;
+        document.getElementById('rScore').innerText = s.score;
+        document.getElementById('rDifficulty').innerText = s.difficulty;
+        document.getElementById('rGrade').innerText = s.grade;
+        document.getElementById('rWords').innerText = s.words;
+        document.getElementById('rTime').innerText = s.reading_time;
+        
+        const card = document.getElementById('scoreCard');
+        card.className = `card h-100 border-0 shadow-sm text-white text-center bg-${s.color}`;
+
+        // Show "Improve" button if score is difficult (< 60)
+        const improveSec = document.getElementById('improveSection');
+        if(s.score < 60) {
+            improveSec.style.display = 'block';
+        } else {
+            improveSec.style.display = 'none';
+        }
+
+        document.getElementById('resultsArea').style.display = 'flex';
+
+    } catch(e) {
+        alert(e.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function improveText() {
+    const text = document.getElementById('inputText').value;
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rewriting...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/improve-readability', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content: text})
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+
+        document.getElementById('aiOutput').value = data.content;
+        document.getElementById('aiResultArea').style.display = 'block';
+        
+        // Scroll to result
+        document.getElementById('aiResultArea').scrollIntoView({behavior: 'smooth'});
+
+    } catch(e) {
+        alert(e.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+function useAiText() {
+    const newText = document.getElementById('aiOutput').value;
+    document.getElementById('inputText').value = newText;
+    document.getElementById('aiResultArea').style.display = 'none';
+    // Automatically re-check
+    checkReadability(); 
+}
+</script>
+{% endblock %}

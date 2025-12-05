@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Google Business Manager - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Google Business Manager</h2>
+                    <p class="text-muted">Optimize your Local SEO presence.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-map-marker-alt fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <ul class="nav nav-tabs card-header-tabs">
+                        <li class="nav-item"><a class="nav-link active" onclick="setMode('post')" href="#">Create Post</a></li>
+                        <li class="nav-item"><a class="nav-link" onclick="setMode('review')" href="#">Reply to Review</a></li>
+                        <li class="nav-item"><a class="nav-link" onclick="setMode('bio')" href="#">Optimize Bio</a></li>
+                    </ul>
+                </div>
+                <div class="card-body p-4">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Business Name & Type</label>
+                        <input type="text" id="gbpBiz" class="form-control" placeholder="e.g. Joe's Plumbing, New York">
+                    </div>
+
+                    <!-- DYNAMIC INPUT -->
+                    <div class="mb-3" id="inputContainer">
+                        <label class="form-label fw-bold">Post Topic</label>
+                        <textarea id="gbpInput" class="form-control" rows="3" placeholder="e.g. 20% off water heater repair this week"></textarea>
+                    </div>
+
+                    <!-- REVIEW STARS (Hidden by default) -->
+                    <div class="mb-3 d-none" id="starsContainer">
+                        <label class="form-label fw-bold">Customer Rating</label>
+                        <select id="gbpStars" class="form-select">
+                            <option value="5">5 Stars (Happy)</option>
+                            <option value="1">1 Star (Angry)</option>
+                            <option value="3">3 Stars (Neutral)</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary w-100" id="genBtn" onclick="generateGBP()">
+                        <i class="fas fa-magic me-2"></i> Generate Content
+                    </button>
+                </div>
+            </div>
+
+            <!-- OUTPUT -->
+            <div id="resultArea" class="d-none">
+                <div class="card shadow-sm bg-light">
+                    <div class="card-body">
+                        <label class="small text-muted fw-bold">Generated Content (Copy & Paste to Google)</label>
+                        <textarea id="gbpOutput" class="form-control border-0 bg-white mt-2" rows="6" readonly></textarea>
+                        <button class="btn btn-sm btn-outline-dark mt-3" onclick="copyText()">Copy Text</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+let currentMode = 'post';
+
+function setMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    const label = document.querySelector('#inputContainer label');
+    const input = document.getElementById('gbpInput');
+    const stars = document.getElementById('starsContainer');
+
+    if(mode === 'post') {
+        label.innerText = "Post Topic";
+        input.placeholder = "e.g. Summer Sale on landscaping";
+        stars.classList.add('d-none');
+    } else if(mode === 'review') {
+        label.innerText = "Customer Review Text";
+        input.placeholder = "Paste the review here...";
+        stars.classList.remove('d-none');
+    } else {
+        label.innerText = "Target Keywords";
+        input.placeholder = "e.g. plumber, emergency repair, drain cleaning";
+        stars.classList.add('d-none');
+    }
+    document.getElementById('resultArea').classList.add('d-none');
+}
+
+async function generateGBP() {
+    const biz = document.getElementById('gbpBiz').value;
+    const input = document.getElementById('gbpInput').value;
+    
+    if(!biz || !input) return alert("Fill in all fields");
+
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true; btn.innerText = "Generating...";
+
+    try {
+        const res = await fetch('/api/gbp-generate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                mode: currentMode,
+                business: biz,
+                topic: input,
+                stars: document.getElementById('gbpStars').value
+            })
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            document.getElementById('gbpOutput').value = data.content;
+            document.getElementById('resultArea').classList.remove('d-none');
+        } else { alert(data.error); }
+    } catch(e) { console.error(e); }
+    finally { btn.disabled = false; btn.innerText = "Generate Content"; }
+}
+
+function copyText() {
+    const text = document.getElementById('gbpOutput');
+    text.select();
+    document.execCommand('copy');
+    alert("Copied!");
+}
+</script>
+{% endblock %}

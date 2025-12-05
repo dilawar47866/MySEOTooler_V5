@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}AI Keyword Researcher{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <h2 class="mb-4 fw-bold"><i class="fas fa-search-dollar text-success"></i> AI Keyword Researcher</h2>
+            <p class="text-muted">Find high-value long-tail keywords, check intent, and get content ideas instantly.</p>
+
+            <!-- Input Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="input-group input-group-lg">
+                        <input type="text" id="seedKeyword" class="form-control" placeholder="Enter a Seed Keyword (e.g. Vegan Diet, CRM Software)">
+                        <button class="btn btn-success px-4" onclick="researchKeywords()">
+                            <i class="fas fa-rocket"></i> Find Keywords
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" class="text-center py-5" style="display:none;">
+                <div class="spinner-border text-success" role="status"></div>
+                <p class="mt-2 text-muted">Analyzing search intent & competition...</p>
+            </div>
+
+            <!-- Results Table -->
+            <div id="resultsArea" style="display:none;">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">Results</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Keyword</th>
+                                    <th>Intent</th>
+                                    <th>Diff (Est)</th>
+                                    <th>Content Idea</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kwTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer bg-white text-end">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="exportCSV()">
+                            <i class="fas fa-download"></i> Export CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+let currentKeywords = [];
+
+async function researchKeywords() {
+    const seed = document.getElementById('seedKeyword').value;
+    if(!seed) return alert("Enter a keyword!");
+
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('resultsArea').style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/research-keywords', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ seed: seed })
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+        
+        currentKeywords = data.keywords;
+        const tbody = document.getElementById('kwTableBody');
+        tbody.innerHTML = '';
+
+        currentKeywords.forEach(k => {
+            // Color code difficulty
+            let diffBadge = 'bg-success';
+            if(k.difficulty > 40) diffBadge = 'bg-warning text-dark';
+            if(k.difficulty > 70) diffBadge = 'bg-danger';
+
+            // Color code intent
+            let intentBadge = 'bg-info text-dark';
+            if(k.intent.includes('Trans') || k.intent.includes('Comm')) intentBadge = 'bg-primary';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="fw-bold text-dark">${k.keyword}</td>
+                    <td><span class="badge ${intentBadge}">${k.intent}</span></td>
+                    <td><span class="badge ${diffBadge}">${k.difficulty}/100</span></td>
+                    <td class="text-muted small"><i class="fas fa-pen-nib me-1"></i> ${k.content_idea}</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('resultsArea').style.display = 'block';
+        
+    } catch(e) {
+        alert(e.message);
+        document.getElementById('loader').style.display = 'none';
+    }
+}
+
+function exportCSV() {
+    if(!currentKeywords.length) return;
+    let csvContent = "data:text/csv;charset=utf-8,Keyword,Intent,Difficulty,Content Idea\n";
+    currentKeywords.forEach(k => {
+        csvContent += `"${k.keyword}","${k.intent}","${k.difficulty}","${k.content_idea}"\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "keyword_research.csv");
+    document.body.appendChild(link);
+    link.click();
+}
+</script>
+{% endblock %}

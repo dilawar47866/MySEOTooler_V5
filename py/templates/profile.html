@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <h2 class="h3 fw-bold mb-4">Account Settings</h2>
+
+            <!-- Profile Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-4" style="width: 80px; height: 80px; font-size: 2rem;">
+                        {{ current_user.username[0].upper() }}
+                    </div>
+                    <div>
+                        <h4 class="fw-bold mb-1">{{ current_user.username }}</h4>
+                        <p class="text-muted mb-0">{{ current_user.email }}</p>
+                        <span class="badge bg-info text-dark mt-2 text-uppercase">{{ current_user.tier }} Plan</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage Stats -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white fw-bold">Monthly Usage</div>
+                <div class="card-body p-4">
+                    {% set limits = current_user.get_limits() %}
+                    {% set percent = (current_user.ai_requests_this_month / limits['ai_requests_per_month']) * 100 %}
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>AI Credits Used</span>
+                        <span class="fw-bold">{{ current_user.ai_requests_this_month }} / {{ limits['ai_requests_per_month'] }}</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 10px;">
+                        <div class="progress-bar {% if percent > 90 %}bg-danger{% else %}bg-success{% endif %}" role="progressbar" style="width: {{ percent }}%"></div>
+                    </div>
+                    <p class="small text-muted">Credits reset on the 1st of every month.</p>
+                </div>
+            </div>
+
+            <!-- Account Actions -->
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white fw-bold">Danger Zone</div>
+                <div class="card-body">
+                    <p class="text-muted">Once you delete your account, there is no going back. Please be certain.</p>
+                    <button class="btn btn-outline-danger" onclick="alert('Contact support to delete account.')">Delete Account</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Smart Content Outline Generator{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <h2 class="mb-4 fw-bold"><i class="fas fa-list-ol text-primary"></i> Smart Outline Generator</h2>
+            <p class="text-muted">Turn a keyword into a structured writing plan in seconds.</p>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <label class="form-label fw-bold">Enter Topic or Keyword</label>
+                    <div class="input-group input-group-lg">
+                        <input type="text" id="outlineTopic" class="form-control" placeholder="e.g. How to start a garden">
+                        <button class="btn btn-primary px-4" onclick="generateOutline()">
+                            <i class="fas fa-layer-group"></i> Generate Outline
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" class="text-center py-5" style="display:none;">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Structuring your content...</p>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsArea" style="display:none;">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">Generated Outline</span>
+                        <div>
+                            <button class="btn btn-outline-secondary btn-sm me-2" onclick="copyOutline()">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button class="btn btn-success btn-sm" onclick="openInEditor()">
+                                <i class="fas fa-pen-nib"></i> Open in Editor
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="outlineContent" class="prose"></div>
+                        <!-- Hidden field to store raw markdown -->
+                        <textarea id="rawOutline" style="display:none;"></textarea> 
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateOutline() {
+    const topic = document.getElementById('outlineTopic').value;
+    if(!topic) return alert("Enter a topic!");
+
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('resultsArea').style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/generate-outline', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ topic: topic })
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+        
+        document.getElementById('outlineContent').innerHTML = data.html;
+        document.getElementById('rawOutline').value = data.content; // Store markdown
+        
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('resultsArea').style.display = 'block';
+        
+    } catch(e) {
+        alert(e.message);
+        document.getElementById('loader').style.display = 'none';
+    }
+}
+
+function copyOutline() {
+    const text = document.getElementById('rawOutline').value;
+    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
+}
+
+async function openInEditor() {
+    const topic = document.getElementById('outlineTopic').value;
+    const content = document.getElementById('rawOutline').value;
+    
+    // Save as a draft first
+    try {
+        const res = await fetch('/api/save-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                title: topic,
+                keyword: topic,
+                content: content, // Save outline as the content
+                html_content: document.getElementById('outlineContent').innerHTML
+            })
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            window.location.href = `/editor?id=${data.id}`;
+        } else {
+            alert("Could not save draft.");
+        }
+    } catch(e) {
+        alert("Error redirecting to editor.");
+    }
+}
+</script>
+
+<style>
+    .prose h1 { font-size: 1.75rem; color: #333; margin-bottom: 1rem; }
+    .prose h2 { font-size: 1.4rem; color: #4f46e5; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.1rem; font-weight: bold; margin-top: 1rem; }
+    .prose ul { padding-left: 1.2rem; margin-bottom: 1rem; }
+    .prose li { margin-bottom: 0.25rem; }
+</style>
+{% endblock %}
