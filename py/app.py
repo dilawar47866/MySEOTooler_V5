@@ -27,11 +27,21 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
-# --- EMAIL CONFIGURATION (UPDATED) ---
+# --- EMAIL CONFIGURATION (Smart Switch) ---
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.hostinger.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587)) # Default changed to 587
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'support@myseokingtool.com')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
+
+# Automatically enable TLS if port is 587
+if app.config['MAIL_PORT'] == 587:
+    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USE_SSL'] = False
+else:
+    app.config['MAIL_USE_TLS'] = False
+    app.config['MAIL_USE_SSL'] = True
+
+app.config['MAIL_DEFAULT_SENDER'] = ('MySEO King Team', app.config['MAIL_USERNAME'])
 
 # Logic to switch between SSL and TLS automatically based on port
 if app.config['MAIL_PORT'] == 465:
