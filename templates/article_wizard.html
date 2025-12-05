@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Long-Form Article Wizard - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">One-Click Article Wizard</h2>
+                    <p class="text-muted">Generate a complete, formatted, long-form blog post in seconds.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-magic fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">Main Keyword / Topic</label>
+                            <input type="text" id="wizardTopic" class="form-control form-control-lg" placeholder="e.g. How to start a vegetable garden">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Tone</label>
+                            <select id="wizardTone" class="form-select form-select-lg">
+                                <option value="Professional">Professional</option>
+                                <option value="Casual/Friendly">Casual / Friendly</option>
+                                <option value="Authoritative">Authoritative</option>
+                                <option value="Witty">Witty / Funny</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary w-100 mt-4 py-3 fw-bold" id="genBtn" onclick="generateArticle()">
+                        <i class="fas fa-pen-nib me-2"></i> Generate Full Article
+                    </button>
+                    <!-- COST NOTICE ADDED HERE -->
+                    <p class="text-center small text-muted mt-2 mb-0"><i class="fas fa-bolt text-warning"></i> Cost: 1 AI Credit</p>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsArea" class="d-none">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                        <span class="fw-bold text-success"><i class="fas fa-check-circle me-2"></i> Article Ready</span>
+                        <div>
+                            <button class="btn btn-sm btn-success me-2" onclick="saveToLibrary()">
+                                <i class="fas fa-save me-1"></i> Save & Edit
+                            </button>
+                            <button class="btn btn-sm btn-outline-dark" onclick="copyText()">Copy</button>
+                        </div>
+                    </div>
+                    <div class="card-body bg-light p-5">
+                        <div id="articleOutput" class="bg-white p-5 shadow-sm rounded article-preview"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .article-preview h1 { font-size: 2rem; font-weight: 800; margin-bottom: 1rem; color: #1a202c; }
+    .article-preview h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: #2d3748; }
+    .article-preview p { font-size: 1.1rem; line-height: 1.7; color: #4a5568; margin-bottom: 1.2rem; }
+    .article-preview ul { margin-bottom: 1.5rem; padding-left: 1.5rem; }
+    .article-preview li { margin-bottom: 0.5rem; font-size: 1.05rem; }
+</style>
+
+<script>
+async function generateArticle() {
+    const topic = document.getElementById('wizardTopic').value;
+    const tone = document.getElementById('wizardTone').value;
+    
+    if(!topic) return alert("Please enter a topic.");
+
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Writing your masterpiece... (takes ~20s)';
+
+    try {
+        const res = await fetch('/api/article-wizard', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({topic: topic, tone: tone})
+        });
+        
+        const data = await res.json();
+        
+        if(data.success) {
+            document.getElementById('articleOutput').innerHTML = data.html;
+            document.getElementById('resultsArea').classList.remove('d-none');
+        } else {
+            alert(data.error);
+        }
+    } catch(e) { console.error(e); alert("Error generating article."); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-pen-nib me-2"></i> Generate Full Article';
+    }
+}
+
+function saveToLibrary() {
+    const topic = document.getElementById('wizardTopic').value;
+    const html = document.getElementById('articleOutput').innerHTML;
+    const text = document.getElementById('articleOutput').innerText;
+
+    fetch('/api/save-content', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            title: topic,
+            content: text,
+            html_content: html,
+            keyword: topic
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) window.location.href = `/editor?id=${data.id}`;
+    });
+}
+
+function copyText() {
+    navigator.clipboard.writeText(document.getElementById('articleOutput').innerText);
+    alert("Copied to clipboard!");
+}
+</script>
+{% endblock %}

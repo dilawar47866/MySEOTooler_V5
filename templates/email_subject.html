@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Email Subject Generator - My SEO King Tool{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Email Subject Generator</h2>
+                    <p class="text-muted">Increase open rates with catchy AI-generated subject lines.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-envelope fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Email Content / Topic</label>
+                        <textarea id="emailTopic" class="form-control" rows="3" placeholder="E.g. We are launching a 50% discount on all shoes this weekend."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tone</label>
+                        <select id="emailTone" class="form-select">
+                            <option value="Urgent (FOMO)">Urgent (FOMO)</option>
+                            <option value="Curiosity">Curiosity / Mystery</option>
+                            <option value="Professional">Professional / Direct</option>
+                            <option value="Funny">Funny / Witty</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary w-100 py-2" id="genBtn" onclick="generateSubjects()">
+                        <i class="fas fa-bolt me-2"></i> Generate 10 Ideas
+                    </button>
+                </div>
+            </div>
+
+            <!-- Output -->
+            <div id="resultArea" class="d-none">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">Subject Lines</div>
+                    <ul class="list-group list-group-flush" id="subjectList">
+                        <!-- List -->
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateSubjects() {
+    const topic = document.getElementById('emailTopic').value;
+    const tone = document.getElementById('emailTone').value;
+    
+    if(!topic) return alert("Enter a topic");
+
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Thinking...';
+
+    const prompt = `Write 10 email subject lines about: "${topic}".
+    Tone: ${tone}.
+    Keep them under 50 characters.
+    Include emojis where appropriate.
+    Return as a bulleted list.`;
+
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            // Clean up list format
+            const lines = data.content.split('\n').filter(line => line.trim().length > 0);
+            const ul = document.getElementById('subjectList');
+            ul.innerHTML = '';
+            
+            lines.forEach(line => {
+                // Remove bullets or numbers
+                const cleanLine = line.replace(/^[-*•\d\.]+\s/, '').trim();
+                ul.innerHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <span>${cleanLine}</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="navigator.clipboard.writeText('${cleanLine.replace(/'/g, "\\'")}')">Copy</button>
+                    </li>
+                `;
+            });
+            document.getElementById('resultArea').classList.remove('d-none');
+        }
+    } catch(e) { console.error(e); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-bolt me-2"></i> Generate 10 Ideas';
+    }
+}
+</script>
+{% endblock %}

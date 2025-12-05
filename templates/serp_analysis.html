@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}SERP Analysis - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">SERP Intent Analyzer</h2>
+                    <p class="text-muted">Understand what Google wants to rank for your keyword.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-list-ol fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="input-group input-group-lg">
+                        <input type="text" id="serpKeyword" class="form-control" placeholder="E.g. best running shoes for flat feet">
+                        <button class="btn btn-primary px-5" id="analyzeBtn" onclick="analyzeSerp()">
+                            <i class="fas fa-microscope me-2"></i> Analyze Intent
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsArea" class="d-none">
+                <div class="row">
+                    <!-- User Intent Card -->
+                    <div class="col-md-4">
+                        <div class="card shadow-sm h-100 border-primary border-top border-4">
+                            <div class="card-body text-center">
+                                <i class="fas fa-user-tag fa-3x text-primary mb-3 opacity-50"></i>
+                                <h5 class="fw-bold">User Intent</h5>
+                                <span class="badge bg-primary fs-6 px-3 py-2 mb-2" id="resIntent">...</span>
+                                <p class="small text-muted" id="resIntentDesc">...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content Type Card -->
+                    <div class="col-md-4">
+                        <div class="card shadow-sm h-100 border-success border-top border-4">
+                            <div class="card-body text-center">
+                                <i class="fas fa-file-alt fa-3x text-success mb-3 opacity-50"></i>
+                                <h5 class="fw-bold">Required Format</h5>
+                                <h4 class="fw-bold" id="resFormat">...</h4>
+                                <p class="small text-muted">Google prefers this format.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Difficulty Card -->
+                    <div class="col-md-4">
+                        <div class="card shadow-sm h-100 border-warning border-top border-4">
+                            <div class="card-body text-center">
+                                <i class="fas fa-tachometer-alt fa-3x text-warning mb-3 opacity-50"></i>
+                                <h5 class="fw-bold">Est. Difficulty</h5>
+                                <h4 class="fw-bold" id="resDiff">...</h4>
+                                <p class="small text-muted">Based on topic complexity.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content Gaps -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-white fw-bold">Content Opportunities (The "Gap")</div>
+                    <div class="card-body">
+                        <p>To beat the current results, you should cover these points that competitors are missing:</p>
+                        <ul class="list-group list-group-flush" id="gapList">
+                            <!-- List items -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function analyzeSerp() {
+    const keyword = document.getElementById('serpKeyword').value;
+    if(!keyword) return alert("Enter a keyword");
+
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing Google...';
+
+    // We simulate a SERP analysis using AI knowledge of the topic
+    const prompt = `Analyze the Search Engine Results Page (SERP) intent for: "${keyword}".
+    Determine:
+    1. User Intent (Informational, Transactional, Commercial).
+    2. Content Format (Listicle, Guide, Product Page, Video).
+    3. Estimated Difficulty (Low, Medium, High).
+    4. 3 "Content Gaps" (things usually missing from these articles).
+    
+    Return ONLY JSON:
+    {
+        "intent": "Informational",
+        "intent_desc": "Users are looking for...",
+        "format": "Ultimate Guide",
+        "difficulty": "Medium",
+        "gaps": ["Point 1", "Point 2", "Point 3"]
+    }`;
+
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+        });
+        
+        const data = await res.json();
+        if(data.success) {
+            let cleanJson = data.content.replace(/```json/g, '').replace(/```/g, '').trim();
+            const result = JSON.parse(cleanJson);
+
+            document.getElementById('resIntent').innerText = result.intent;
+            document.getElementById('resIntentDesc').innerText = result.intent_desc;
+            document.getElementById('resFormat').innerText = result.format;
+            document.getElementById('resDiff').innerText = result.difficulty;
+
+            const list = document.getElementById('gapList');
+            list.innerHTML = '';
+            result.gaps.forEach(g => {
+                list.innerHTML += `<li class="list-group-item"><i class="fas fa-check text-success me-2"></i> ${g}</li>`;
+            });
+
+            document.getElementById('resultsArea').classList.remove('d-none');
+        }
+    } catch(e) { console.error(e); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-microscope me-2"></i> Analyze Intent';
+    }
+}
+</script>
+{% endblock %}

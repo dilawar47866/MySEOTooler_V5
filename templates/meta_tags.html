@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Meta Tag Generator - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Meta Tags Generator</h2>
+                    <p class="text-muted">Create SEO-optimized Titles and Descriptions for better click-through rates.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-tags fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Page Topic / Keyword</label>
+                                <input type="text" id="metaTopic" class="form-control" placeholder="E.g. Best Pizza in New York">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Brand Name</label>
+                                <input type="text" id="brandName" class="form-control" placeholder="Joe's Pizza">
+                            </div>
+
+                            <button class="btn btn-primary w-100" id="genBtn" onclick="generateMeta()">
+                                <i class="fas fa-robot me-2"></i> Generate Tags
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <!-- Google Preview -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-white fw-bold">Google SERP Preview</div>
+                        <div class="card-body">
+                            <div class="mb-1">
+                                <span class="badge bg-light text-dark border rounded-pill px-2"><img src="https://www.google.com/favicon.ico" width="12" class="me-1"> example.com</span>
+                            </div>
+                            <h5 class="text-primary text-decoration-underline mb-1" id="previewTitle" style="cursor: pointer; color: #1a0dab !important;">Page Title Goes Here</h5>
+                            <p class="small text-muted mb-0" id="previewDesc" style="color: #4d5156 !important;">
+                                This is how your page description will look in Google search results. It should be under 160 characters.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Code Output -->
+                    <div class="card shadow-sm bg-dark text-white">
+                        <div class="card-header bg-transparent border-secondary fw-bold text-light">
+                            HTML Code
+                        </div>
+                        <div class="card-body p-0">
+                            <textarea id="codeOutput" class="form-control bg-dark text-success border-0 font-monospace p-3" rows="5" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateMeta() {
+    const topic = document.getElementById('metaTopic').value;
+    const brand = document.getElementById('brandName').value;
+    
+    if(!topic) return alert("Enter a topic");
+
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+    const prompt = `Write an SEO Title Tag (max 60 chars) and Meta Description (max 160 chars) for a page about: "${topic}". Brand: "${brand}".
+    
+    Return ONLY JSON:
+    {
+        "title": "Title here",
+        "description": "Description here"
+    }`;
+
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            let cleanJson = data.content.replace(/```json/g, '').replace(/```/g, '').trim();
+            const meta = JSON.parse(cleanJson);
+            
+            // Update Preview
+            document.getElementById('previewTitle').innerText = meta.title;
+            document.getElementById('previewDesc').innerText = meta.description;
+
+            // Update Code
+            const html = `<title>${meta.title}</title>\n<meta name="description" content="${meta.description}">`;
+            document.getElementById('codeOutput').value = html;
+        }
+    } catch(e) { console.error(e); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-robot me-2"></i> Generate Tags';
+    }
+}
+</script>
+{% endblock %}

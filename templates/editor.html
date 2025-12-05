@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}AI Editor - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid h-100">
+    <div class="row h-100">
+        
+        <!-- LEFT COLUMN: Editor Area -->
+        <div class="col-md-9 d-flex flex-column h-100">
+            <!-- Toolbar -->
+            <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded shadow-sm">
+                <div class="d-flex align-items-center gap-2 w-50">
+                    <input type="text" id="documentTitle" class="form-control fw-bold border-0 fs-5" placeholder="Enter Article Title..." value="{{ content.title if content else '' }}">
+                </div>
+                <div class="d-flex gap-2">
+                    <!-- SAVE BUTTON -->
+                    <button class="btn btn-outline-secondary btn-sm" onclick="saveContent()">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    
+                    <!-- WORDPRESS BUTTON (NEW) -->
+                    <button class="btn btn-outline-dark btn-sm" onclick="publishToWP()">
+                        <i class="fab fa-wordpress"></i> Publish
+                    </button>
+
+                    <!-- AI WRITER BUTTON -->
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#aiModal">
+                        <i class="fas fa-robot"></i> AI Writer
+                    </button>
+                </div>
+            </div>
+
+            <!-- The Editor -->
+            <div class="card shadow-sm flex-grow-1">
+                <div class="card-body p-0 d-flex flex-column">
+                    <!-- Simple formatting toolbar -->
+                    <div class="border-bottom p-2 bg-light d-flex gap-2">
+                        <button class="btn btn-sm btn-light" onclick="document.execCommand('bold')"><b>B</b></button>
+                        <button class="btn btn-sm btn-light" onclick="document.execCommand('italic')"><i>I</i></button>
+                        <button class="btn btn-sm btn-light" onclick="document.execCommand('formatBlock', false, 'h2')">H2</button>
+                        <button class="btn btn-sm btn-light" onclick="document.execCommand('formatBlock', false, 'h3')">H3</button>
+                        <button class="btn btn-sm btn-light" onclick="document.execCommand('createLink', false, prompt('Enter URL'))"><i class="fas fa-link"></i></button>
+                    </div>
+                    <!-- Editable Content Area -->
+                    <div id="editor" contenteditable="true" class="p-4 flex-grow-1" style="outline: none; overflow-y: auto; min-height: 60vh;" onkeyup="checkSeoTerms()">
+                        {{ content.html_content|safe if content else '' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: SEO Sidebar -->
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100" style="position: sticky; top: 1rem;">
+                <div class="card-header bg-white border-bottom">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-chart-bar text-primary me-2"></i>SEO Optimizer</h6>
+                </div>
+                <div class="card-body overflow-auto" style="max-height: 85vh;">
+                    
+                    <!-- Input Keyword -->
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold">Target Keyword</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="targetKeyword" class="form-control" value="{{ content.keyword if content else '' }}" placeholder="e.g. best coffee maker">
+                            <button class="btn btn-primary" onclick="runAllSeoChecks()"><i class="fas fa-sync"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Score Circle -->
+                    <div class="text-center mb-4">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded-circle border border-4 border-primary" style="width: 80px; height: 80px;">
+                            <span class="h4 mb-0 fw-bold" id="seoScoreDisplay">0</span>
+                        </div>
+                        <p class="small text-muted mt-2">Optimization Score</p>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="d-flex justify-content-between mb-3 small text-muted">
+                        <span>Words: <b id="wordCount">0</b></span>
+                        <span>Headings: <b id="headingCount">0</b></span>
+                    </div>
+
+                    <hr>
+
+                    <!-- Must Use Terms -->
+                    <h6 class="small fw-bold mb-2">Must-Use Terms</h6>
+                    <div id="termsList" class="d-flex flex-wrap gap-1 mb-4">
+                        <span class="text-muted small fst-italic">Enter a keyword and click refresh...</span>
+                    </div>
+                    
+                    <hr>
+
+                    <!-- Questions (PAA) -->
+                    <h6 class="small fw-bold mb-2">People Also Ask</h6>
+                    <p class="small text-muted fst-italic mb-2" style="font-size: 0.75rem;">Click to add as H2</p>
+                    <div id="questionsList" class="d-flex flex-column gap-2 mb-4">
+                        <span class="text-muted small fst-italic">Waiting for keyword...</span>
+                    </div>
+
+                    <hr>
+
+                    <!-- Internal Links -->
+                    <h6 class="small fw-bold mb-2">Internal Link Suggestions</h6>
+                    <p class="small text-muted fst-italic mb-2" style="font-size: 0.75rem;">Click to insert link</p>
+                    <div id="linksList" class="d-flex flex-column gap-2">
+                        <span class="text-muted small fst-italic">Waiting for keyword...</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- AI WRITER MODAL -->
+<div class="modal fade" id="aiModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">AI Writer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Instructions / Keyword</label>
+                <textarea id="aiPrompt" class="form-control mb-3" rows="3"></textarea>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="humanMode">
+                    <label class="form-check-label">Human-Like Mode</label>
+                </div>
+                <button onclick="generateAiContent()" class="btn btn-primary w-100">Generate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global list of required terms
+let requiredTerms = []; 
+
+// MASTER FUNCTION
+function runAllSeoChecks() {
+    const keyword = document.getElementById('targetKeyword').value;
+    if(!keyword) return alert("Enter a keyword first");
+    
+    const btn = document.querySelector('.input-group button');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    Promise.all([
+        fetchSeoTerms(keyword), 
+        fetchQuestions(keyword),
+        fetchInternalLinks(keyword)
+    ]).then(() => {
+        btn.innerHTML = '<i class="fas fa-sync"></i>';
+    });
+}
+
+// 1. FETCH SEO TERMS
+async function fetchSeoTerms(keyword) {
+    try {
+        const res = await fetch('/api/generate-seo-terms', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: keyword})
+        });
+        const data = await res.json();
+        if(data.success) {
+            requiredTerms = data.terms;
+            renderTerms();
+            checkSeoTerms(); 
+        }
+    } catch(e) { console.error(e); }
+}
+
+// 2. FETCH QUESTIONS
+async function fetchQuestions(keyword) {
+    try {
+        const res = await fetch('/api/generate-questions', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: keyword})
+        });
+        const data = await res.json();
+        const container = document.getElementById('questionsList');
+        container.innerHTML = '';
+        
+        if(data.success && data.questions.length > 0) {
+            data.questions.forEach(q => {
+                const div = document.createElement('div');
+                div.className = 'p-2 border rounded bg-light small cursor-pointer';
+                div.style.cursor = 'pointer';
+                div.innerHTML = `<i class="fas fa-plus-circle text-primary me-1"></i> ${q}`;
+                div.onclick = () => insertHeading(q);
+                container.appendChild(div);
+            });
+        } else {
+            container.innerHTML = '<span class="small text-muted">No questions found.</span>';
+        }
+    } catch(e) { console.error(e); }
+}
+
+// 3. FETCH INTERNAL LINKS
+async function fetchInternalLinks(keyword) {
+    try {
+        const currentId = "{{ content.id if content else '' }}";
+        
+        const res = await fetch('/api/suggest-internal-links', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: keyword, current_id: currentId})
+        });
+        const data = await res.json();
+        const container = document.getElementById('linksList');
+        container.innerHTML = '';
+        
+        if(data.success && data.links.length > 0) {
+            data.links.forEach(link => {
+                const div = document.createElement('div');
+                div.className = 'p-2 border rounded bg-light small cursor-pointer hover-bg-light';
+                div.style.cursor = 'pointer';
+                div.innerHTML = `<i class="fas fa-link text-success me-1"></i> ${link.title}`;
+                div.onclick = () => insertInternalLink(link.title, link.id);
+                container.appendChild(div);
+            });
+        } else {
+            container.innerHTML = '<span class="small text-muted">No relevant articles found.</span>';
+        }
+    } catch(e) { console.error(e); }
+}
+
+// HELPER: Insert Internal Link
+function insertInternalLink(title, id) {
+    const editor = document.getElementById('editor');
+    editor.focus();
+    const url = `/editor?id=${id}`;
+    const html = `<a href="${url}" title="${title}">${title}</a>`;
+    document.execCommand('insertHTML', false, html);
+}
+
+// HELPER: Insert Question as H2
+function insertHeading(text) {
+    const editor = document.getElementById('editor');
+    editor.focus();
+    const html = `<h2>${text}</h2><p>Answer here...</p>`;
+    document.execCommand('insertHTML', false, html);
+    checkSeoTerms();
+}
+
+// 4. RENDER TERMS LIST
+function renderTerms() {
+    const container = document.getElementById('termsList');
+    container.innerHTML = '';
+    requiredTerms.forEach(term => {
+        const span = document.createElement('span');
+        span.className = 'badge bg-light text-dark border fw-normal term-badge';
+        span.innerText = term;
+        span.dataset.term = term.toLowerCase();
+        container.appendChild(span);
+    });
+}
+
+// 5. CHECK TEXT AGAINST TERMS
+function checkSeoTerms() {
+    const text = document.getElementById('editor').innerText.toLowerCase();
+    const badges = document.querySelectorAll('.term-badge');
+    let usedCount = 0;
+    
+    badges.forEach(badge => {
+        const term = badge.dataset.term;
+        if(text.includes(term)) {
+            badge.classList.remove('bg-light', 'text-dark');
+            badge.classList.add('bg-success', 'text-white');
+            usedCount++;
+        } else {
+            badge.classList.add('bg-light', 'text-dark');
+            badge.classList.remove('bg-success', 'text-white');
+        }
+    });
+
+    // Update Stats
+    const words = text.trim().split(/\s+/).length;
+    document.getElementById('wordCount').innerText = words;
+    document.getElementById('headingCount').innerText = document.getElementById('editor').querySelectorAll('h2, h3').length;
+
+    // Calculate Score
+    let score = 0;
+    if(requiredTerms.length > 0) {
+        score = Math.round((usedCount / requiredTerms.length) * 100);
+    }
+    if(words > 500) score = Math.min(score + 10, 100);
+    
+    document.getElementById('seoScoreDisplay').innerText = score;
+    
+    const circle = document.querySelector('.rounded-circle');
+    circle.className = `d-inline-flex align-items-center justify-content-center rounded-circle border border-4 ${score > 70 ? 'border-success text-success' : 'border-primary'}`;
+}
+
+// 6. SAVE FUNCTION
+async function saveContent() {
+    const content = {
+        id: "{{ content.id if content else '' }}",
+        title: document.getElementById('documentTitle').value,
+        content: document.getElementById('editor').innerText,
+        html_content: document.getElementById('editor').innerHTML,
+        keyword: document.getElementById('targetKeyword').value
+    };
+    
+    await fetch('/api/save-content', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(content)
+    });
+    alert("Saved!");
+}
+
+// 7. AI GENERATE FUNCTION
+async function generateAiContent() {
+    const prompt = document.getElementById('aiPrompt').value;
+    const mode = document.getElementById('humanMode').checked ? 'human' : 'ai';
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('aiModal'));
+    modal.hide();
+    
+    document.getElementById('editor').innerHTML += '<p><i>Generating content...</i></p>';
+    
+    const res = await fetch('/api/generate-content', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({keyword: prompt, mode: mode})
+    });
+    
+    const data = await res.json();
+    if(data.success) {
+        document.getElementById('editor').innerHTML = data.html_content;
+        checkSeoTerms();
+    } else {
+        alert(data.error);
+    }
+}
+
+// 8. WORDPRESS PUBLISH (NEW)
+async function publishToWP() {
+    const url = prompt("Enter WordPress URL (e.g. https://mysite.com)");
+    if(!url) return;
+    
+    const user = prompt("Enter WP Username");
+    const pass = prompt("Enter WP Application Password (Plugins -> App Passwords)");
+    
+    if(!user || !pass) return;
+    
+    const res = await fetch('/api/publish-wordpress', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            url: url,
+            username: user,
+            password: pass,
+            title: document.getElementById('documentTitle').value,
+            content: document.getElementById('editor').innerHTML
+        })
+    });
+    const data = await res.json();
+    if(data.success) alert("Published! Draft saved to WP.");
+    else alert("Error: " + data.error);
+}
+
+// Initialize
+window.onload = function() {
+    if(document.getElementById('editor').innerText.length > 10) {
+        checkSeoTerms();
+    }
+};
+</script>
+{% endblock %}

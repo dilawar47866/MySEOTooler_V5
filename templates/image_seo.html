@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Image SEO Optimizer - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Image SEO Optimizer</h2>
+                    <p class="text-muted">Turn bad filenames (DSC001.jpg) into SEO gold.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-images fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Describe your image</label>
+                        <input type="text" id="imgDesc" class="form-control" placeholder="E.g. A black cat sitting on a fence at halloween">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Target Keyword (Optional)</label>
+                        <input type="text" id="imgKey" class="form-control" placeholder="halloween decorations">
+                    </div>
+                    <button class="btn btn-primary w-100" id="optBtn" onclick="optimizeImage()">
+                        <i class="fas fa-magic me-2"></i> Optimize
+                    </button>
+                </div>
+            </div>
+
+            <div id="resultsArea" class="d-none">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">Optimized Data</div>
+                    <div class="card-body">
+                        
+                        <div class="mb-4">
+                            <label class="small text-muted fw-bold text-uppercase">Best Filename</label>
+                            <div class="input-group">
+                                <input type="text" id="resFile" class="form-control bg-light" readonly>
+                                <button class="btn btn-outline-secondary" onclick="copyId('resFile')">Copy</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="small text-muted fw-bold text-uppercase">Alt Attribute</label>
+                            <div class="input-group">
+                                <input type="text" id="resAlt" class="form-control bg-light" readonly>
+                                <button class="btn btn-outline-secondary" onclick="copyId('resAlt')">Copy</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function optimizeImage() {
+    const desc = document.getElementById('imgDesc').value;
+    const key = document.getElementById('imgKey').value;
+    
+    if(!desc) return alert("Describe the image");
+
+    const btn = document.getElementById('optBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Optimizing...';
+
+    const prompt = `Optimize image metadata.
+    Image: "${desc}".
+    Target Keyword: "${key}".
+    
+    Output ONLY JSON:
+    {
+        "filename": "keyword-rich-filename.jpg",
+        "alt_text": "Descriptive alt text naturally including keyword"
+    }`;
+
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            let cleanJson = data.content.replace(/```json/g, '').replace(/```/g, '').trim();
+            const result = JSON.parse(cleanJson);
+            
+            document.getElementById('resFile').value = result.filename;
+            document.getElementById('resAlt').value = result.alt_text;
+            document.getElementById('resultsArea').classList.remove('d-none');
+        }
+    } catch(e) { console.error(e); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-2"></i> Optimize';
+    }
+}
+
+function copyId(id) {
+    const el = document.getElementById(id);
+    el.select();
+    document.execCommand('copy');
+    alert("Copied!");
+}
+</script>
+{% endblock %}

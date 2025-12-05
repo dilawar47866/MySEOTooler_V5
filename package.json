@@ -1,0 +1,23 @@
+{
+  "name": "myseoking",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+```
+
+#### **File 3: `index.html`** (your existing HTML file - keep as is)
+
+---
+
+### **Step 2: Your Folder Structure Should Look Like:**
+```
+your-repo/
+├── index.html       ← Your existing HTML
+├── server.js        ← NEW
+└── package.json     ← NEW
