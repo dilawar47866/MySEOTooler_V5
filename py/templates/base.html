@@ -20,7 +20,8 @@
     <meta property="og:url" content="{{ request.url }}">
     <meta property="og:title" content="{% block og_title %}MySEO King - AI-Powered SEO Tools{% endblock %}">
     <meta property="og:description" content="{% block og_description %}Generate SEO-optimized content with 30+ AI-powered tools. Free to start!{% endblock %}">
-    <meta property="og:image" content="{% block og_image %}{{ request.url_root }}static/og-image.png{% endblock %}">
+    <!-- FIXED: Uses url_for to find image in py/static correctly -->
+    <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='og-image.png', _external=True) }}{% endblock %}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="MySEO King">
@@ -31,14 +32,16 @@
     <meta name="twitter:url" content="{{ request.url }}">
     <meta name="twitter:title" content="{% block twitter_title %}MySEO King - AI-Powered SEO Tools{% endblock %}">
     <meta name="twitter:description" content="{% block twitter_description %}Generate SEO-optimized content with 30+ AI-powered tools. Free to start!{% endblock %}">
-    <meta name="twitter:image" content="{% block twitter_image %}{{ request.url_root }}static/og-image.png{% endblock %}">
+    <!-- FIXED: Uses url_for to find image in py/static correctly -->
+    <meta name="twitter:image" content="{% block twitter_image %}{{ url_for('static', filename='og-image.png', _external=True) }}{% endblock %}">
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="manifest" href="/site.webmanifest">
+    <!-- FIXED: Uses url_for for the manifest file -->
+    <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
     <meta name="theme-color" content="#4f46e5">
     
     <!-- Preconnect for Performance -->
