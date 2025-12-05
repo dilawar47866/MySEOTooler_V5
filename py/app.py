@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_file, redirect, url_for, flash, make_response
+from flask import Flask, request, jsonify, render_template, send_file, redirect, url_for, flash, make_response, current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
@@ -15,6 +15,7 @@ from sqlalchemy import text
 from youtube_transcript_api import YouTubeTranscriptApi
 from collections import Counter
 from fpdf import FPDF
+from threading import Thread  # <--- ADDED THIS IMPORT
 
 # ==========================================
 # 1. CONFIGURATION
@@ -27,15 +28,15 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
-# --- STRICT EMAIL CONFIGURATION (Hostinger TLS) ---
+# --- UPDATED EMAIL CONFIGURATION (Hostinger SSL - Async Ready) ---
 app.config['MAIL_SERVER'] = 'smtp.hostinger.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True  # Must be True for Port 587
-app.config['MAIL_USE_SSL'] = False # Must be False for Port 587
+app.config['MAIL_PORT'] = 465           # Changed to 465 (Implicit SSL)
+app.config['MAIL_USE_TLS'] = False      # Must be False for 465
+app.config['MAIL_USE_SSL'] = True       # Must be True for 465
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'support@myseokingtool.com')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = ('MySEO King Team', app.config['MAIL_USERNAME'])
-app.config['MAIL_DEBUG'] = True # This will print the real error to the logs
+app.config['MAIL_DEBUG'] = True 
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
@@ -65,6 +66,29 @@ PIPED_INSTANCES = [
     "https://pipedapi.smnz.de",
     "https://pipedapi.adminforge.de"
 ]
+
+# ==========================================
+# 1.5 ASYNC EMAIL HELPER (FIXES 502 ERRORS)
+# ==========================================
+def send_async_email(app_obj, msg):
+    """Background task to send email without freezing the browser"""
+    with app_obj.app_context():
+        try:
+            mail.send(msg)
+            print(f"✅ Email sent to {msg.recipients}")
+        except Exception as e:
+            print(f"❌ Background email failed: {e}")
+
+def send_email_background(subject, recipient, body):
+    """Call this function to send emails safely"""
+    msg = Message(subject, recipients=[recipient])
+    msg.body = body
+    
+    # Pass the actual app object to the thread
+    app_obj = current_app._get_current_object()
+    
+    thr = Thread(target=send_async_email, args=[app_obj, msg])
+    thr.start()
 
 # ==========================================
 # 2. DATABASE MODELS
@@ -279,12 +303,13 @@ def signup():
             db.session.commit()
             login_user(user)
 
+            # --- SENDING EMAIL IN BACKGROUND (Prevents 502 Timeout) ---
             try:
-                msg = Message("Welcome to MySEO King! 👑", recipients=[user.email])
-                msg.body = f"Hi {user.username},\n\nWelcome to MySEO King.\n\nCheers,\nTeam"
-                mail.send(msg)
+                body = f"Hi {user.username},\n\nWelcome to MySEO King.\n\nCheers,\nTeam"
+                send_email_background("Welcome to MySEO King! 👑", user.email, body)
             except: 
                 pass
+            # -----------------------------------------------------------
 
             return jsonify({'success': True, 'redirect': '/dashboard'})
         except Exception as e: 
@@ -1162,10 +1187,9 @@ def api_geo_optimize():
 @app.route('/test-email')
 def test_email():
     try:
-        msg = Message("Test", recipients=['dilawarahsanrizvi7@gmail.com'])
-        msg.body = "Working"
-        mail.send(msg)
-        return "Sent"
+        # Use the new Async function
+        send_email_background("Test Async", 'dilawarahsanrizvi7@gmail.com', "This email was sent in background.")
+        return "Email process started (Async)"
     except Exception as e: 
         return f"Err: {e}"
 
