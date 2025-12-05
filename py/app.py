@@ -27,15 +27,20 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-me')
 
-# --- EMAIL CONFIGURATION (UPDATED FOR RAILWAY) ---
+# --- EMAIL CONFIGURATION (UPDATED) ---
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.hostinger.com')
-# Port must be an integer
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 465))
-# Convert string 'True' to boolean
-app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'True') == 'True'
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587)) # Default changed to 587
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'support@myseokingtool.com')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD') 
-# Uses the username from env vars to prevent mismatch errors
+
+# Logic to switch between SSL and TLS automatically based on port
+if app.config['MAIL_PORT'] == 465:
+    app.config['MAIL_USE_SSL'] = True
+    app.config['MAIL_USE_TLS'] = False
+else:
+    app.config['MAIL_USE_SSL'] = False
+    app.config['MAIL_USE_TLS'] = True
+
 app.config['MAIL_DEFAULT_SENDER'] = ('MySEO King Team', app.config['MAIL_USERNAME'])
 
 db = SQLAlchemy(app)
