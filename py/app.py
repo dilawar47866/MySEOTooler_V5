@@ -35,7 +35,7 @@ app.config['MAIL_USE_TLS'] = False      # Must be False for 465
 app.config['MAIL_USE_SSL'] = True       # Must be True for 465
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'support@myseokingtool.com')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = ('MySEO King Team', app.config['MAIL_USERNAME'])
+app.config['MAIL_DEFAULT_SENDER'] = ('My SEO King Tool Team', app.config['MAIL_USERNAME'])
 app.config['MAIL_DEBUG'] = True 
 
 db = SQLAlchemy(app)
@@ -151,8 +151,8 @@ def favicon_16():
 @app.route('/site.webmanifest')
 def webmanifest():
     manifest = {
-        "name": "MySEO King",
-        "short_name": "MySEOKing",
+        "name": "My SEO King Tool",
+        "short_name": "MySEOKingTool",
         "icons": [
             {"src": "/static/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png"},
             {"src": "/static/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png"}
@@ -305,7 +305,7 @@ def signup():
 
             # --- SENDING EMAIL IN BACKGROUND (Prevents 502 Timeout) ---
             try:
-                body = f"Hi {user.username},\n\nWelcome to MySEO King.\n\nCheers,\nTeam"
+                body = f"Hi {user.username},\n\nWelcome to My SEO King Tool.\n\nCheers,\nTeam"
                 send_email_background("Welcome to MySEO King! 👑", user.email, body)
             except: 
                 pass
@@ -1293,7 +1293,7 @@ def api_generate_report():
         
         pdf.set_font("Arial", "B", 20)
         pdf.set_text_color(79, 70, 229)
-        pdf.cell(0, 10, "MySEO King - Audit Report", 0, 1, "C")
+        pdf.cell(0, 10, "My SEO King Tool - Audit Report", 0, 1, "C")
         pdf.ln(5)
         
         pdf.set_font("Arial", "", 12)
