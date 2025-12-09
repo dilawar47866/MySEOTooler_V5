@@ -1,0 +1,16 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Flask-Bcrypt
+Flask-Mail
+requests
+beautifulsoup4
+python-dotenv
+openai
+markdown
+bleach
+validators
+fpdf
+youtube-transcript-api
+psycopg2-binary
+gunicorn
