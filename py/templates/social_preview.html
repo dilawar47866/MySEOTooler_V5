@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Social Media Simulator{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <h2 class="mb-4"><i class="fas fa-share-alt text-primary"></i> Social Media Simulator</h2>
+                    <p class="text-muted">See exactly how your link looks on Facebook, Twitter, and LinkedIn.</p>
+                    
+                    <div class="input-group mb-3">
+                        <input type="text" id="urlInput" class="form-control" placeholder="Enter Website URL (e.g. https://example.com)">
+                        <button class="btn btn-primary" onclick="analyzeSocial()">Preview</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultsArea" style="display:none;">
+                <!-- Facebook Preview Card -->
+                <div class="card mb-4" style="max-width: 500px; margin: 0 auto; border: 1px solid #ddd;">
+                    <div class="card-header bg-white fw-bold" style="color: #1877f2;">
+                        <i class="fab fa-facebook"></i> Facebook Preview
+                    </div>
+                    <div style="background: #f0f2f5; height: 260px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                        <img id="fbImg" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                        <span id="fbNoImg" class="text-muted">No Image Found</span>
+                    </div>
+                    <div class="p-3 bg-light" style="border-top: 1px solid #ddd;">
+                        <small class="text-uppercase text-muted" id="fbUrl" style="font-size: 12px;">EXAMPLE.COM</small>
+                        <h5 class="fw-bold mt-1 mb-1 text-dark" id="fbTitle" style="font-family: Helvetica, Arial, sans-serif;">Title here</h5>
+                        <p class="text-muted mb-0 small" id="fbDesc" style="line-height: 1.3;">Description goes here...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="loading" class="text-center mt-5" style="display:none;">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2">Fetching Open Graph tags...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function analyzeSocial() {
+    const url = document.getElementById('urlInput').value;
+    if(!url) return alert('Please enter a URL');
+
+    document.getElementById('resultsArea').style.display = 'none';
+    document.getElementById('loading').style.display = 'block';
+
+    try {
+        const res = await fetch('/api/analyze-social', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url: url})
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+        
+        // Populate Data
+        const d = data.data;
+        document.getElementById('fbTitle').innerText = d.og_title || 'No Title Found';
+        document.getElementById('fbDesc').innerText = d.og_desc || 'No Description Found';
+        document.getElementById('fbUrl').innerText = new URL(d.og_url).hostname.toUpperCase();
+        
+        const img = document.getElementById('fbImg');
+        if(d.og_image) {
+            img.src = d.og_image;
+            img.style.display = 'block';
+            document.getElementById('fbNoImg').style.display = 'none';
+        } else {
+            img.style.display = 'none';
+            document.getElementById('fbNoImg').style.display = 'block';
+        }
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('resultsArea').style.display = 'block';
+    } catch(e) {
+        alert('Error: ' + e.message);
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

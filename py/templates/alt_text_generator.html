@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Alt Text Generator - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Image Alt Text Generator</h2>
+                    <p class="text-muted">Generate SEO-optimized alt attributes for your images.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-closed-captioning fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Describe the Image</label>
+                        <textarea id="imageDescription" class="form-control" rows="3" placeholder="E.g., A golden retriever puppy running through a field..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Target Keyword (Optional)</label>
+                        <input type="text" id="targetKeyword" class="form-control" placeholder="E.g., cute puppy">
+                    </div>
+
+                    <button onclick="generateAltText()" id="generateBtn" class="btn btn-primary w-100 py-2">
+                        <i class="fas fa-magic me-2"></i> Generate Alt Text
+                    </button>
+                </div>
+            </div>
+
+            <div id="resultsArea" class="d-none">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">Generated Options</div>
+                    <div class="card-body">
+                        <div id="resultsContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateAltText() {
+    const desc = document.getElementById('imageDescription').value;
+    const keyword = document.getElementById('targetKeyword').value;
+    const btn = document.getElementById('generateBtn');
+
+    if (!desc) return alert("Describe the image first.");
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Generating...';
+
+    const prompt = `Generate 5 SEO-friendly Alt Text options for: "${desc}". 
+    Target keyword: "${keyword}". Format as a bulleted list.`;
+
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: prompt})
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('resultsContent').innerHTML = data.html_content;
+            document.getElementById('resultsArea').classList.remove('d-none');
+        }
+    } catch (err) {
+        console.error(err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-2"></i> Generate Alt Text';
+    }
+}
+</script>
+{% endblock %}

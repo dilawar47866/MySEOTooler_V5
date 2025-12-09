@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}YouTube Script Generator{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <h2 class="mb-4 fw-bold"><i class="fab fa-youtube text-danger"></i> YouTube Script Generator</h2>
+            <p class="text-muted">Generate high-retention video scripts with Hook, Intro, and Call-to-Actions.</p>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label fw-bold">Video Topic</label>
+                            <input type="text" id="topic" class="form-control" placeholder="e.g. How to lose weight in 30 days">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Tone</label>
+                            <select id="tone" class="form-select">
+                                <option value="Engaging">Engaging</option>
+                                <option value="Educational">Educational</option>
+                                <option value="Funny">Funny</option>
+                                <option value="Professional">Professional</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger px-4" onclick="generateScript()">
+                        <i class="fas fa-video"></i> Generate Script
+                    </button>
+                </div>
+            </div>
+
+            <div id="resultArea" class="card shadow-sm" style="display:none;">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">Generated Script</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyScript()">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="scriptContent" class="prose"></div>
+                </div>
+            </div>
+            
+            <div id="loader" class="text-center mt-5" style="display:none;">
+                <div class="spinner-border text-danger" role="status"></div>
+                <p class="mt-2">Writing your script...</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateScript() {
+    const topic = document.getElementById('topic').value;
+    if(!topic) return alert("Enter a topic!");
+
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('resultArea').style.display = 'none';
+    
+    try {
+        const res = await fetch('/api/generate-video-script', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                topic: topic,
+                tone: document.getElementById('tone').value
+            })
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+        
+        document.getElementById('scriptContent').innerHTML = data.html;
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('resultArea').style.display = 'block';
+        
+    } catch(e) {
+        alert(e.message);
+        document.getElementById('loader').style.display = 'none';
+    }
+}
+
+function copyScript() {
+    const text = document.getElementById('scriptContent').innerText;
+    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
+}
+</script>
+
+<style>
+    .prose h1, .prose h2, .prose h3 { margin-top: 1.5rem; margin-bottom: 1rem; color: #333; }
+    .prose ul { padding-left: 1.5rem; }
+    .prose li { margin-bottom: 0.5rem; }
+</style>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Headline Analyzer - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Headline Analyzer</h2>
+                    <p class="text-muted">Score your titles and get viral alternatives using AI.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-heading fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="input-group input-group-lg">
+                        <input type="text" id="headlineInput" class="form-control fw-bold" placeholder="E.g. 10 Tips for SEO">
+                        <button class="btn btn-primary px-4" id="analyzeBtn" onclick="analyzeHeadline()">
+                            <i class="fas fa-chart-bar me-2"></i> Analyze
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsArea" class="d-none">
+                
+                <!-- Score Card -->
+                <div class="card shadow-sm border-0 mb-4 text-center bg-dark text-white">
+                    <div class="card-body py-5">
+                        <h6 class="text-uppercase text-white-50 small fw-bold">Headline Score</h6>
+                        <div class="display-1 fw-bold mb-2" id="scoreDisplay">0</div>
+                        <div id="scoreText" class="badge bg-warning text-dark fs-6">Analyzing...</div>
+                    </div>
+                </div>
+
+                <!-- Suggestions -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">
+                        <i class="fas fa-magic text-primary me-2"></i> Better Alternatives
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush" id="suggestionsList">
+                            <!-- Filled by JS -->
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function analyzeHeadline() {
+    const headline = document.getElementById('headlineInput').value;
+    if(!headline) return alert("Enter a headline!");
+
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    // We create a specific prompt for the generic AI endpoint
+    const prompt = `Analyze this headline: "${headline}".
+    1. Give it a Score from 0 to 100 based on Click-Through-Rate potential.
+    2. Provide 5 better, more viral alternatives.
+    
+    Return ONLY JSON in this format:
+    {
+        "score": 75,
+        "rating": "Good",
+        "suggestions": ["Alt 1", "Alt 2", "Alt 3", "Alt 4", "Alt 5"]
+    }`;
+
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+        });
+        
+        const data = await res.json();
+        
+        if(data.success) {
+            // Clean up the AI response to ensure it's valid JSON
+            let cleanJson = data.content.replace(/```json/g, '').replace(/```/g, '').trim();
+            const result = JSON.parse(cleanJson);
+
+            // Update UI
+            document.getElementById('scoreDisplay').innerText = result.score;
+            
+            const badge = document.getElementById('scoreText');
+            badge.innerText = result.rating;
+            
+            // Color coding
+            if(result.score > 80) {
+                document.getElementById('scoreDisplay').className = 'display-1 fw-bold mb-2 text-success';
+                badge.className = 'badge bg-success fs-6';
+            } else if(result.score > 50) {
+                document.getElementById('scoreDisplay').className = 'display-1 fw-bold mb-2 text-warning';
+                badge.className = 'badge bg-warning text-dark fs-6';
+            } else {
+                document.getElementById('scoreDisplay').className = 'display-1 fw-bold mb-2 text-danger';
+                badge.className = 'badge bg-danger fs-6';
+            }
+
+            // List suggestions
+            const list = document.getElementById('suggestionsList');
+            list.innerHTML = '';
+            result.suggestions.forEach(s => {
+                list.innerHTML += `<li class="list-group-item py-3 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">${s}</span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="navigator.clipboard.writeText('${s}')">Copy</button>
+                </li>`;
+            });
+
+            document.getElementById('resultsArea').classList.remove('d-none');
+        }
+
+    } catch(e) { 
+        console.error(e); 
+        alert("Analysis failed. Try again.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-chart-bar me-2"></i> Analyze';
+    }
+}
+</script>
+{% endblock %}

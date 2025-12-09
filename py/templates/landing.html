@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block title %}My SEO King Tool - Free AI-Powered SEO Tools for Content Creators{% endblock %}
+
+{% block meta_title %}My SEO King Tool - Free AI-Powered SEO Tools for Content Creators{% endblock %}
+{% block meta_description %}Boost your Google rankings with 30+ free AI-powered SEO tools. Generate optimized content, research keywords, create sitemaps, and analyze competitors. Start free today!{% endblock %}
+{% block meta_keywords %}free SEO tools, AI content writer, keyword research tool, sitemap generator, SEO analyzer, content optimization{% endblock %}
+
+{% block og_title %}My SEO King Tool - Free AI-Powered SEO Tools{% endblock %}
+{% block og_description %}Boost your Google rankings with 30+ free AI-powered SEO tools. Start free today!{% endblock %}
+
+{% block twitter_title %}My SEO King Tool - Free AI-Powered SEO Tools{% endblock %}
+{% block twitter_description %}Boost your Google rankings with 30+ free AI-powered SEO tools. Start free today!{% endblock %}
+
+{% block extra_schema %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "My SEO King Tool",
+    "url": "https://myseokingtool.com",
+    "description": "AI-powered SEO tools for content creators",
+    "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://myseokingtool.com/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+    }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="py-5" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);">
+    <div class="container py-5">
+        <div class="row align-items-center">
+            <div class="col-lg-6 text-white mb-5 mb-lg-0">
+                <span class="badge bg-warning text-dark mb-3 px-3 py-2">
+                    <i class="bi bi-stars me-1"></i>Trusted by 100+ Content Creators
+                </span>
+                <h1 class="display-4 fw-bold mb-4">
+                    Rank Higher on Google with AI-Powered SEO Tools
+                </h1>
+                <p class="lead mb-4 opacity-90">
+                    Generate SEO-optimized content, research keywords, analyze competitors, and boost your rankings — all powered by advanced AI. Free to start!
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="/signup" class="btn btn-warning btn-lg px-4">
+                        <i class="bi bi-rocket-takeoff me-2"></i>Start Free Today
+                    </a>
+                    <a href="#tools" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-grid me-2"></i>Explore Tools
+                    </a>
+                </div>
+                <div class="mt-4 d-flex align-items-center gap-4">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-check-circle-fill text-warning me-2"></i>
+                        <span>No credit card required</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-check-circle-fill text-warning me-2"></i>
+                        <span>50 free AI requests/month</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-lg">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3">
+                            <i class="bi bi-search text-primary me-2"></i>Try Our Free SEO Audit
+                        </h5>
+                        <form id="heroAuditForm">
+                            <div class="input-group input-group-lg mb-3">
+                                <input type="url" class="form-control" id="heroUrl" placeholder="Enter your website URL..." required>
+                                <button class="btn btn-primary" type="submit" id="heroAuditBtn">
+                                    <i class="bi bi-arrow-right"></i>
+                                </button>
+                            </div>
+                        </form>
+                        <div id="heroResult" style="display: none;">
+                            <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded">
+                                <div>
+                                    <span class="text-muted small">SEO Score</span>
+                                    <h3 class="mb-0 fw-bold" id="heroScore">--</h3>
+                                </div>
+                                <div class="text-end">
+                                    <a href="/signup" class="btn btn-primary btn-sm">
+                                        Get Full Report <i class="bi bi-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <ul class="list-unstyled mt-3 mb-0" id="heroIssues"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="py-4 bg-dark text-white">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-6 col-md-3 mb-3 mb-md-0">
+                <h3 class="fw-bold mb-0">30+</h3>
+                <small class="text-muted">SEO Tools</small>
+            </div>
+            <div class="col-6 col-md-3 mb-3 mb-md-0">
+                <h3 class="fw-bold mb-0">10K+</h3>
+                <small class="text-muted">Happy Users</small>
+            </div>
+            <div class="col-6 col-md-3">
+                <h3 class="fw-bold mb-0">1M+</h3>
+                <small class="text-muted">Articles Generated</small>
+            </div>
+            <div class="col-6 col-md-3">
+                <h3 class="fw-bold mb-0">4.9/5</h3>
+                <small class="text-muted">User Rating</small>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Tools Section -->
+<section class="py-5" id="tools">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold">Powerful SEO Tools at Your Fingertips</h2>
+            <p class="lead text-muted">Everything you need to dominate search rankings</p>
+        </div>
+        
+        <div class="row g-4">
+            <!-- Content Creation Tools -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                            <i class="bi bi-magic fs-4 text-primary"></i>
+                        </div>
+                        <h5 class="fw-bold">Article Wizard</h5>
+                        <p class="text-muted">Generate SEO-optimized blog posts with AI in seconds. Perfect for bloggers and content marketers.</p>
+                        <a href="/signup" class="btn btn-outline-primary btn-sm">Try Free →</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                            <i class="bi bi-stack fs-4 text-warning"></i>
+                        </div>
+                        <h5 class="fw-bold">Bulk Writer <span class="badge bg-warning text-dark">Pro</span></h5>
+                        <p class="text-muted">Generate up to 10 articles at once. Save hours of writing time with batch content creation.</p>
+                        <a href="/signup" class="btn btn-outline-primary btn-sm">Try Free →</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                            <i class="bi bi-youtube fs-4 text-danger"></i>
+                        </div>
+                        <h5 class="fw-bold">YouTube to Blog</h5>
+                        <p class="text-muted">Convert any YouTube video into a well-structured blog post automatically.</p>
+                        <a href="/signup" class="btn btn-outline-primary btn-sm">Try Free →</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Technical SEO Tools -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                            <i class="bi bi-diagram-3 fs-4 text-success"></i>
+                        </div>
+                        <h5 class="fw-bold">Sitemap Generator</h5>
+                        <p class="text-muted">Create XML sitemaps instantly to help search engines discover all your pages.</p>
+                        <a href="/signup" class="btn btn-outline-primary btn-sm">Try Free →</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-info bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                            <i class="bi bi-robot fs-4 text-info"></i>
+                        </div>
+                        <h5 class="fw-bold">Robots.txt Generator</h5>
+                        <p class="text-muted">Generate optimized robots.txt files with presets for WordPress, eCommerce, and more.</p>
+                        <a href="/signup" class="btn btn-outline-primary btn-sm">Try Free →</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-purple bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px; background: rgba(139, 92, 246, 0.1);">
+                            <i class="bi bi-code-slash fs-4" style="color: #8b5cf6;"></i>
+                        </div>
+                        <h5 class="fw-bold">Schema Generator</h5>
+                        <p class="text-muted">Create FAQ, Article, and LocalBusiness schema markup for rich snippets in Google.</p>
+                        <a href="/signup" class="btn btn-outline-primary btn-sm">Try Free →</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Keyword Tools -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                            <i class="bi bi-key fs-4 text-primary"></i>
+                        </div>
+                        <h5 class="fw-bold">Keyword Research</h5>
+                        <p class="text-muted">Discover high-value keywords with search intent, difficulty scores, and content ideas.</p>
+                        <a href="/signup" class="btn btn-outline-primary btn-sm">Try Free →</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-secondary bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                            <i class="bi bi-search fs-4 text-secondary"></i>
+                        </div>
+                        <h5 class="fw-bold">Site Auditor</h5>
+                        <p class="text-muted">Analyze any website for SEO issues and get actionable recommendations to fix them.</p>
+                        <a href="/signup" class="btn btn-outline-primary btn-sm">Try Free →</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-dark bg-opacity-10 rounded-circle mb-3" style="width: 60px; height: 60px;">
+                            <i class="bi bi-bar-chart fs-4 text-dark"></i>
+                        </div>
+                        <h5 class="fw-bold">Competitor Analyzer</h5>
+                        <p class="text-muted">Spy on competitors' content strategy and discover what makes them rank.</p>
+                        <a href="/signup" class="btn btn-outline-primary btn-sm">Try Free →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-5">
+            <a href="/signup" class="btn btn-primary btn-lg px-5">
+                <i class="bi bi-grid me-2"></i>Access All 30+ Tools Free
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section class="py-5 bg-light">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold">How My SEO King Tool Works</h2>
+            <p class="lead text-muted">Get started in 3 simple steps</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4 text-center">
+                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
+                    <span class="display-6 fw-bold">1</span>
+                </div>
+                <h4 class="fw-bold">Sign Up Free</h4>
+                <p class="text-muted">Create your account in seconds. No credit card required.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
+                    <span class="display-6 fw-bold">2</span>
+                </div>
+                <h4 class="fw-bold">Choose Your Tool</h4>
+                <p class="text-muted">Select from 30+ SEO tools for content, keywords, and technical SEO.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
+                    <span class="display-6 fw-bold">3</span>
+                </div>
+                <h4 class="fw-bold">Rank Higher</h4>
+                <p class="text-muted">Publish optimized content and watch your rankings improve.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials -->
+<section class="py-5">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold">Loved by Content Creators</h2>
+            <p class="lead text-muted">See what our users are saying</p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="text-warning">
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                            </div>
+                        </div>
+                        <p class="mb-3">"My SEO King Tool has transformed my content workflow. I'm publishing 3x more articles and ranking for keywords I never thought possible."</p>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px;">
+                                <span class="fw-bold">SK</span>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold">Sarah K.</h6>
+                                <small class="text-muted">Travel Blogger</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="text-warning">
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                            </div>
+                        </div>
+                        <p class="mb-3">"The bulk writer feature alone is worth it. I can create a week's worth of content in an hour. Incredible time saver!"</p>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px;">
+                                <span class="fw-bold">MJ</span>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold">Mike J.</h6>
+                                <small class="text-muted">Agency Owner</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="text-warning">
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                                <i class="bi bi-star-fill"></i>
+                            </div>
+                        </div>
+                        <p class="mb-3">"Finally, an SEO tool that's both powerful AND affordable. The keyword research and content humanizer are my favorites."</p>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 45px; height: 45px;">
+                                <span class="fw-bold">LP</span>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold">Lisa P.</h6>
+                                <small class="text-muted">Freelance Writer</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="py-5" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);">
+    <div class="container py-4 text-center text-white">
+        <h2 class="display-5 fw-bold mb-3">Ready to Boost Your SEO?</h2>
+        <p class="lead mb-4 opacity-90">Join thousands of content creators who are ranking higher with My SEO King Tool</p>
+        <a href="/signup" class="btn btn-warning btn-lg px-5">
+            <i class="bi bi-rocket-takeoff me-2"></i>Start Free Today — No Credit Card Required
+        </a>
+    </div>
+</section>
+
+<!-- FAQ Section with Schema -->
+<section class="py-5 bg-light">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold">Frequently Asked Questions</h2>
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="accordion" id="faqAccordion">
+                    <div class="accordion-item border-0 mb-3 rounded overflow-hidden">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                Is My SEO King Tool really free?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes! Our free plan includes 50 AI requests per month, access to all tools, and no credit card required. Upgrade to Pro for more requests and advanced features.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item border-0 mb-3 rounded overflow-hidden">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                What makes My SEO King Tool different from other SEO tools?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                My SEO King Tool combines 30+ essential SEO tools in one platform, all powered by advanced AI. Unlike expensive alternatives, we offer affordable pricing and a generous free tier.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item border-0 mb-3 rounded overflow-hidden">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                Can I cancel my subscription anytime?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Absolutely! You can cancel your subscription anytime with no questions asked. Your account will remain active until the end of your billing period.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item border-0 mb-3 rounded overflow-hidden">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                Does the AI content pass plagiarism checks?
+                            </button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes! All AI-generated content is 100% unique and passes plagiarism checkers. Our Content Humanizer tool also helps make content undetectable by AI detectors.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+// Hero Audit Form
+document.getElementById('heroAuditForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('heroAuditBtn');
+    const url = document.getElementById('heroUrl').value;
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/public-audit', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url: url})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('heroResult').style.display = 'block';
+            document.getElementById('heroScore').textContent = data.score + '/100';
+            
+            const issuesList = document.getElementById('heroIssues');
+            issuesList.innerHTML = data.issues.map(issue => 
+                `<li class="mb-1"><i class="bi bi-exclamation-circle text-warning me-2"></i>${issue}</li>`
+            ).join('');
+        }
+    } catch (err) {
+        alert('Error analyzing URL');
+    } finally {
+        btn.innerHTML = '<i class="bi bi-arrow-right"></i>';
+        btn.disabled = false;
+    }
+});
+</script>
+{% endblock %}

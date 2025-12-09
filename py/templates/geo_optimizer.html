@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}GEO Snippet Optimizer - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">GEO Snippet Optimizer <span class="badge bg-info text-dark fs-6 ms-2">New Trend</span></h2>
+                    <p class="text-muted">Optimize content to rank in Google's AI Overviews and ChatGPT.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-robot fa-2x text-info"></i>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <label class="form-label fw-bold">Target Question / Keyword</label>
+                    <div class="input-group input-group-lg">
+                        <input type="text" id="geoKey" class="form-control" placeholder="e.g. How to lower blood pressure fast">
+                        <button class="btn btn-info text-white fw-bold px-5" id="genBtn" onclick="generateGeo()">
+                            <i class="fas fa-bolt me-2"></i> Optimize
+                        </button>
+                    </div>
+                    <div class="form-text">We will generate a "Direct Answer" block that AI Search Engines love.</div>
+                </div>
+            </div>
+
+            <!-- Result -->
+            <div id="resultArea" class="d-none">
+                <div class="card shadow-sm border-info border-top border-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-dark">AI Snapshot Content</span>
+                        <button class="btn btn-sm btn-outline-dark" onclick="copyText()">Copy</button>
+                    </div>
+                    <div class="card-body bg-light p-4">
+                        <div id="geoOutput" class="bg-white p-4 rounded shadow-sm border"></div>
+                        <div class="alert alert-info mt-3 mb-0 small">
+                            <i class="fas fa-info-circle me-2"></i> 
+                            <strong>Tip:</strong> Place this text at the very top of your blog post (right after the H1) to increase your chances of being cited by AI.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateGeo() {
+    const key = document.getElementById('geoKey').value;
+    if(!key) return alert("Enter a keyword");
+
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true; btn.innerHTML = "Optimizing...";
+
+    try {
+        const res = await fetch('/api/geo-optimize', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: key})
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            document.getElementById('geoOutput').innerHTML = data.html;
+            document.getElementById('resultArea').classList.remove('d-none');
+        } else { alert(data.error); }
+    } catch(e) { console.error(e); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-bolt me-2"></i> Optimize'; }
+}
+
+function copyText() {
+    navigator.clipboard.writeText(document.getElementById('geoOutput').innerText);
+    alert("Copied!");
+}
+</script>
+{% endblock %}

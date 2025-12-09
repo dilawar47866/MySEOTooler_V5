@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Robots.txt Generator - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-10 rounded-circle mb-3" style="width: 80px; height: 80px;">
+                    <i class="bi bi-robot fs-1 text-success"></i>
+                </div>
+                <h1 class="fw-bold">Robots.txt Generator</h1>
+                <p class="text-muted lead">Create a robots.txt file to control how search engines crawl your site</p>
+            </div>
+
+            <!-- Main Card -->
+            <div class="card border-0 shadow-lg">
+                <div class="card-body p-4 p-lg-5">
+                    <form id="robotsForm">
+                        <!-- URL Input -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-globe me-2"></i>Website URL
+                            </label>
+                            <input type="text" class="form-control form-control-lg" id="websiteUrl" 
+                                   placeholder="https://example.com" required>
+                        </div>
+
+                        <!-- Preset Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-sliders me-2"></i>Choose a Preset
+                            </label>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="form-check card h-100">
+                                        <div class="card-body">
+                                            <input class="form-check-input" type="radio" name="preset" id="presetBalanced" value="balanced" checked>
+                                            <label class="form-check-label w-100" for="presetBalanced">
+                                                <strong class="text-primary">Balanced</strong>
+                                                <p class="small text-muted mb-0">Block admin areas, allow public content</p>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check card h-100">
+                                        <div class="card-body">
+                                            <input class="form-check-input" type="radio" name="preset" id="presetAllowAll" value="allow_all">
+                                            <label class="form-check-label w-100" for="presetAllowAll">
+                                                <strong class="text-success">Allow All</strong>
+                                                <p class="small text-muted mb-0">Let all bots crawl everything</p>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check card h-100">
+                                        <div class="card-body">
+                                            <input class="form-check-input" type="radio" name="preset" id="presetBlockAll" value="block_all">
+                                            <label class="form-check-label w-100" for="presetBlockAll">
+                                                <strong class="text-danger">Block All</strong>
+                                                <p class="small text-muted mb-0">Prevent all crawling (dev sites)</p>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check card h-100">
+                                        <div class="card-body">
+                                            <input class="form-check-input" type="radio" name="preset" id="presetEcommerce" value="ecommerce">
+                                            <label class="form-check-label w-100" for="presetEcommerce">
+                                                <strong class="text-warning">E-commerce</strong>
+                                                <p class="small text-muted mb-0">Block cart, checkout, filter pages</p>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check card h-100">
+                                        <div class="card-body">
+                                            <input class="form-check-input" type="radio" name="preset" id="presetWordpress" value="wordpress">
+                                            <label class="form-check-label w-100" for="presetWordpress">
+                                                <strong class="text-info">WordPress</strong>
+                                                <p class="small text-muted mb-0">Optimized for WordPress sites</p>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Options -->
+                        <div class="mb-4">
+                            <a class="btn btn-link text-decoration-none p-0" data-bs-toggle="collapse" href="#advancedOptions">
+                                <i class="bi bi-gear me-1"></i>Advanced Options
+                            </a>
+                            <div class="collapse mt-3" id="advancedOptions">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Custom Disallow Paths</label>
+                                                <textarea class="form-control" id="customDisallow" rows="3" 
+                                                          placeholder="/private/&#10;/api/&#10;/temp/"></textarea>
+                                                <div class="form-text">One path per line</div>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Custom Allow Paths</label>
+                                                <textarea class="form-control" id="customAllow" rows="3" 
+                                                          placeholder="/api/public/&#10;/assets/"></textarea>
+                                                <div class="form-text">One path per line</div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Crawl Delay (seconds)</label>
+                                                <input type="number" class="form-control" id="crawlDelay" placeholder="Optional" min="0" max="60">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Sitemap URL</label>
+                                                <input type="text" class="form-control" id="sitemapUrl" placeholder="Auto-detected">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg" id="generateBtn">
+                                <i class="bi bi-magic me-2"></i>Generate Robots.txt
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Results Section -->
+                    <div id="resultSection" class="mt-5" style="display: none;">
+                        <hr class="my-4">
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">
+                                <i class="bi bi-file-earmark-text me-2 text-success"></i>
+                                Generated Robots.txt
+                            </h5>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm me-2" onclick="copyRobots()">
+                                    <i class="bi bi-clipboard me-1"></i>Copy
+                                </button>
+                                <button class="btn btn-success btn-sm" onclick="downloadRobots()">
+                                    <i class="bi bi-download me-1"></i>Download
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-dark rounded-3 p-3">
+                            <pre class="text-success mb-0" id="robotsOutput" style="white-space: pre-wrap; font-size: 0.9rem;"></pre>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="alert alert-info mt-4">
+                            <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>How to Use</h6>
+                            <ol class="mb-0 small">
+                                <li>Download or copy the robots.txt content above</li>
+                                <li>Upload the file to your website's root directory (e.g., https://example.com/robots.txt)</li>
+                                <li>Test it using <a href="https://www.google.com/webmasters/tools/robots-testing-tool" target="_blank">Google's Robots Testing Tool</a></li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Cards -->
+            <div class="row mt-5">
+                <div class="col-md-4 mb-4">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-shield-check fs-1 text-success mb-3"></i>
+                            <h5>Control Access</h5>
+                            <p class="text-muted small mb-0">Specify which pages search engines can and cannot crawl</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-speedometer fs-1 text-primary mb-3"></i>
+                            <h5>Optimize Crawl Budget</h5>
+                            <p class="text-muted small mb-0">Direct bots to your most important content first</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-eye-slash fs-1 text-warning mb-3"></i>
+                            <h5>Hide Sensitive Areas</h5>
+                            <p class="text-muted small mb-0">Keep admin and private pages out of search results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let generatedRobots = '';
+
+document.getElementById('robotsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('generateBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+    btn.disabled = true;
+    
+    const url = document.getElementById('websiteUrl').value;
+    const preset = document.querySelector('input[name="preset"]:checked').value;
+    const customDisallow = document.getElementById('customDisallow').value.split('\n').filter(p => p.trim());
+    const customAllow = document.getElementById('customAllow').value.split('\n').filter(p => p.trim());
+    const crawlDelay = document.getElementById('crawlDelay').value;
+    const sitemapUrl = document.getElementById('sitemapUrl').value;
+    
+    try {
+        const response = await fetch('/api/generate-robots', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                url: url,
+                preset: preset,
+                disallow: customDisallow,
+                allow: customAllow,
+                crawl_delay: crawlDelay || null,
+                sitemap: sitemapUrl || null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            generatedRobots = data.robots;
+            document.getElementById('robotsOutput').textContent = data.robots;
+            document.getElementById('resultSection').style.display = 'block';
+            
+            // Scroll to results
+            document.getElementById('resultSection').scrollIntoView({behavior: 'smooth'});
+        } else {
+            alert(data.error || 'Failed to generate robots.txt');
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+});
+
+function copyRobots() {
+    navigator.clipboard.writeText(generatedRobots).then(() => {
+        alert('Robots.txt copied to clipboard!');
+    });
+}
+
+function downloadRobots() {
+    const blob = new Blob([generatedRobots], {type: 'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'robots.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

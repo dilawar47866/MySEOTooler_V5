@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}LSI Keyword Generator - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">LSI Keyword Generator</h2>
+                    <p class="text-muted">Find semantic keywords to boost your topical authority.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-project-diagram fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="input-group input-group-lg">
+                        <input type="text" id="mainKeyword" class="form-control" placeholder="E.g. Digital Marketing">
+                        <button class="btn btn-primary px-5" id="genBtn" onclick="generateLSI()">
+                            <i class="fas fa-search me-2"></i> Find Keywords
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsArea" class="d-none">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold d-flex justify-content-between">
+                        <span>Related Terms</span>
+                        <button class="btn btn-sm btn-outline-dark" onclick="copyAll()">Copy All</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Keyword</th>
+                                        <th>Relevance</th>
+                                        <th>Intent</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lsiTable">
+                                    <!-- Rows go here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateLSI() {
+    const keyword = document.getElementById('mainKeyword').value;
+    if(!keyword) return alert("Enter a keyword");
+
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+
+    // Prompt asking for structured JSON data
+    const prompt = `Generate 15 LSI (Latent Semantic Indexing) keywords for the topic: "${keyword}".
+    For each, estimate a Relevance score (0-100) and User Intent (Informational, Commercial, or Transactional).
+    
+    Return ONLY JSON in this format:
+    [
+        {"keyword": "term 1", "relevance": 95, "intent": "Informational"},
+        {"keyword": "term 2", "relevance": 80, "intent": "Commercial"}
+    ]`;
+
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({keyword: prompt, mode: 'ai'})
+        });
+        
+        const data = await res.json();
+        
+        if(data.success) {
+            // Parse JSON from AI
+            let cleanJson = data.content.replace(/```json/g, '').replace(/```/g, '').trim();
+            const items = JSON.parse(cleanJson);
+            
+            const tbody = document.getElementById('lsiTable');
+            tbody.innerHTML = '';
+
+            items.forEach(item => {
+                // Color code intent
+                let badgeClass = 'bg-secondary';
+                if(item.intent === 'Commercial') badgeClass = 'bg-primary';
+                if(item.intent === 'Transactional') badgeClass = 'bg-success';
+                if(item.intent === 'Informational') badgeClass = 'bg-info text-dark';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="fw-bold">${item.keyword}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <span class="me-2 small">${item.relevance}%</span>
+                                <div class="progress w-100" style="height: 6px;">
+                                    <div class="progress-bar" style="width: ${item.relevance}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="badge ${badgeClass}">${item.intent}</span></td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-light border" onclick="navigator.clipboard.writeText('${item.keyword}')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('resultsArea').classList.remove('d-none');
+        }
+    } catch(e) { console.error(e); alert("Failed to generate. Try again."); }
+    finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-search me-2"></i> Find Keywords';
+    }
+}
+
+function copyAll() {
+    const rows = document.querySelectorAll('#lsiTable td:first-child');
+    let text = "";
+    rows.forEach(r => text += r.innerText + "\n");
+    navigator.clipboard.writeText(text);
+    alert("All keywords copied!");
+}
+</script>
+{% endblock %}

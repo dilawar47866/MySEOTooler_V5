@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Content Library - My SEO King Tool{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 fw-bold">My Content Library</h2>
+        <a href="/editor" class="btn btn-primary"><i class="fas fa-plus me-2"></i> New Content</a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            {% if contents %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Title</th>
+                            <th>Target Keyword</th>
+                            <th>Words</th>
+                            <th>SEO Score</th>
+                            <th>Last Updated</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in contents %}
+                        <tr id="row-{{c.id}}">
+                            <td class="ps-4 fw-bold">
+                                <a href="/editor?id={{ c.id }}" class="text-decoration-none text-dark">{{ c.title }}</a>
+                            </td>
+                            <td>
+                                {% if c.keyword %}
+                                <span class="badge bg-light text-dark border">{{ c.keyword }}</span>
+                                {% else %}
+                                <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ c.word_count }}</td>
+                            <td>
+                                {% if c.seo_score >= 80 %}<span class="badge bg-success">{{ c.seo_score }}</span>
+                                {% elif c.seo_score >= 50 %}<span class="badge bg-warning text-dark">{{ c.seo_score }}</span>
+                                {% else %}<span class="badge bg-danger">{{ c.seo_score }}</span>{% endif %}
+                            </td>
+                            <td class="text-muted small">{{ c.updated_at.strftime('%Y-%m-%d') }}</td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group">
+                                    <a href="/editor?id={{ c.id }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-pen"></i></a>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteContent({{ c.id }})"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-folder-open fa-4x text-muted opacity-25 mb-3"></i>
+                <h5 class="text-muted">Your library is empty</h5>
+                <a href="/editor" class="btn btn-primary mt-2">Create your first article</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+async function deleteContent(id) {
+    if(!confirm("Are you sure you want to delete this?")) return;
+    
+    try {
+        const res = await fetch(`/api/delete-content/${id}`, { method: 'POST' });
+        const data = await res.json();
+        if(data.success) {
+            document.getElementById(`row-${id}`).remove();
+        } else {
+            alert("Error deleting content");
+        }
+    } catch(e) { console.error(e); }
+}
+</script>
+{% endblock %}

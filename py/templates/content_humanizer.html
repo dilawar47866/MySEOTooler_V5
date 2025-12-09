@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}AI Humanizer - MySEO King{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <h2 class="h3 fw-bold mb-4">Content Humanizer (Anti-AI)</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="fw-bold">Robotic AI Text</label>
+                    <textarea id="aiText" class="form-control" rows="15" placeholder="Paste ChatGPT text here..."></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="fw-bold text-success">Humanized Result</label>
+                    <textarea id="humanText" class="form-control" rows="15" readonly></textarea>
+                </div>
+            </div>
+            <button class="btn btn-success w-100 mt-3 py-3" id="humBtn" onclick="humanize()">
+                <i class="fas fa-magic me-2"></i> Humanize Text
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+async function humanize() {
+    const text = document.getElementById('aiText').value;
+    if(!text) return alert("Paste text first");
+    
+    const btn = document.getElementById('humBtn');
+    btn.disabled = true; btn.innerHTML = "Rewriting...";
+    
+    try {
+        const res = await fetch('/api/humanize-text', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content: text})
+        });
+        const data = await res.json();
+        if(data.success) {
+            document.getElementById('humanText').value = data.content;
+        }
+    } catch(e) { console.error(e); }
+    finally { btn.disabled = false; btn.innerHTML = "Humanize Text"; }
+}
+</script>
+{% endblock %}

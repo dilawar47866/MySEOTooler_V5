@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Up - My SEO King Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f3f4f6; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .auth-card { width: 100%; max-width: 400px; background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <div class="text-center mb-4">
+            <h3 class="fw-bold text-primary">My SEO King Tool</h3>
+            <p class="text-muted">Create your account</p>
+        </div>
+        
+        <div id="errorAlert" class="alert alert-danger d-none"></div>
+
+        <form onsubmit="handleSignup(event)">
+            <div class="mb-3">
+                <label class="form-label fw-bold">Username</label>
+                <input type="text" id="username" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Email Address</label>
+                <input type="email" id="email" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Password</label>
+                <input type="password" id="password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-2" id="submitBtn">Get Started</button>
+        </form>
+        
+        <div class="text-center mt-4">
+            <small>Already have an account? <a href="/login">Login</a></small>
+        </div>
+    </div>
+
+    <script>
+    async function handleSignup(e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const btn = document.getElementById('submitBtn');
+        const err = document.getElementById('errorAlert');
+
+        btn.disabled = true;
+        btn.innerText = 'Creating account...';
+        err.classList.add('d-none');
+
+        try {
+            const res = await fetch('/signup', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, email, password})
+            });
+            const data = await res.json();
+            
+            if(data.success) {
+                window.location.href = data.redirect;
+            } else {
+                err.innerText = data.error;
+                err.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerText = 'Get Started';
+            }
+        } catch(e) {
+            err.innerText = "Connection error";
+            err.classList.remove('d-none');
+            btn.disabled = false;
+        }
+    }
+    </script>
+</body>
+</html>

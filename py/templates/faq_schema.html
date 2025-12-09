@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h2><i class="fas fa-question-circle"></i> FAQ Schema Generator</h2>
+    <div class="card p-4 shadow-sm">
+        <div id="faqBox"></div>
+        <button class="btn btn-sm btn-outline-primary mb-3" onclick="addFaq()">+ Add Question</button>
+        <button class="btn btn-success w-100" onclick="genSchema()">Generate JSON-LD Code</button>
+    </div>
+    <textarea id="output" class="form-control mt-3 bg-dark text-white" rows="6" placeholder="Code will appear here..." readonly></textarea>
+</div>
+<script>
+function addFaq() {
+    document.getElementById('faqBox').innerHTML += `<div class="mb-2 border-bottom pb-2"><input class="form-control mb-1 q" placeholder="Question"><input class="form-control a" placeholder="Answer"></div>`;
+}
+addFaq(); // Add one by default
+function genSchema() {
+    let qs = document.querySelectorAll('.q'), as = document.querySelectorAll('.a'), arr = [];
+    qs.forEach((q, i) => {
+        if(q.value && as[i].value) {
+            arr.push({"@type":"Question","name":q.value,"acceptedAnswer":{"@type":"Answer","text":as[i].value}});
+        }
+    });
+    document.getElementById('output').value = JSON.stringify({"@context":"https://schema.org","@type":"FAQPage","mainEntity":arr}, null, 2);
+}
+</script>
+{% endblock %}

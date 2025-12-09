@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Article Writer - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 rounded-circle mb-3" style="width: 80px; height: 80px;">
+                    <i class="bi bi-stack fs-1 text-warning"></i>
+                </div>
+                <h1 class="fw-bold">Bulk Article Writer</h1>
+                <p class="text-muted lead">Generate multiple SEO-optimized articles at once</p>
+                <span class="badge bg-warning text-dark">
+                    <i class="bi bi-crown me-1"></i>Pro Feature
+                </span>
+            </div>
+
+            <!-- Main Card -->
+            <div class="card border-0 shadow-lg">
+                <div class="card-body p-4 p-lg-5">
+                    <form id="bulkForm">
+                        <!-- Keywords Input -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-list-check me-2"></i>Keywords (One per line, max 10)
+                            </label>
+                            <textarea class="form-control" id="keywords" rows="6" 
+                                      placeholder="Enter keywords, one per line:&#10;best coffee machines 2024&#10;how to brew espresso at home&#10;coffee grinder buying guide" required></textarea>
+                            <div class="form-text">Each keyword will generate a separate article</div>
+                        </div>
+
+                        <!-- Options Row -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Writing Tone</label>
+                                <select class="form-select" id="tone">
+                                    <option value="Professional">Professional</option>
+                                    <option value="Casual">Casual & Friendly</option>
+                                    <option value="Authoritative">Authoritative</option>
+                                    <option value="Conversational">Conversational</option>
+                                    <option value="Informative">Informative</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Target Word Count</label>
+                                <select class="form-select" id="wordCount">
+                                    <option value="500">~500 words (Short)</option>
+                                    <option value="800" selected>~800 words (Medium)</option>
+                                    <option value="1200">~1200 words (Long)</option>
+                                    <option value="1500">~1500 words (Comprehensive)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning btn-lg" id="generateBtn">
+                                <i class="bi bi-lightning-charge me-2"></i>Generate All Articles
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Progress Section -->
+                    <div id="progressSection" class="mt-4" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span id="progressLabel" class="fw-semibold">Generating articles...</span>
+                            <span id="progressCount" class="text-muted">0 / 0</span>
+                        </div>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" 
+                                 role="progressbar" id="progressBar" style="width: 0%">
+                            </div>
+                        </div>
+                        <div id="currentKeyword" class="text-center text-muted mt-2 small"></div>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div id="resultsSection" class="mt-5" style="display: none;">
+                        <hr class="my-4">
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="mb-0">
+                                <i class="bi bi-check-circle text-success me-2"></i>
+                                Generated Articles
+                                <span class="badge bg-success ms-2" id="successCount">0</span>
+                            </h5>
+                            <div>
+                                <button class="btn btn-outline-success btn-sm me-2" onclick="saveAllToLibrary()">
+                                    <i class="bi bi-save me-1"></i>Save All to Library
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="downloadAll()">
+                                    <i class="bi bi-download me-1"></i>Download All
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="accordion" id="articlesAccordion">
+                            <!-- Articles will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tips Card -->
+            <div class="card border-0 bg-light mt-4">
+                <div class="card-body">
+                    <h6 class="fw-bold"><i class="bi bi-lightbulb me-2 text-warning"></i>Pro Tips</h6>
+                    <ul class="mb-0 small text-muted">
+                        <li>Use specific, long-tail keywords for better results</li>
+                        <li>Each article is unique and SEO-optimized</li>
+                        <li>Articles include proper headings, meta descriptions, and structure</li>
+                        <li>Save to Content Library to edit and refine</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let generatedArticles = [];
+let isGenerating = false;
+
+document.getElementById('bulkForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (isGenerating) {
+        alert('Generation already in progress. Please wait.');
+        return;
+    }
+    
+    const btn = document.getElementById('generateBtn');
+    const keywordsText = document.getElementById('keywords').value;
+    const keywords = keywordsText.split('\n').map(k => k.trim()).filter(k => k.length > 0);
+    
+    if (keywords.length === 0) {
+        alert('Please enter at least one keyword');
+        return;
+    }
+    
+    if (keywords.length > 10) {
+        alert('Maximum 10 keywords per batch. Please remove some keywords.');
+        return;
+    }
+    
+    // Reset state
+    isGenerating = true;
+    generatedArticles = [];
+    
+    // Update UI
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+    
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('articlesAccordion').innerHTML = '';
+    
+    const tone = document.getElementById('tone').value;
+    const wordCount = parseInt(document.getElementById('wordCount').value);
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    // Generate articles one by one
+    for (let i = 0; i < keywords.length; i++) {
+        const keyword = keywords[i];
+        
+        // Update progress
+        const progress = Math.round(((i) / keywords.length) * 100);
+        document.getElementById('progressBar').style.width = progress + '%';
+        document.getElementById('progressCount').textContent = `${i} / ${keywords.length}`;
+        document.getElementById('progressLabel').textContent = `Generating article ${i + 1} of ${keywords.length}...`;
+        document.getElementById('currentKeyword').innerHTML = `<i class="bi bi-pencil me-1"></i>Writing: <strong>${keyword}</strong>`;
+        
+        try {
+            const response = await fetch('/api/bulk-write-single', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    keyword: keyword,
+                    tone: tone,
+                    word_count: wordCount
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                successCount++;
+                generatedArticles.push({
+                    keyword: keyword,
+                    content: data.content,
+                    html: data.html,
+                    word_count: data.word_count,
+                    success: true
+                });
+                addArticleToAccordion(generatedArticles.length - 1, data, true);
+            } else {
+                failCount++;
+                generatedArticles.push({
+                    keyword: keyword,
+                    error: data.error,
+                    success: false
+                });
+                addArticleToAccordion(generatedArticles.length - 1, {keyword: keyword, error: data.error}, false);
+            }
+            
+        } catch (err) {
+            failCount++;
+            generatedArticles.push({
+                keyword: keyword,
+                error: err.message,
+                success: false
+            });
+            addArticleToAccordion(generatedArticles.length - 1, {keyword: keyword, error: err.message}, false);
+        }
+        
+        // Show results section after first article
+        if (i === 0) {
+            document.getElementById('resultsSection').style.display = 'block';
+        }
+        
+        // Small delay between requests to avoid rate limiting
+        if (i < keywords.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    }
+    
+    // Complete
+    document.getElementById('progressBar').style.width = '100%';
+    document.getElementById('progressBar').classList.remove('progress-bar-animated', 'bg-warning');
+    document.getElementById('progressBar').classList.add('bg-success');
+    document.getElementById('progressLabel').textContent = 'Complete!';
+    document.getElementById('progressCount').textContent = `${keywords.length} / ${keywords.length}`;
+    document.getElementById('currentKeyword').innerHTML = `<i class="bi bi-check-circle text-success me-1"></i>All articles generated!`;
+    document.getElementById('successCount').textContent = successCount;
+    
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-lightning-charge me-2"></i>Generate All Articles';
+    isGenerating = false;
+    
+    // Show summary
+    if (failCount > 0) {
+        showToast(`Generated ${successCount} articles. ${failCount} failed.`, 'warning');
+    } else {
+        showToast(`Successfully generated ${successCount} articles!`, 'success');
+    }
+});
+
+function addArticleToAccordion(index, data, success) {
+    const accordion = document.getElementById('articlesAccordion');
+    
+    const statusBadge = success 
+        ? '<span class="badge bg-success me-2">Success</span>'
+        : '<span class="badge bg-danger me-2">Failed</span>';
+    
+    const wordBadge = success 
+        ? `<span class="badge bg-secondary">${data.word_count} words</span>`
+        : '';
+    
+    let contentHtml = '';
+    if (success) {
+        contentHtml = `
+            <div class="article-preview mb-3" style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 20px; background: #fafafa;">
+                ${data.html}
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-sm btn-outline-primary" onclick="copyArticle(${index})">
+                    <i class="bi bi-clipboard me-1"></i>Copy Markdown
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="copyHtml(${index})">
+                    <i class="bi bi-code-slash me-1"></i>Copy HTML
+                </button>
+                <button class="btn btn-sm btn-success" onclick="saveArticle(${index})">
+                    <i class="bi bi-save me-1"></i>Save to Library
+                </button>
+                <button class="btn btn-sm btn-outline-dark" onclick="downloadArticle(${index})">
+                    <i class="bi bi-download me-1"></i>Download
+                </button>
+            </div>
+        `;
+    } else {
+        contentHtml = `<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle me-2"></i>${data.error}</div>`;
+    }
+    
+    const isFirst = index === 0;
+    const articleHtml = `
+        <div class="accordion-item border mb-2 rounded overflow-hidden" id="articleItem${index}">
+            <h2 class="accordion-header">
+                <button class="accordion-button ${!isFirst ? 'collapsed' : ''}" type="button" 
+                        data-bs-toggle="collapse" data-bs-target="#article${index}">
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        ${statusBadge}
+                        <span class="fw-semibold">${data.keyword}</span>
+                        ${wordBadge}
+                    </div>
+                </button>
+            </h2>
+            <div id="article${index}" class="accordion-collapse collapse ${isFirst ? 'show' : ''}"
+                 data-bs-parent="#articlesAccordion">
+                <div class="accordion-body">
+                    ${contentHtml}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    accordion.insertAdjacentHTML('beforeend', articleHtml);
+}
+
+function copyArticle(index) {
+    const article = generatedArticles[index];
+    if (article && article.content) {
+        navigator.clipboard.writeText(article.content).then(() => {
+            showToast('Markdown copied to clipboard!', 'success');
+        });
+    }
+}
+
+function copyHtml(index) {
+    const article = generatedArticles[index];
+    if (article && article.html) {
+        navigator.clipboard.writeText(article.html).then(() => {
+            showToast('HTML copied to clipboard!', 'success');
+        });
+    }
+}
+
+async function saveArticle(index) {
+    const article = generatedArticles[index];
+    if (!article || !article.success) return;
+    
+    try {
+        const response = await fetch('/api/save-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                title: article.keyword,
+                content: article.content,
+                html_content: article.html,
+                keyword: article.keyword
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showToast(`"${article.keyword}" saved to library!`, 'success');
+        } else {
+            showToast(data.error || 'Failed to save', 'danger');
+        }
+    } catch (err) {
+        showToast('Error saving: ' + err.message, 'danger');
+    }
+}
+
+async function saveAllToLibrary() {
+    const successArticles = generatedArticles.filter(a => a.success);
+    if (successArticles.length === 0) {
+        showToast('No articles to save', 'warning');
+        return;
+    }
+    
+    let saved = 0;
+    for (let i = 0; i < generatedArticles.length; i++) {
+        if (generatedArticles[i].success) {
+            try {
+                const response = await fetch('/api/save-content', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        title: generatedArticles[i].keyword,
+                        content: generatedArticles[i].content,
+                        html_content: generatedArticles[i].html,
+                        keyword: generatedArticles[i].keyword
+                    })
+                });
+                const data = await response.json();
+                if (data.success) saved++;
+            } catch (err) {
+                console.error('Save error:', err);
+            }
+        }
+    }
+    showToast(`Saved ${saved} articles to library!`, 'success');
+}
+
+function downloadArticle(index) {
+    const article = generatedArticles[index];
+    if (!article || !article.success) return;
+    
+    const filename = article.keyword.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 50);
+    const blob = new Blob([article.content], {type: 'text/markdown'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function downloadAll() {
+    const successArticles = generatedArticles.filter(a => a.success);
+    if (successArticles.length === 0) {
+        showToast('No articles to download', 'warning');
+        return;
+    }
+    
+    successArticles.forEach((article, i) => {
+        setTimeout(() => {
+            const filename = article.keyword.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 50);
+            const blob = new Blob([article.content], {type: 'text/markdown'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, i * 300);
+    });
+    
+    showToast(`Downloading ${successArticles.length} articles...`, 'success');
+}
+
+function showToast(message, type = 'success') {
+    const bgClass = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning text-dark' : 'bg-danger';
+    const icon = type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'x-circle';
+    
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    
+    const toastHtml = `
+        <div class="toast align-items-center ${bgClass} border-0 text-white" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-${icon} me-2"></i>${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastEl = toastContainer.lastElementChild;
+    const toast = new bootstrap.Toast(toastEl, {delay: 3000});
+    toast.show();
+    
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    container.style.zIndex = '9999';
+    document.body.appendChild(container);
+    return container;
+}
+</script>
+
+<style>
+.article-preview h1 { font-size: 1.5rem; color: #333; margin-top: 0; }
+.article-preview h2 { font-size: 1.25rem; color: #444; margin-top: 1.25rem; }
+.article-preview h3 { font-size: 1.1rem; color: #555; margin-top: 1rem; }
+.article-preview p { margin-bottom: 0.75rem; line-height: 1.7; }
+.article-preview ul, .article-preview ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+.article-preview li { margin-bottom: 0.25rem; }
+.accordion-button:not(.collapsed) { background-color: #fff3cd; }
+</style>
+{% endblock %}

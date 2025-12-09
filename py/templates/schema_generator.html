@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Advanced Schema Generator{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            
+            <h2 class="mb-4 fw-bold"><i class="fas fa-code text-primary"></i> Schema Markup Generator</h2>
+            <p class="text-muted mb-4">Create JSON-LD structured data to help Google understand your content better.</p>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <ul class="nav nav-tabs card-header-tabs" id="schemaTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#faq-tab" type="button">
+                                <i class="fas fa-question-circle"></i> FAQ
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#article-tab" type="button">
+                                <i class="fas fa-newspaper"></i> Article
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#local-tab" type="button">
+                                <i class="fas fa-store"></i> Local Business
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body p-4">
+                    <div class="tab-content">
+                        
+                        <!-- FAQ TAB -->
+                        <div class="tab-pane fade show active" id="faq-tab">
+                            <div id="faq-list">
+                                <div class="row mb-3 faq-item">
+                                    <div class="col-md-6"><input type="text" class="form-control q-input" placeholder="Question"></div>
+                                    <div class="col-md-6"><input type="text" class="form-control a-input" placeholder="Answer"></div>
+                                </div>
+                            </div>
+                            <button class="btn btn-outline-primary btn-sm mb-3" onclick="addFaqRow()">
+                                <i class="fas fa-plus"></i> Add Question
+                            </button>
+                            <br>
+                            <button class="btn btn-primary" onclick="generateSchema('faq')">Generate FAQ Schema</button>
+                        </div>
+
+                        <!-- ARTICLE TAB -->
+                        <div class="tab-pane fade" id="article-tab">
+                            <div class="mb-3"><label>Headline</label><input type="text" id="art-headline" class="form-control"></div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3"><label>Image URL</label><input type="text" id="art-image" class="form-control"></div>
+                                <div class="col-md-6 mb-3"><label>Author Name</label><input type="text" id="art-author" class="form-control"></div>
+                            </div>
+                            <div class="mb-3"><label>Date Published</label><input type="date" id="art-date" class="form-control"></div>
+                            <button class="btn btn-primary" onclick="generateSchema('article')">Generate Article Schema</button>
+                        </div>
+
+                        <!-- LOCAL BUSINESS TAB -->
+                        <div class="tab-pane fade" id="local-tab">
+                            <div class="row">
+                                <div class="col-md-6 mb-3"><label>Business Name</label><input type="text" id="loc-name" class="form-control"></div>
+                                <div class="col-md-6 mb-3"><label>Image URL</label><input type="text" id="loc-image" class="form-control"></div>
+                            </div>
+                            <div class="mb-3"><label>Street Address</label><input type="text" id="loc-address" class="form-control"></div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3"><label>City</label><input type="text" id="loc-city" class="form-control"></div>
+                                <div class="col-md-4 mb-3"><label>Region/State</label><input type="text" id="loc-region" class="form-control"></div>
+                                <div class="col-md-4 mb-3"><label>Postal Code</label><input type="text" id="loc-zip" class="form-control"></div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3"><label>Phone</label><input type="text" id="loc-phone" class="form-control"></div>
+                                <div class="col-md-6 mb-3"><label>Country (e.g. US)</label><input type="text" id="loc-country" class="form-control"></div>
+                            </div>
+                            <button class="btn btn-primary" onclick="generateSchema('local')">Generate Local Schema</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- OUTPUT AREA -->
+            <div id="outputArea" class="mt-4" style="display:none;">
+                <div class="card bg-dark text-white">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>JSON-LD Output</span>
+                        <button class="btn btn-sm btn-light" onclick="copyToClipboard()">Copy Code</button>
+                    </div>
+                    <div class="card-body">
+                        <pre id="jsonOutput" class="mb-0" style="color: #00ff9d; font-family: monospace;"></pre>
+                    </div>
+                </div>
+                <p class="text-muted small mt-2 text-center">Paste this code into the <code>&lt;head&gt;</code> or <code>&lt;body&gt;</code> of your webpage.</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+function addFaqRow() {
+    const div = document.createElement('div');
+    div.className = 'row mb-3 faq-item';
+    div.innerHTML = `
+        <div class="col-md-6"><input type="text" class="form-control q-input" placeholder="Question"></div>
+        <div class="col-md-6"><input type="text" class="form-control a-input" placeholder="Answer"></div>
+    `;
+    document.getElementById('faq-list').appendChild(div);
+}
+
+async function generateSchema(type) {
+    let payload = { type: type };
+
+    if (type === 'faq') {
+        const questions = [];
+        document.querySelectorAll('.faq-item').forEach(item => {
+            const q = item.querySelector('.q-input').value;
+            const a = item.querySelector('.a-input').value;
+            if(q && a) questions.push({q, a});
+        });
+        payload.questions = questions;
+    } else if (type === 'article') {
+        payload.headline = document.getElementById('art-headline').value;
+        payload.image = document.getElementById('art-image').value;
+        payload.author = document.getElementById('art-author').value;
+        payload.date = document.getElementById('art-date').value;
+    } else if (type === 'local') {
+        payload.name = document.getElementById('loc-name').value;
+        payload.image = document.getElementById('loc-image').value;
+        payload.address = document.getElementById('loc-address').value;
+        payload.city = document.getElementById('loc-city').value;
+        payload.region = document.getElementById('loc-region').value;
+        payload.zip = document.getElementById('loc-zip').value;
+        payload.country = document.getElementById('loc-country').value;
+        payload.phone = document.getElementById('loc-phone').value;
+    }
+
+    try {
+        const res = await fetch('/api/generate-schema', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+
+        document.getElementById('jsonOutput').innerText = data.json;
+        document.getElementById('outputArea').style.display = 'block';
+        document.getElementById('outputArea').scrollIntoView({behavior:'smooth'});
+        
+    } catch(e) {
+        alert("Error: " + e.message);
+    }
+}
+
+function copyToClipboard() {
+    const text = document.getElementById('jsonOutput').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Copied to clipboard!");
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Header & Controls -->
+    <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+        <h2 class="text-3xl font-bold mb-2 text-slate-800"><i class="fas fa-pen-fancy mr-2 text-blue-600"></i> AI Article Writer</h2>
+        <p class="text-slate-500 mb-6">Generate SEO-optimized content or Human-like content to bypass detectors.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+            <div class="md:col-span-2">
+                <label class="block text-sm font-bold mb-2 text-slate-700">Target Keyword / Topic:</label>
+                <input type="text" id="keyword" class="w-full p-4 border rounded-xl text-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g. The Benefits of Green Tea">
+            </div>
+            
+            <!-- Humanize Switch -->
+            <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                <label class="flex items-center cursor-pointer">
+                    <div class="relative">
+                        <input type="checkbox" id="humanize" class="sr-only">
+                        <div class="w-10 h-4 bg-gray-400 rounded-full shadow-inner"></div>
+                        <div class="dot absolute w-6 h-6 bg-white rounded-full shadow -left-1 -top-1 transition"></div>
+                    </div>
+                    <div class="ml-3 text-indigo-700 font-bold">Humanize Mode ⚡️</div>
+                </label>
+                <p class="text-xs text-indigo-500 mt-1">Bypasses AI Detectors</p>
+            </div>
+        </div>
+
+        <button onclick="writeArticle()" id="btn" class="mt-6 bg-blue-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition w-full shadow-md">
+            <i class="fas fa-robot mr-2"></i> Generate Full Article
+        </button>
+    </div>
+
+    <!-- Results Section -->
+    <div id="result" class="hidden">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-xl text-slate-800">Your Article:</h3>
+            <div class="flex gap-2">
+                <span class="text-sm text-green-600 font-bold px-3 py-1 bg-green-100 rounded-full border border-green-200">
+                    <i class="fas fa-check"></i> Saved
+                </span>
+                <button onclick="openWPModal()" class="text-sm text-white font-bold px-4 py-1 bg-slate-800 rounded-full hover:bg-slate-700">
+                    <i class="fab fa-wordpress"></i> Publish
+                </button>
+            </div>
+        </div>
+        <div id="articleOutput" class="bg-white p-8 border rounded-xl shadow-inner prose max-w-none"></div>
+    </div>
+</div>
+
+<!-- WordPress Modal -->
+<div id="wpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl">
+        <h3 class="text-xl font-bold mb-4"><i class="fab fa-wordpress text-blue-600"></i> Publish to WordPress</h3>
+        
+        <div class="space-y-4">
+            <input type="text" id="wpUrl" placeholder="Site URL (e.g. https://mysite.com)" class="w-full p-3 border rounded">
+            <input type="text" id="wpUser" placeholder="Username" class="w-full p-3 border rounded">
+            <input type="password" id="wpPass" placeholder="Application Password" class="w-full p-3 border rounded">
+            <p class="text-xs text-gray-500">Go to Users > Profile > Application Passwords in WP Admin to generate one.</p>
+        </div>
+        
+        <div class="mt-6 flex gap-3">
+            <button onclick="closeWPModal()" class="flex-1 py-2 border rounded hover:bg-gray-50">Cancel</button>
+            <button onclick="publishToWP()" id="wpBtn" class="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold">Publish Draft</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Toggle Switch CSS */
+    input:checked ~ .dot { transform: translateX(100%); background-color: #4f46e5; }
+    input:checked ~ .bg-gray-400 { background-color: #c7d2fe; }
+</style>
+
+<script>
+let currentArticleContent = "";
+let currentArticleTitle = "";
+
+async function writeArticle() {
+    const btn = document.getElementById('btn');
+    const keyword = document.getElementById('keyword').value;
+    const humanize = document.getElementById('humanize').checked;
+    
+    if(!keyword) return alert("Please enter a topic");
+    
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Researching & Writing...';
+    btn.disabled = true;
+    
+    try {
+        const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                keyword: keyword, 
+                mode: humanize ? 'human' : 'standard'
+            })
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+        
+        document.getElementById('articleOutput').innerHTML = data.html_content;
+        document.getElementById('result').classList.remove('hidden');
+        
+        // Save for WP publishing
+        currentArticleContent = data.html_content;
+        currentArticleTitle = keyword;
+        
+    } catch(e) {
+        alert(e.message);
+    } finally {
+        btn.innerHTML = '<i class="fas fa-robot"></i> Generate Another Article';
+        btn.disabled = false;
+    }
+}
+
+// WP Modal Functions
+function openWPModal() { document.getElementById('wpModal').classList.remove('hidden'); }
+function closeWPModal() { document.getElementById('wpModal').classList.add('hidden'); }
+
+async function publishToWP() {
+    const wpBtn = document.getElementById('wpBtn');
+    const url = document.getElementById('wpUrl').value;
+    const user = document.getElementById('wpUser').value;
+    const pass = document.getElementById('wpPass').value;
+    
+    if(!url || !user || !pass) return alert("Please fill all fields");
+    
+    wpBtn.innerHTML = 'Publishing...';
+    wpBtn.disabled = true;
+    
+    try {
+        const res = await fetch('/api/publish-wordpress', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                url: url, user: user, password: pass,
+                title: currentArticleTitle,
+                content: currentArticleContent
+            })
+        });
+        const data = await res.json();
+        if(data.error) throw new Error(data.error);
+        
+        alert("Success! Saved as Draft.");
+        closeWPModal();
+    } catch(e) {
+        alert(e.message);
+    } finally {
+        wpBtn.innerHTML = 'Publish Draft';
+        wpBtn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}AI Image Generator - MySEO King{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">AI Image Generator (DALL-E 3)</h2>
+                    <p class="text-muted">Create unique visuals for your content.</p>
+                </div>
+                <span class="badge bg-warning text-dark">Pro Only</span>
+            </div>
+
+            <div class="card shadow-sm p-4 mb-4">
+                <!-- Prompt Input -->
+                <label class="form-label fw-bold">Describe your image</label>
+                <textarea id="imgPrompt" class="form-control mb-3" rows="2" placeholder="A futuristic workspace with glowing neon lights..."></textarea>
+                
+                <!-- Template/Size Dropdown (NEW) -->
+                <label class="form-label fw-bold">Template / Size</label>
+                <select id="imgSize" class="form-select mb-4">
+                    <option value="1024x1024">Square (Instagram Post) - 1:1</option>
+                    <option value="1024x1792">Portrait (Stories / TikTok) - 9:16</option>
+                    <option value="1792x1024">Landscape (YouTube / Blog) - 16:9</option>
+                </select>
+
+                <button class="btn btn-primary w-100 py-2 fw-bold" id="genBtn" onclick="generateImage()">
+                    <i class="fas fa-paint-brush me-2"></i> Generate HD Image (5 Credits)
+                </button>
+            </div>
+
+            <div id="resultArea" class="d-none text-center">
+                <img id="outputImg" src="" class="img-fluid rounded shadow-sm mb-3" style="max-height: 500px;">
+                <br>
+                <a id="downloadLink" href="" download="generated-image.png" target="_blank" class="btn btn-outline-dark">
+                    <i class="fas fa-download me-2"></i> Download HD
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+async function generateImage() {
+    const prompt = document.getElementById('imgPrompt').value;
+    const size = document.getElementById('imgSize').value;
+    
+    if(!prompt) return alert("Enter a prompt");
+    
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating... (Wait 10s)';
+    
+    try {
+        const res = await fetch('/api/generate-image', {
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({prompt: prompt, size: size})
+        });
+        const data = await res.json();
+        if(data.success) {
+            document.getElementById('outputImg').src = data.image_url;
+            document.getElementById('downloadLink').href = data.image_url;
+            document.getElementById('resultArea').classList.remove('d-none');
+        } else {
+            alert(data.error);
+        }
+    } catch(e) { console.error(e); }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paint-brush me-2"></i> Generate HD Image (5 Credits)'; }
+}
+</script>
+{% endblock %}

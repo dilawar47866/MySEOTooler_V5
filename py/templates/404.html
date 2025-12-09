@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}404 - Page Not Found{% endblock %}
+{% block content %}
+<div class="card" style="text-align: center; padding: 80px 20px;">
+    <h1 style="font-size: 72px; margin-bottom: 20px;">404</h1>
+    <h2 style="color: #718096; margin-bottom: 30px;">Page Not Found</h2>
+    <p style="color: #a0aec0; margin-bottom: 40px;">The page you're looking for doesn't exist.</p>
+    <a href="{{ url_for('index') }}" class="btn">🏠 Go Home</a>
+</div>
+{% endblock %}

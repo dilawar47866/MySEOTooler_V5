@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Backlink Outreach Builder - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold mb-1">Backlink Outreach Builder</h2>
+                    <p class="text-muted">Generate high-conversion emails to get backlinks.</p>
+                </div>
+                <div class="bg-white p-2 rounded-circle shadow-sm">
+                    <i class="fas fa-link fa-2x text-primary"></i>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Target Website URL</label>
+                        <input type="text" id="targetUrl" class="form-control" placeholder="https://popularblog.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Your Article / Topic</label>
+                        <input type="text" id="myTopic" class="form-control" placeholder="e.g. Ultimate Guide to SEO">
+                    </div>
+                    
+                    <button class="btn btn-primary w-100" id="genBtn" onclick="generateEmail()">
+                        <i class="fas fa-magic me-2"></i> Write Outreach Email
+                    </button>
+                </div>
+            </div>
+
+            <div id="resultArea" class="d-none">
+                <div class="card shadow-sm bg-light">
+                    <div class="card-body">
+                        <label class="small text-muted fw-bold">Copy & Send This:</label>
+                        <textarea id="emailOutput" class="form-control border-0 bg-white mt-2" rows="10" readonly></textarea>
+                        <button class="btn btn-sm btn-outline-dark mt-3" onclick="copyText()">Copy Text</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function generateEmail() {
+    const url = document.getElementById('targetUrl').value;
+    const topic = document.getElementById('myTopic').value;
+    
+    if(!url || !topic) return alert("Fill in all fields");
+
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true; btn.innerText = "Writing...";
+
+    try {
+        const res = await fetch('/api/backlink-outreach', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url: url, topic: topic})
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            document.getElementById('emailOutput').value = data.content;
+            document.getElementById('resultArea').classList.remove('d-none');
+        } else { alert(data.error); }
+    } catch(e) { console.error(e); }
+    finally { btn.disabled = false; btn.innerText = "Write Outreach Email"; }
+}
+
+function copyText() {
+    const text = document.getElementById('emailOutput');
+    text.select();
+    document.execCommand('copy');
+    alert("Copied!");
+}
+</script>
+{% endblock %}

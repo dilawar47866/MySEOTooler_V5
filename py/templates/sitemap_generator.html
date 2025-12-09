@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Sitemap Generator - MySEO King{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 rounded-circle mb-3" style="width: 80px; height: 80px;">
+                    <i class="bi bi-diagram-3 fs-1 text-primary"></i>
+                </div>
+                <h1 class="fw-bold">XML Sitemap Generator</h1>
+                <p class="text-muted lead">Create SEO-friendly sitemaps to help search engines discover your pages</p>
+            </div>
+
+            <!-- Main Card -->
+            <div class="card border-0 shadow-lg">
+                <div class="card-body p-4 p-lg-5">
+                    <form id="sitemapForm">
+                        <!-- URL Input -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-globe me-2"></i>Website URL
+                            </label>
+                            <input type="text" class="form-control form-control-lg" id="websiteUrl" 
+                                   placeholder="https://example.com" required>
+                            <div class="form-text">Enter your website URL to auto-crawl pages, or add URLs manually below</div>
+                        </div>
+
+                        <!-- Options Row -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Change Frequency</label>
+                                <select class="form-select" id="changefreq">
+                                    <option value="always">Always</option>
+                                    <option value="hourly">Hourly</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly" selected>Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="yearly">Yearly</option>
+                                    <option value="never">Never</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Priority</label>
+                                <select class="form-select" id="priority">
+                                    <option value="1.0">1.0 (Highest)</option>
+                                    <option value="0.9">0.9</option>
+                                    <option value="0.8" selected>0.8</option>
+                                    <option value="0.7">0.7</option>
+                                    <option value="0.6">0.6</option>
+                                    <option value="0.5">0.5 (Default)</option>
+                                    <option value="0.4">0.4</option>
+                                    <option value="0.3">0.3</option>
+                                    <option value="0.2">0.2</option>
+                                    <option value="0.1">0.1 (Lowest)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Include Last Modified</label>
+                                <select class="form-select" id="includeLastmod">
+                                    <option value="true" selected>Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Manual URLs -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-list-ul me-2"></i>Additional URLs (Optional)
+                            </label>
+                            <textarea class="form-control" id="manualUrls" rows="4" 
+                                      placeholder="Enter one URL per line:&#10;https://example.com/about&#10;https://example.com/services&#10;https://example.com/contact"></textarea>
+                            <div class="form-text">Add specific URLs you want to include in your sitemap</div>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="generateBtn">
+                                <i class="bi bi-magic me-2"></i>Generate Sitemap
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Results Section -->
+                    <div id="resultSection" class="mt-5" style="display: none;">
+                        <hr class="my-4">
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">
+                                <i class="bi bi-file-earmark-code me-2 text-success"></i>
+                                Generated Sitemap
+                                <span class="badge bg-success ms-2" id="urlCount">0 URLs</span>
+                            </h5>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm me-2" onclick="copySitemap()">
+                                    <i class="bi bi-clipboard me-1"></i>Copy
+                                </button>
+                                <button class="btn btn-success btn-sm" onclick="downloadSitemap()">
+                                    <i class="bi bi-download me-1"></i>Download XML
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-dark rounded-3 p-3">
+                            <pre class="text-success mb-0" id="sitemapOutput" style="white-space: pre-wrap; font-size: 0.85rem; max-height: 400px; overflow-y: auto;"></pre>
+                        </div>
+
+                        <!-- Found URLs List -->
+                        <div id="foundUrlsSection" class="mt-4" style="display: none;">
+                            <h6><i class="bi bi-link-45deg me-2"></i>Discovered URLs:</h6>
+                            <div class="bg-light rounded-3 p-3" style="max-height: 200px; overflow-y: auto;">
+                                <ul class="list-unstyled mb-0" id="foundUrlsList"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Cards -->
+            <div class="row mt-5">
+                <div class="col-md-4 mb-4">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-search fs-1 text-primary mb-3"></i>
+                            <h5>Better Indexing</h5>
+                            <p class="text-muted small mb-0">Help search engines discover and index all your important pages</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-speedometer2 fs-1 text-success mb-3"></i>
+                            <h5>Faster Crawling</h5>
+                            <p class="text-muted small mb-0">Speed up how quickly Google finds your new and updated content</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card border-0 bg-light h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-graph-up-arrow fs-1 text-warning mb-3"></i>
+                            <h5>Improved SEO</h5>
+                            <p class="text-muted small mb-0">Boost your search rankings with proper site structure</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let generatedSitemap = '';
+
+document.getElementById('sitemapForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const btn = document.getElementById('generateBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+    btn.disabled = true;
+    
+    const url = document.getElementById('websiteUrl').value;
+    const manualUrls = document.getElementById('manualUrls').value.split('\n').filter(u => u.trim());
+    
+    try {
+        const response = await fetch('/api/generate-sitemap', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                url: url,
+                urls: manualUrls,
+                changefreq: document.getElementById('changefreq').value,
+                priority: document.getElementById('priority').value,
+                include_lastmod: document.getElementById('includeLastmod').value === 'true'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            generatedSitemap = data.sitemap;
+            document.getElementById('sitemapOutput').textContent = data.sitemap;
+            document.getElementById('urlCount').textContent = data.url_count + ' URLs';
+            document.getElementById('resultSection').style.display = 'block';
+            
+            // Show found URLs
+            if (data.urls_found && data.urls_found.length > 0) {
+                const list = document.getElementById('foundUrlsList');
+                list.innerHTML = data.urls_found.map(u => `<li class="small"><i class="bi bi-check-circle text-success me-2"></i>${u}</li>`).join('');
+                document.getElementById('foundUrlsSection').style.display = 'block';
+            }
+            
+            // Scroll to results
+            document.getElementById('resultSection').scrollIntoView({behavior: 'smooth'});
+        } else {
+            alert(data.error || 'Failed to generate sitemap');
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+});
+
+function copySitemap() {
+    navigator.clipboard.writeText(generatedSitemap).then(() => {
+        alert('Sitemap copied to clipboard!');
+    });
+}
+
+function downloadSitemap() {
+    const blob = new Blob([generatedSitemap], {type: 'application/xml'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sitemap.xml';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

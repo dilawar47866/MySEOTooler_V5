@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Primary Meta Tags -->
+    <title>{% block title %}My SEO King Tool - AI-Powered SEO Tools{% endblock %}</title>
+    <meta name="title" content="{% block meta_title %}MySEO King - AI-Powered SEO Tools for Content Creators{% endblock %}">
+    <meta name="description" content="{% block meta_description %}Generate SEO-optimized content, analyze competitors, create sitemaps, and boost your rankings with 30+ AI-powered tools. Free to start!{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}SEO tools, AI content writer, keyword research, sitemap generator, robots.txt generator, content optimization{% endblock %}">
+    <meta name="author" content="MySEO King">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{ request.url }}">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:title" content="{% block og_title %}MySEO King - AI-Powered SEO Tools{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Generate SEO-optimized content with 30+ AI-powered tools. Free to start!{% endblock %}">
+    <!-- FIXED: Uses url_for to find image in py/static correctly -->
+    <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='og-image.png', _external=True) }}{% endblock %}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="MySEO King">
+    <meta property="og:locale" content="en_US">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="{{ request.url }}">
+    <meta name="twitter:title" content="{% block twitter_title %}MySEO King - AI-Powered SEO Tools{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Generate SEO-optimized content with 30+ AI-powered tools. Free to start!{% endblock %}">
+    <!-- FIXED: Uses url_for to find image in py/static correctly -->
+    <meta name="twitter:image" content="{% block twitter_image %}{{ url_for('static', filename='og-image.png', _external=True) }}{% endblock %}">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+    <!-- FIXED: Uses url_for for the manifest file -->
+    <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+    <meta name="theme-color" content="#4f46e5">
+    
+    <!-- Preconnect for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "MySEO King",
+        "url": "https://myseokingtool.com",
+        "description": "AI-powered SEO tools for content creators, bloggers, and marketers",
+        "applicationCategory": "SEO Software",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "Free tier available"
+        },
+        "creator": {
+            "@type": "Organization",
+            "name": "MySEO King",
+            "url": "https://myseokingtool.com"
+        },
+        "featureList": [
+            "AI Content Writer",
+            "Bulk Article Generator",
+            "Keyword Research",
+            "Sitemap Generator",
+            "Robots.txt Generator",
+            "Schema Markup Generator",
+            "Competitor Analysis",
+            "Readability Checker"
+        ]
+    }
+    </script>
+    
+    <!-- Organization Schema -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "MySEO King",
+        "url": "https://myseokingtool.com",
+        "logo": "https://myseokingtool.com/static/logo.png",
+        "sameAs": [],
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "support@myseokingtool.com",
+            "contactType": "customer support"
+        }
+    }
+    </script>
+    
+    {% block extra_schema %}{% endblock %}
+    
+    <!-- Custom Styles -->
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --secondary: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f9fafb;
+        }
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            color: #334155;
+        }
+        
+        /* Navbar Styles */
+        .navbar {
+            background: white !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 0.75rem 0;
+        }
+        
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--primary) !important;
+        }
+        
+        .navbar-brand span {
+            color: var(--secondary);
+        }
+        
+        .nav-link {
+            color: #64748b !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem !important;
+            transition: color 0.2s;
+        }
+        
+        .nav-link:hover {
+            color: var(--primary) !important;
+        }
+        
+        /* Button Styles */
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            font-weight: 600;
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        
+        .btn-warning {
+            background: var(--secondary);
+            border-color: var(--secondary);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .btn-outline-primary {
+            color: var(--primary);
+            border-color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .btn-outline-primary:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        /* Card Styles */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        /* Form Styles */
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            padding: 0.75rem 1rem;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        
+        /* Badge Styles */
+        .badge {
+            font-weight: 600;
+            padding: 0.5em 0.75em;
+            border-radius: 6px;
+        }
+        
+        /* Footer Styles */
+        .footer {
+            background: var(--dark);
+            color: #94a3b8;
+            padding: 3rem 0 1.5rem;
+            margin-top: 4rem;
+        }
+        
+        .footer a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .footer a:hover {
+            color: white;
+        }
+        
+        .footer h5 {
+            color: white;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        
+        /* Utility Classes */
+        .text-gradient {
+            background: linear-gradient(135deg, var(--primary), #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, var(--primary), #7c3aed);
+        }
+        
+        /* Sidebar for Dashboard */
+        .sidebar {
+            background: white;
+            min-height: 100vh;
+            box-shadow: 1px 0 3px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar .nav-link {
+            color: #64748b !important;
+            padding: 0.75rem 1.25rem !important;
+            border-radius: 8px;
+            margin: 0.125rem 0.75rem;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background: #f1f5f9;
+            color: var(--primary) !important;
+        }
+        
+        .sidebar .nav-link i {
+            width: 24px;
+        }
+        
+        /* Toast Container */
+        .toast-container {
+            z-index: 9999;
+        }
+        
+        /* Loading Spinner */
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9998;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 1.25rem;
+            }
+            
+            .sidebar {
+                min-height: auto;
+            }
+        }
+        
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-crown-fill me-2" style="color: #f59e0b;"></i>MySEO<span>King</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="bi bi-tools me-1"></i>Tools
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><h6 class="dropdown-header">Content Creation</h6></li>
+                            <li><a class="dropdown-item" href="/article-wizard"><i class="bi bi-magic me-2"></i>Article Wizard</a></li>
+                            <li><a class="dropdown-item" href="/bulk-writer"><i class="bi bi-stack me-2"></i>Bulk Writer <span class="badge bg-warning text-dark ms-1">Pro</span></a></li>
+                            <li><a class="dropdown-item" href="/youtube-to-blog"><i class="bi bi-youtube me-2"></i>YouTube to Blog</a></li>
+                            <li><a class="dropdown-item" href="/content-humanizer"><i class="bi bi-person-heart me-2"></i>Content Humanizer</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Technical SEO</h6></li>
+                            <li><a class="dropdown-item" href="/sitemap-generator"><i class="bi bi-diagram-3 me-2"></i>Sitemap Generator</a></li>
+                            <li><a class="dropdown-item" href="/robots-generator"><i class="bi bi-robot me-2"></i>Robots.txt Generator</a></li>
+                            <li><a class="dropdown-item" href="/schema-generator"><i class="bi bi-code-slash me-2"></i>Schema Generator</a></li>
+                            <li><a class="dropdown-item" href="/site-auditor"><i class="bi bi-search me-2"></i>Site Auditor</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Keyword Tools</h6></li>
+                            <li><a class="dropdown-item" href="/keyword-research"><i class="bi bi-key me-2"></i>Keyword Research</a></li>
+                            <li><a class="dropdown-item" href="/keyword-density"><i class="bi bi-percent me-2"></i>Keyword Density</a></li>
+                            <li><a class="dropdown-item" href="/lsi-keywords"><i class="bi bi-diagram-2 me-2"></i>LSI Keywords</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-primary fw-semibold" href="/dashboard"><i class="bi bi-grid me-2"></i>View All Tools</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/content-library">
+                            <i class="bi bi-folder me-1"></i>Library
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/pricing">
+                            <i class="bi bi-tag me-1"></i>Pricing
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item me-2">
+                        <span class="badge bg-primary d-flex align-items-center" style="padding: 0.5rem 0.75rem;">
+                            <i class="bi bi-lightning-charge me-1"></i>
+                            {{ current_user.ai_requests_this_month }}/{{ current_user.get_limits()['ai_requests_per_month'] }}
+                        </span>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i>{{ current_user.username }}
+                            {% if current_user.tier != 'free' %}
+                            <span class="badge bg-warning text-dark ms-1">{{ current_user.tier|title }}</span>
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item" href="/content-library"><i class="bi bi-folder me-2"></i>My Content</a></li>
+                            {% if current_user.is_admin %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="/admin"><i class="bi bi-shield-lock me-2"></i>Admin Panel</a></li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-primary" href="/signup">
+                            <i class="bi bi-rocket-takeoff me-1"></i>Get Started Free
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="container mt-3">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+    
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <h5><i class="bi bi-crown-fill me-2" style="color: #f59e0b;"></i>MySEO King</h5>
+                    <p class="mb-3">AI-powered SEO tools to help you create better content, rank higher, and grow your online presence.</p>
+                    <div class="d-flex gap-3">
+                        <a href="#" aria-label="Twitter"><i class="bi bi-twitter fs-5"></i></a>
+                        <a href="#" aria-label="LinkedIn"><i class="bi bi-linkedin fs-5"></i></a>
+                        <a href="#" aria-label="YouTube"><i class="bi bi-youtube fs-5"></i></a>
+                    </div>
+                </div>
+                
+                <div class="col-6 col-lg-2 mb-4">
+                    <h5>Tools</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="/article-wizard">Article Wizard</a></li>
+                        <li class="mb-2"><a href="/keyword-research">Keyword Research</a></li>
+                        <li class="mb-2"><a href="/sitemap-generator">Sitemap Generator</a></li>
+                        <li class="mb-2"><a href="/site-auditor">Site Auditor</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-6 col-lg-2 mb-4">
+                    <h5>Resources</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="/pricing">Pricing</a></li>
+                        <li class="mb-2"><a href="/blog">Blog</a></li>
+                        <li class="mb-2"><a href="#">Tutorials</a></li>
+                        <li class="mb-2"><a href="#">API Docs</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-6 col-lg-2 mb-4">
+                    <h5>Company</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#">About Us</a></li>
+                        <li class="mb-2"><a href="#">Contact</a></li>
+                        <li class="mb-2"><a href="#">Privacy Policy</a></li>
+                        <li class="mb-2"><a href="#">Terms of Service</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-6 col-lg-2 mb-4">
+                    <h5>Support</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#">Help Center</a></li>
+                        <li class="mb-2"><a href="mailto:support@myseokingtool.com">Email Support</a></li>
+                        <li class="mb-2"><a href="#">Feature Request</a></li>
+                        <li class="mb-2"><a href="#">Report Bug</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <hr style="border-color: #374151;">
+            
+            <div class="row align-items-center">
+                <div class="col-md-6 text-center text-md-start">
+                    <p class="mb-0">&copy; {{ now().year if now is defined else '2024' }} MySEO King. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <p class="mb-0">Made with <i class="bi bi-heart-fill text-danger"></i> for SEO professionals</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Global Toast Function -->
+    <script>
+    function showToast(message, type = 'success') {
+        const bgClass = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning text-dark' : type === 'danger' ? 'bg-danger' : 'bg-primary';
+        const icon = type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : type === 'danger' ? 'x-circle' : 'info-circle';
+        
+        let container = document.getElementById('toastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            document.body.appendChild(container);
+        }
+        
+        const toastHtml = `
+            <div class="toast align-items-center ${bgClass} text-white border-0" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-${icon} me-2"></i>${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        `;
+        
+        container.insertAdjacentHTML('beforeend', toastHtml);
+        const toastEl = container.lastElementChild;
+        const toast = new bootstrap.Toast(toastEl, {delay: 4000});
+        toast.show();
+        toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

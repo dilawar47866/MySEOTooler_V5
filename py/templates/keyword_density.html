@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Keyword Density Analyzer{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h2 class="mb-4"><i class="fas fa-percentage text-success"></i> Keyword Density</h2>
+            
+            <ul class="nav nav-tabs mb-3" id="myTab" role="tablist">
+                <li class="nav-item"><button class="nav-link active" id="url-tab" data-bs-toggle="tab" data-bs-target="#url" type="button">By URL</button></li>
+                <li class="nav-item"><button class="nav-link" id="text-tab" data-bs-toggle="tab" data-bs-target="#text" type="button">By Text</button></li>
+            </ul>
+
+            <div class="tab-content" id="myTabContent">
+                <!-- URL Input -->
+                <div class="tab-pane fade show active" id="url">
+                    <div class="input-group">
+                        <input type="text" id="urlInput" class="form-control" placeholder="https://...">
+                        <button class="btn btn-success" onclick="analyze('url')">Analyze URL</button>
+                    </div>
+                </div>
+                <!-- Text Input -->
+                <div class="tab-pane fade" id="text">
+                    <textarea id="textInput" class="form-control mb-3" rows="5" placeholder="Paste content here..."></textarea>
+                    <button class="btn btn-success" onclick="analyze('text')">Analyze Text</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="resultsArea" class="mt-4" style="display:none;">
+        <div class="card">
+            <div class="card-header bg-white fw-bold">Top Keywords Found</div>
+            <div class="card-body">
+                <p class="mb-3">Total Words Scanned: <strong id="totalWords">0</strong></p>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Keyword</th>
+                                <th>Count</th>
+                                <th>Density</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function analyze(type) {
+    const content = type === 'url' ? document.getElementById('urlInput').value : document.getElementById('textInput').value;
+    if(!content) return alert('Please enter content');
+
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = 'Analyzing...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/analyze-density', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({type: type, content: content})
+        });
+        const data = await res.json();
+        
+        if(data.error) throw new Error(data.error);
+
+        document.getElementById('totalWords').innerText = data.total_words;
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        data.results.forEach(r => {
+            // Simple color coding
+            let badge = 'bg-success';
+            if(r.density > 2.5) badge = 'bg-warning text-dark'; 
+            if(r.density > 4.0) badge = 'bg-danger'; // Over-optimized
+
+            const row = `
+                <tr>
+                    <td class="fw-bold">${r.word}</td>
+                    <td>${r.count}</td>
+                    <td>${r.density}%</td>
+                    <td><span class="badge ${badge}">${r.density > 4 ? 'Over-optimized' : 'Good'}</span></td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+
+        document.getElementById('resultsArea').style.display = 'block';
+    } catch(e) {
+        alert(e.message);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+</script>
+{% endblock %}
